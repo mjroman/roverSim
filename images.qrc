@@ -1,0 +1,17 @@
+<RCC>
+    <qresource prefix="/textures">
+        <file>src/textures/pancam.png</file>
+        <file>src/textures/dirt.jpg</file>
+        <file>src/textures/drops.jpg</file>
+        <file>src/textures/pack1.jpg</file>
+        <file>src/textures/pack2.gif</file>
+        <file>src/textures/solarPanel2.png</file>
+        <file>src/textures/defaultTerrain.png</file>
+        <file>src/textures/skydome.png</file>
+        <file>src/textures/MERB.png</file>
+    </qresource>
+    <qresource prefix="/images">
+        <file>src/images/redrobot.icns</file>
+        <file>src/images/RedSatellite.icns</file>
+    </qresource>
+</RCC>

@@ -1,0 +1,56 @@
+#ifndef MAINCONTROLLER_H
+#define MAINCONTROLLER_H
+
+#include <time.h>
+#include <QtGui/QMainWindow>
+#include "physicsWorld.h"
+#include "ui_maincontroller.h"
+#include "tools/obstacletool.h"
+#include "tools/simtool.h"
+#include "tools/terraintool.h"
+
+class rover;
+class terrain;
+
+class MainController : public QMainWindow, private Ui::MainController
+{
+    Q_OBJECT
+	
+private:
+    rover           *sr2;
+    terrain         *ground;
+    physicsWorld    *arena;
+    QTimer          *simTimer;
+    double          delTime;
+    obstacleTool    m_oTool;
+    simtool         m_simTool;
+    terrainTool     m_tTool;
+
+protected:
+    bool removeRover();
+
+public:
+    MainController(QWidget *parent = 0);
+    ~MainController();
+
+    void startSimTimer(int msec);
+    void stopSimTimer();
+
+    void keyPressEvent(QKeyEvent *event);
+    void keyReleaseEvent(QKeyEvent *event);
+
+public slots:
+    void stepSimulation();
+    void stepTimevals();
+    void simGravity();
+    void generateObstacles();
+    void removeAllObstacles();
+    void openTerrainFile();
+    void saveTerrainFile();
+    void rescaleTerrain();
+    void flattenTerrain();
+    void closeEvent(QCloseEvent *event);
+    void updateGUI();
+};
+
+#endif // MAINCONTROLLER_H

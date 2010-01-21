@@ -1,0 +1,79 @@
+#ifndef ROVER_H
+#define ROVER_H
+
+#include <QObject>
+#include <QtOpenGL>
+#include "physicsWorld.h"
+#include "laserscanner.h"
+#include "simglobject.h"
+
+class btRigidBody;
+class btGeneric6DofConstraint;
+class btTypedConstraint;
+
+class rover : public QObject, public simGLObject
+{
+private:
+    int             m_rightEncoder,m_leftEncoder;
+    int             m_gearTrain;
+    int             m_encoderRes;
+    btVector3       *m_position;
+
+    int             m_numWheels;
+    int             m_numPassive;
+    int             m_numMotors;
+    int             m_numBodyParts;
+    GLuint          m_aWheel;
+    GLuint          m_aSuspension;
+    GLuint          m_aBody;
+    GLuint          m_aSPanel;
+    GLuint          m_texture[2];
+
+    physicsWorld*   arena;
+    laserScanner*   bodyLaser;
+    laserScanner*   panelLaser;
+    laserScanner*   profileLaser;
+
+    void loadTextures();
+    void constructRover(const btVector3& positionOffset);
+    void generateGLLists();
+    void updateMotors();
+    void drawFrame(btTransform &tr);
+
+public:
+    float                                       *m_previousPosition;
+    btTypedConstraint                           **m_motorJoints;
+    btTypedConstraint                           **m_passiveJoints;
+    btVector3                                   *m_bodyAttachPoints;
+    btRigidBody                                 **m_bodyParts;
+    btAlignedObjectArray<btCollisionShape*>     m_roverShapes;
+
+    rover(simGLView* glView = 0);
+    ~rover();
+
+    float       rightSpeed,leftSpeed;
+    float       pitch,roll,heading;
+    float       panAngle,tiltAngle;
+    float       motorImpulse;
+    btVector3   position;
+    btVector3   wheelFriction;
+
+    btTransform getRoverTransform();
+    void resetRover();
+    void placeRoverAt(btVector3 here);
+    void updateRover();
+    int leftEncoder(){ return m_leftEncoder; }
+    int rightEncoder(){ return m_rightEncoder; }
+    void resetEncoders();
+
+    void setRightSpeed(float spd);
+    void setLeftSpeed(float spd);
+    void incRightSpeed(float spd);
+    void incLeftSpeed(float spd);
+    void stopRover();
+    void paintLasers(bool state);
+    void toggleSensors();
+    void renderGLObject();
+};
+
+#endif // ROVER_H

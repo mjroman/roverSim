@@ -1,0 +1,41 @@
+K 25
+svn:wc:ra_dav:version-url
+V 28
+/svn/!svn/ver/1813/trunk/src
+END
+btBulletDynamicsCommon.h
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/svn/!svn/ver/1666/trunk/src/btBulletDynamicsCommon.h
+END
+Bullet-C-Api.h
+K 25
+svn:wc:ra_dav:version-url
+V 43
+/svn/!svn/ver/1648/trunk/src/Bullet-C-Api.h
+END
+Jamfile
+K 25
+svn:wc:ra_dav:version-url
+V 36
+/svn/!svn/ver/1630/trunk/src/Jamfile
+END
+btBulletCollisionCommon.h
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/svn/!svn/ver/1630/trunk/src/btBulletCollisionCommon.h
+END
+Makefile.am
+K 25
+svn:wc:ra_dav:version-url
+V 40
+/svn/!svn/ver/1775/trunk/src/Makefile.am
+END
+CMakeLists.txt
+K 25
+svn:wc:ra_dav:version-url
+V 43
+/svn/!svn/ver/1708/trunk/src/CMakeLists.txt
+END
