@@ -7,8 +7,7 @@
         <file>src/textures/pack2.gif</file>
         <file>src/textures/solarPanel2.png</file>
         <file>src/textures/defaultTerrain.png</file>
-        <file>src/textures/skydome.png</file>
-        <file>src/textures/MERB.png</file>
+        <file>src/textures/domePan1.png</file>
     </qresource>
     <qresource prefix="/images">
         <file>src/images/redrobot.icns</file>

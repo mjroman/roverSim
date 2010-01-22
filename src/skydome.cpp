@@ -69,7 +69,7 @@ void skydome::createTextCords()
     float hTile,vTile;
 
     hTile = 1;
-    vTile = 4;
+    vTile = 1;
 
     m_domeTextPoints = new Point[m_domeVertexCount];
 
@@ -84,7 +84,8 @@ void skydome::createTextCords()
         vz /= mag;
 
         m_domeTextPoints[i].u = hTile * (float)(atan2(vx, vy)/(PI*2)) + 0.5f;
-        m_domeTextPoints[i].v = vTile * (float)(asin(vz) / PI) + 0.5f;
+        //m_domeTextPoints[i].v = vTile * (float)(asin(vz) / PI) + 0.5f;
+		m_domeTextPoints[i].v = vTile * (float)(asin(vz) / PI)/0.75f + 0.25f;
         //qDebug("%d (%f,%f,%f) - %f,%f",i,m_domeVerts[i].x,m_domeVerts[i].y,m_domeVerts[i].z,m_domeTextPoints[i].u,m_domeTextPoints[i].v);
     }
 
@@ -124,6 +125,8 @@ void skydome::renderGLObject()
     glEnable(GL_TEXTURE_2D);
     glColor3f(1.0f, 1.0f, 1.0f);
 
+	glPushMatrix();
+	glTranslatef(0,0,-20);
     glBindTexture(GL_TEXTURE_2D, m_view->getTexture(0));
     glBegin(GL_TRIANGLE_STRIP);
     for (i=0; i < m_domeVertexCount; i++){
@@ -131,7 +134,7 @@ void skydome::renderGLObject()
         glVertex3f(m_domeVerts[i].x, m_domeVerts[i].y, m_domeVerts[i].z);
     }
     glEnd();
-
+	glPopMatrix();
     glDisable(GL_TEXTURE_2D);
     glEnable(GL_LIGHTING);
 }

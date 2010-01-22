@@ -20,7 +20,7 @@
 #include <LinearMath/btDefaultMotionState.h>
 
 GLfloat lightAmbient[]={0.2f,0.2f,0.2f,1.0f};
-GLfloat lightZeroPos[]={50.0f,50.0f,20.0f,1.0f};
+GLfloat lightZeroPos[]={50.0f,0.0f,200.0f,1.0f};
 GLfloat lightZero[]={0.88f,0.86f,0.8f,1.0};
 GLfloat lightOnePos[]={50.f,50.f,100.f,0.};
 GLfloat lightOne[]={0.1f,0.1f,0.1f,1.0};
@@ -70,7 +70,7 @@ void simGLView::unregisterGLObject(simGLObject *obj)
 
 void simGLView::loadTextures()
 {
-    m_texture[0] = this->bindTexture(QPixmap(QString(":/textures/src/textures/MERB.png")),GL_TEXTURE_2D,GL_RGBA);
+    m_texture[0] = this->bindTexture(QPixmap(QString(":/textures/src/textures/domePan1.png")),GL_TEXTURE_2D,GL_RGBA);
     m_texture[1] = this->bindTexture(QPixmap(QString(":/textures/src/textures/pancam.png")),GL_TEXTURE_2D,GL_RGBA);
     m_texture[2] = this->bindTexture(QPixmap(QString(":/textures/src/textures/solarPanel2.png")),GL_TEXTURE_2D,GL_RGBA);
     glBindTexture(GL_TEXTURE_2D, m_texture[0]);
