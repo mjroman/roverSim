@@ -15,9 +15,10 @@ private:
     float*      m_rangeData;
     btVector3*  m_beamVector;
     bool        m_displayBeam;
+	bool		m_displayBody;
     btTransform m_scanTrans;
     GLuint      m_aScanner;
-
+	
     physicsWorld*   arena;
 
 public:
@@ -35,7 +36,8 @@ public:
     void setTransform(const btTransform& xForm){ m_scanTrans = xForm; }
     void update(btTransform botTrans);
     void setBeamVisable(bool q){ m_displayBeam = q; }
-    void drawLaser(btTransform botTrans,bool bodyOn);
+	void setBodyVisable(bool q){ m_displayBody = q; }
+    void drawLaser(btTransform botTrans);
 };
 
 #endif // LASERSCANNER_H

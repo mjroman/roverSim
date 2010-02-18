@@ -71,6 +71,7 @@ public:
     void incLeftSpeed(float spd);
     void stopRover();
     void paintLasers(bool state);
+	void paintBodyLaser(bool state);
     void toggleSensors();
     void renderGLObject();
 };

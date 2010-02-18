@@ -61,7 +61,7 @@ m_dynamicsWorld(0)
 
 physicsWorld::~physicsWorld()
 {
-    qDebug("deleting physics world");
+    qDebug("deleting physics");
 	
     //remove the rigidbodies from the dynamics world and delete them
     deleteGroup(OBSTACLE_GROUP);

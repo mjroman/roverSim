@@ -35,11 +35,11 @@ simGLView::simGLView(QWidget *parent) : QGLWidget(parent)
     this->setMinimumSize(80,50);
 
     m_viewAngle = 1.0;
-    eye = new camera(btVector3(-5,-5,5),btVector3(0,0,0));
+    m_eye = new camera(btVector3(-5,-5,5),btVector3(0,0,0));
 
-    timer = new QTimer(this);
-    connect(timer, SIGNAL(timeout()), this, SLOT(updateGL()));
-    timer->start(100);
+    m_timer = new QTimer(this);
+    connect(m_timer, SIGNAL(timeout()), this, SLOT(updateGL()));
+    m_timer->start(100);
 
     arena = physicsWorld::instance(); // get the physics world object
 }
@@ -51,10 +51,14 @@ QSize simGLView::sizeHint() const
 
 simGLView::~simGLView()
 {
+	m_timer->stop();
+	delete m_timer;
+	
     int i=0;
     for(i=0;i<3;i++) this->deleteTexture(m_texture[i]);
-    delete eye;
-    qDebug("glView shutdown");
+    delete m_eye;
+    qDebug("deleting glView");
+	qDebug("#################################################################");
 }
 
 void simGLView::registerGLObject(simGLObject *obj)
@@ -127,7 +131,7 @@ void simGLView::paintGL()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glLoadIdentity();
 
-        eye->cameraUpdate();
+        m_eye->cameraUpdate();
 
         glLightModelfv(GL_LIGHT_MODEL_AMBIENT, lightAmbient);
         glLightfv(GL_LIGHT0, GL_DIFFUSE, lightZero);
@@ -141,12 +145,12 @@ void simGLView::paintGL()
         for(int i=0;i<renderList.size();i++)
             renderList[i]->renderGLObject();
 
-        overlayView();
+        overlayGL();
         emit refreshView();
     }
 }
 
-void simGLView::overlayView()
+void simGLView::overlayGL()
 {
     int height = this->frameSize().height();
     int width = this->frameSize().width();
@@ -171,7 +175,6 @@ void simGLView::overlayView()
     glPopMatrix();
     glMatrixMode(GL_MODELVIEW);
     glPopMatrix();
-
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -179,22 +182,22 @@ void simGLView::overlayView()
 /////////////
 void simGLView::mousePressEvent(QMouseEvent *event)
 {
-    lastMousePoint = event->pos();
+    m_lastMousePoint = event->pos();
 }
 
 void simGLView::mouseMoveEvent(QMouseEvent *event)
 {
     QPoint del;
 	
-    del = event->pos() - lastMousePoint;
+    del = event->pos() - m_lastMousePoint;
 	
-    eye->cameraMouseMove(del,event);
-    lastMousePoint = event->pos();
+    m_eye->cameraMouseMove(del,event);
+    m_lastMousePoint = event->pos();
 }
 
 void simGLView::wheelEvent(QWheelEvent *event)
 {
-    eye->cameraMouseWheel(event);
+    m_eye->cameraMouseWheel(event);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////

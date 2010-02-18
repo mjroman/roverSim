@@ -49,7 +49,7 @@ public:
     ~terrain();
 
     btVector3 terrainScale() { return m_terrainScale; }
-    QString terrainFileName() { return m_terrainFilename; }
+    QString terrainFilename() { return m_terrainFilename; }
     float maxHeight() { return m_terrainMaxHeight; }
     float minHeight() { return m_terrainMinHeight; }
 
@@ -58,6 +58,8 @@ public:
     void terrainLower(btVector3 dir, float amount, float area);
     float terrainHeightAt(btVector3 pt);
     void renderGLObject();
+	void terrainFlatten();
+	void openTerrain(QString filename);
     void saveTerrain(QString filename);
 };
 

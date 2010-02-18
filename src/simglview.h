@@ -13,10 +13,10 @@ class simGLView : public QGLWidget
 
 private:
     float               m_viewAngle;
-    QTimer              *timer;
-    QPoint              lastMousePoint;
+    QTimer              *m_timer;
+    QPoint              m_lastMousePoint;
     physicsWorld        *arena;
-    camera              *eye;
+    camera              *m_eye;
     QList<simGLObject*> renderList;
     GLuint              m_texture[2];
 
@@ -25,7 +25,7 @@ protected:
     void initializeGL();
     void resizeGL(int width, int height);
     void paintGL();
-    void overlayView();
+    void overlayGL();
 
     void mousePressEvent(QMouseEvent *event);
     void mouseMoveEvent(QMouseEvent *event);
@@ -40,7 +40,7 @@ public:
     ~simGLView();
 
     QSize sizeHint() const;
-    camera* getCamera() { return eye; }
+    camera* getCamera() { return m_eye; }
     void setViewAngle(float angle);
     float getViewAngle(){ return m_viewAngle; }
     GLuint getTexture(int n);

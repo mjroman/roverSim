@@ -1,4 +1,5 @@
 #include "terrain.h"
+#include <QFileDialog>
 
 #include <BulletCollision/CollisionShapes/btCollisionShape.h>
 #include <BulletCollision/CollisionShapes/btBvhTriangleMeshShape.h>
@@ -26,17 +27,9 @@ m_terrainMinHeight(0),
 m_pixelx(100),
 m_pixely(100)
 {
-    m_terrainScale.setValue(1,1,1);
-
     arena = physicsWorld::instance(); // get the physics world object
 
-    m_terrainFilename = filename;
-
-    if(filename != NULL && terrainLoadFile()) this->generateGround();  // if the image data is good create terrain
-    else {
-        this->terrainCreateMesh(NULL);
-        this->generateGround();
-    }
+	this->openTerrain(filename);
 }
 
 terrain::~terrain()
@@ -140,7 +133,7 @@ void terrain::terrainCreateMesh(unsigned int *heightData)
         m_terrainVerts[i].x = (i % xWorld) * m_terrainScale.x();
         m_terrainVerts[i].y = (i / xWorld) * m_terrainScale.y();
         if(heightData != NULL) temp = (float)heightData[i]/(float)heightData[m_terrainVertexCount]; // get the height from the image data
-        else temp = (m_terrainMaxHeight + m_terrainMinHeight)/2;
+		else temp = 0.5; //(m_terrainMaxHeight + m_terrainMinHeight)/2;
         m_terrainVerts[i].z = temp * m_terrainScale.z();  // scale the height
         if(m_terrainVerts[i].z > m_terrainMaxHeight) m_terrainMaxHeight = m_terrainVerts[i].z;
 		
@@ -409,6 +402,26 @@ void terrain::generateGround()
     m_meshBody = arena->createRigidBody(0,terrainTransform,m_triMesh,TERRAIN_GROUP);
     // set the collision flags
     m_meshBody->setCollisionFlags(m_meshBody->getCollisionFlags() | btCollisionObject::CF_STATIC_OBJECT);
+}
+
+void terrain::terrainFlatten()
+{
+	this->terrainClear();
+	this->openTerrain(NULL);
+}
+
+void terrain::openTerrain(QString filename)
+{
+	this->terrainClear();
+	m_terrainFilename = filename;
+	m_terrainScale.setValue(1,1,1);
+	
+	if(filename != NULL && terrainLoadFile()) 
+		this->generateGround();  // if the image data is good create terrain
+    else {
+        this->terrainCreateMesh(NULL);
+        this->generateGround();
+    }
 }
 
 void terrain::saveTerrain(QString filename)

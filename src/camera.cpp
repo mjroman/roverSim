@@ -51,6 +51,7 @@ void camera::cameraUpdate()
             position = rFrame(btVector3(0,0.022,0));
             direction = rFrame(btVector3(0,cos(DEGTORAD(tPitch)),sin(DEGTORAD(tPitch))));
             upVector = rFrame(btVector3(0,0,1)) - robot->position;
+			robot->paintBodyLaser(false);
             break;
         }
     case RoverPanCam:   // the PanCam view
@@ -77,6 +78,7 @@ void camera::cameraUpdate()
         tYaw = RADTODEG(robot->heading) + yaw[cameraView];
     case RoverCenter:   // floating view which follows the rovers position but not heading
         direction = robot->position;
+		robot->paintBodyLaser(true);
     case FreeView:      // free camera view
     default:
 
@@ -87,6 +89,7 @@ void camera::cameraUpdate()
         upVector.setX(cos(DEGTORAD(tPitch))*sin(DEGTORAD(tYaw)));
         upVector.setY(cos(DEGTORAD(tPitch))*cos(DEGTORAD(tYaw)));
         upVector.setZ(sin(DEGTORAD(tPitch)));
+		
         break;
     }
 
@@ -133,6 +136,22 @@ void camera::cameraToggleView()
     cameraView++;
     if(cameraView == CAMERAINDEXSIZE) cameraView = FreeView;
     //qDebug("View index:%d",cameraView);
+}
+
+QString camera::cameraViewName()
+{
+	switch(cameraView){
+		case FreeView:
+		return QString("Camera Free View");
+		case RoverCenter:
+		return QString("Camera Rover Center");
+		case RoverFollow:
+		return QString("Camera Rover Follow");
+		case RoverView:
+		return QString("Camera Rover View");
+		case RoverPanCam:
+		return QString("Camera PanCam View");
+	}
 }
 
 btVector3 camera::cameraPitchYawZoom()

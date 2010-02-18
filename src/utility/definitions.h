@@ -46,6 +46,28 @@ typedef struct _Triangle {
         int v3;
 } Triangle;
 
+typedef	enum _WPstate{
+	WPstateNew = 0, // to be visited
+	WPstateOld = 1, // visited
+	WPstateCurrent = 2,
+	WPstateSkipped = 3
+} WPstate;
+
+typedef enum _WPscienceType {
+    WPscienceNone = 0,
+    WPsciencePanorama = 1,
+    WPscienceSpectra = 2,
+    WPsciencePanoramaAndSpectra = 3
+} WPscienceType;
+
+typedef struct _wayPoint{
+	int			uuid; //just a number so we can tell one from another
+	Vertex		position;
+	WPscienceType	science;
+	WPstate		state; // to be visited, visitied, current, etc
+	struct _wayPoint *next; //linked list so this is the next point the rover should visit
+}wayPoint;
+
 Vertex diff(Vertex v1,Vertex v2);
 Vertex mult(Vertex v1,Vertex v2);
 Vertex normalize(Vertex v1);

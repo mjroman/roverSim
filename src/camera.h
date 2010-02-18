@@ -35,6 +35,7 @@ public:
     void cameraMouseMove(QPoint delta,QMouseEvent *event);
     void cameraMouseWheel(QWheelEvent *event);
     void cameraToggleView();
+	QString	cameraViewName();
     void cameraSetRoverPointer(rover* rp){ robot = rp; }
     btVector3 cameraDirection(){ return direction; }
     btVector3 cameraPitchYawZoom();

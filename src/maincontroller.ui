@@ -577,7 +577,7 @@
        </widget>
       </item>
       <item row="1" column="0" colspan="6">
-       <widget class="QLabel" name="label_12">
+       <widget class="QLabel" name="labelCameraView">
         <property name="text">
          <string>Camera Properties</string>
         </property>
@@ -636,19 +636,6 @@
     <property name="title">
      <string>World</string>
     </property>
-    <widget class="QMenu" name="menuTerrain">
-     <property name="title">
-      <string>Terrain</string>
-     </property>
-     <addaction name="actionOpen_Terrain"/>
-     <addaction name="actionSave_Terrain"/>
-     <addaction name="actionFlatten_Terrain"/>
-     <addaction name="actionTerrain_Parameters"/>
-    </widget>
-    <addaction name="menuTerrain"/>
-    <addaction name="actionRandomize_Obstacles"/>
-    <addaction name="actionRemove_Obstacles"/>
-    <addaction name="actionObstacle_Parameters"/>
     <addaction name="actionSim_Timing"/>
    </widget>
    <widget class="QMenu" name="menuRover">
@@ -661,12 +648,32 @@
      </property>
      <addaction name="actionFree_view"/>
      <addaction name="actionFollow_Rover"/>
-     <addaction name="actionRover_view"/>
+     <addaction name="actionRover_View"/>
+     <addaction name="actionPanCam_View"/>
     </widget>
     <addaction name="menuView"/>
    </widget>
+   <widget class="QMenu" name="menuTerrain_2">
+    <property name="title">
+     <string>Terrain</string>
+    </property>
+    <addaction name="actionOpen_Terrain"/>
+    <addaction name="actionSave_Terrain"/>
+    <addaction name="actionFlatten_Terrain"/>
+    <addaction name="actionTerrain_Parameters"/>
+   </widget>
+   <widget class="QMenu" name="menuObstacles">
+    <property name="title">
+     <string>Obstacles</string>
+    </property>
+    <addaction name="actionRandomize_Obstacles"/>
+    <addaction name="actionRemove_Obstacles"/>
+    <addaction name="actionObstacle_Parameters"/>
+   </widget>
    <addaction name="menuWorld"/>
    <addaction name="menuRover"/>
+   <addaction name="menuTerrain_2"/>
+   <addaction name="menuObstacles"/>
   </widget>
   <action name="actionRandomize_Obstacles">
    <property name="text">
@@ -712,9 +719,9 @@
     <string>Follow Rover</string>
    </property>
   </action>
-  <action name="actionRover_view">
+  <action name="actionRover_View">
    <property name="text">
-    <string>Rover view</string>
+    <string>Rover View</string>
    </property>
   </action>
   <action name="actionSim_Timing">
@@ -730,6 +737,11 @@
   <action name="actionSave_Terrain">
    <property name="text">
     <string>Save Terrain</string>
+   </property>
+  </action>
+  <action name="actionPanCam_View">
+   <property name="text">
+    <string>PanCam View</string>
    </property>
   </action>
  </widget>

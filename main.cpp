@@ -16,6 +16,6 @@ int main(int argc, char *argv[])
     int ret = a.exec();
 	
     physicsWorld::destroy();
-	
+
     return ret;
 }

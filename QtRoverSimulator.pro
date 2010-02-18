@@ -27,6 +27,7 @@ INCLUDEPATH += . \
     src
 SOURCES += main.cpp \
     src/maincontroller.cpp \
+	src/simcontrol.cpp \
     src/physicsWorld.cpp \
     src/simglview.cpp \
     src/camera.cpp \
@@ -42,6 +43,7 @@ SOURCES += main.cpp \
     src/tools/obstacletool.cpp \
     src/skydome.cpp
 HEADERS += src/maincontroller.h \
+	src/simcontrol.h \
     src/physicsWorld.h \
     src/simglview.h \
     src/camera.h \

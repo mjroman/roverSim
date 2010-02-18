@@ -543,6 +543,11 @@ void rover::paintLasers(bool state)
     profileLaser->setBeamVisable(state);
 }
 
+void rover::paintBodyLaser(bool state)
+{
+	bodyLaser->setBodyVisable(state);
+}
+	
 void rover::toggleSensors()
 {
     static bool state = true;
@@ -626,9 +631,9 @@ void rover::renderGLObject()
     }
 
     // draw body scanner
-    bodyLaser->drawLaser(m_bodyParts[0]->getWorldTransform(),true);
-    panelLaser->drawLaser(m_bodyParts[0]->getWorldTransform(),true);
-    profileLaser->drawLaser(m_bodyParts[0]->getWorldTransform(),true);
+    bodyLaser->drawLaser(m_bodyParts[0]->getWorldTransform());
+    panelLaser->drawLaser(m_bodyParts[0]->getWorldTransform());
+    profileLaser->drawLaser(m_bodyParts[0]->getWorldTransform());
 
     /*for(i=0;i<m_numBodyParts;i++){
         drawFrame(m_bodyParts[i]->getWorldTransform());

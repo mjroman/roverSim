@@ -94,6 +94,7 @@ m_rangeData(NULL)
     configure();
 
     m_displayBeam = false;
+	m_displayBody = true;
     m_scanTrans = xForm;
 
     // generate the openGL display list
@@ -157,7 +158,7 @@ void laserScanner::update(btTransform botTrans)
     }
 }
 
-void laserScanner::drawLaser(btTransform botTrans,bool bodyOn)
+void laserScanner::drawLaser(btTransform botTrans)
 {
     int i;
     btScalar    glm[16];
@@ -168,7 +169,7 @@ void laserScanner::drawLaser(btTransform botTrans,bool bodyOn)
     glPushMatrix();
     glMultMatrixf(glm);
     // draw laser body
-    if(bodyOn) glCallList(m_aScanner);
+    if(m_displayBody) glCallList(m_aScanner);
 
     glDisable(GL_LIGHTING);
 
