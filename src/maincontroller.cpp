@@ -25,15 +25,25 @@ m_tTool(this)
     // menu bar connections
 // world menu
     connect(actionSim_Timing, SIGNAL(triggered()), &m_simTool, SLOT(show()));
+// rover menu
+	connect(actionNew_Rover, SIGNAL(triggered()), this, SLOT(newRover()));
+	// setup the rover view menu
+	connect(actionFree_View, SIGNAL(triggered()), this, SLOT(cameraFreeView()));
+	connect(actionRover_Center, SIGNAL(triggered()), this, SLOT(cameraRoverCenter()));
+	connect(actionRover_Follow, SIGNAL(triggered()), this, SLOT(cameraRoverFollow()));
+	connect(actionRover_View, SIGNAL(triggered()), this, SLOT(cameraRoverView()));
+	connect(actionRover_PanCam, SIGNAL(triggered()), this, SLOT(cameraRoverPanCam()));
+	menuRoverView->setEnabled(false);
+	
 // obstacles menu
     connect(actionRandomize_Obstacles, SIGNAL(triggered()), SController, SLOT(generateObstacles()));
     connect(actionRemove_Obstacles, SIGNAL(triggered()), SController, SLOT(removeObstacles()));
-    connect(actionObstacle_Parameters, SIGNAL(triggered()), &m_oTool, SLOT(raise()));
+    connect(actionObstacle_Parameters, SIGNAL(triggered()), &m_oTool, SLOT(show()));
 // terrain menu
     connect(actionOpen_Terrain, SIGNAL(triggered()), this, SLOT(openGround()));
     connect(actionSave_Terrain, SIGNAL(triggered()), this, SLOT(saveGround()));
-    connect(actionFlatten_Terrain, SIGNAL(triggered()), SController, SLOT(flattenGround()));
-   	connect(actionTerrain_Parameters, SIGNAL(triggered()), &m_tTool, SLOT(raise()));
+    connect(actionFlatten_Terrain, SIGNAL(triggered()), this, SLOT(flattenGround()));
+   	connect(actionTerrain_Parameters, SIGNAL(triggered()), &m_tTool, SLOT(show()));
 
     // tool bar Simulation timing
     connect(&m_simTool, SIGNAL(paramUpdate()), this, SLOT(stepTimevals()));
@@ -74,14 +84,18 @@ void MainController::simGravity()
 
 void MainController::openGround()
 {
-	// open an Open File dialog to look for a BMP image to represent a height map
+	// open an Open File dialog to look for a PNG image to represent a height map
     QString filename = QFileDialog::getOpenFileName(this,tr("Open Terrain"), tr("/Users"),tr("Image File (*.png)"));
 	if(filename == NULL) return; // if cancel is pressed dont do anything
 	SController->openNewGround(filename);
+	labelTerrainFilename->setText(SController->getGround()->terrainFilename());
+	m_tTool.setScale(SController->getGround()->terrainScale());
+	menuRoverView->setEnabled(false);
 }
 
 void MainController::saveGround()
 {
+	// open a Save File dialog and select location and filename
 	QString filename = QFileDialog::getSaveFileName(this,tr("Save Terrain PNG"), tr("/Users"),tr("Image File (*.png)"));
 	if(filename == NULL) return; // if cancel is pressed dont do anything
 
@@ -89,10 +103,17 @@ void MainController::saveGround()
 	SController->getGround()->saveTerrain(filename);
 }
 
+void MainController::flattenGround()
+{
+	SController->flattenGround();
+	menuRoverView->setEnabled(false);
+}
+
 void MainController::rescaleGround()
 {
     SController->rescaleGround(m_tTool.scale());
     SController->setGravity(m_tTool.gravity());
+	menuRoverView->setEnabled(false);
 }
 
 void MainController::generateObstacles()
@@ -113,6 +134,19 @@ void MainController::removeAllObstacles()
     m_oTool.setObstacleCount(0);
 	SController->removeObstacles();
 }
+
+void MainController::newRover()
+{
+	SController->newRover();
+	menuRoverView->setEnabled(true);
+}
+
+void MainController::cameraFreeView(){glView->getCamera()->cameraFreeView(); glView->setViewAngle(1.0);}
+void MainController::cameraRoverCenter(){glView->getCamera()->cameraRoverCenter(); glView->setViewAngle(1.0);}
+void MainController::cameraRoverFollow(){glView->getCamera()->cameraRoverFollow(); glView->setViewAngle(1.0);}
+void MainController::cameraRoverView(){glView->getCamera()->cameraRoverView(); glView->setViewAngle(0.5);}
+void MainController::cameraRoverPanCam(){glView->getCamera()->cameraRoverPanCam(); glView->setViewAngle(1.0);}
+
 /////////////////////////////////////////
 // user input
 /////////////
@@ -140,13 +174,6 @@ void MainController::keyPressEvent(QKeyEvent *event)
         case ']':
         {
             SController->getGround()->terrainLower(glView->getCamera()->cameraDirection(),m_tTool.increment(),m_tTool.diameter());
-            return;
-        }
-        case 'n':
-        case 'N':
-        {
-			SController->removeRover();
-			SController->newRover(glView);
             return;
         }
         case '-':
@@ -293,9 +320,6 @@ void MainController::updateGUI()
     labelCameraZoom->setText(QString().setNum(glView->getViewAngle(),'f',1));
     labelCameraCrosshair->setText(QString("(%1 ,%2)").arg(glView->getCamera()->cameraDirection().x(),0,'f',1)
                                   .arg(glView->getCamera()->cameraDirection().y(),0,'f',1));
-							
-	labelTerrainFilename->setText(SController->getGround()->terrainFilename());
-	m_tTool.setScale(SController->getGround()->terrainScale());
 }
 
 /////////////////////////////////////////

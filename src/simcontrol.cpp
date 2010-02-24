@@ -11,15 +11,24 @@
 #include <BulletDynamics/Dynamics/btRigidBody.h>
 
 simControl::simControl(simGLView* vw)
-:	ground(NULL),sky(NULL),sr2(NULL),m_obstCount(0)
+:	ground(NULL),sky(NULL),sr2(NULL),glView(vw),
+m_obstType(),
+m_obstCount(50),
+m_dropHeight(5),
+m_minObstYaw(0),
+m_maxObstYaw(45),
+m_obstDensity(5)
 {
 	qDebug("simControl startup");
    	arena = physicsWorld::instance(); // get the physics world object
 	
-	ground = new terrain(QString(":/textures/src/textures/defaultTerrain.png"), vw);
+	m_minObstSize = btVector3(0.1,0.1,0.25);
+	m_maxObstSize = btVector3(1,1,0.5);
+	
+	ground = new terrain(QString(":/textures/src/textures/defaultTerrain.png"), glView);
 	this->generateObstacles();
 	
-	//sky = new skydome(vw);
+	//sky = new skydome(glView);
 	
 	simTimer = new QTimer(this);
     connect(simTimer, SIGNAL(timeout()), this, SLOT(stepSim()));
@@ -52,8 +61,9 @@ void simControl::stepSim()
     arena->simulatStep();
 }
 
-void simControl::stepTimevals(int tStep,int fixedtStep,int subSteps)
+void simControl::stepTimevals(float tStep,float fixedtStep,int subSteps)
 {
+	//qDebug("tStep=%f fixed=%f sub=%d",tStep,fixedtStep,subSteps);
     arena->simTimeStep = tStep;
     arena->simFixedTimeStep = fixedtStep;
     arena->simSubSteps = subSteps;
@@ -110,6 +120,7 @@ void simControl::generateObstacles()
     arena->deleteGroup(OBSTACLE_GROUP);
 	
     if(m_obstCount == 0) return;
+	qDebug("generating new obstacles %d",m_obstCount);
     for(i=0;i<m_obstCount;i++)
     {
         tempPlace.setX(Randomn()*arena->worldSize().x());
@@ -167,10 +178,10 @@ bool simControl::removeRover()
     return false;
 }
 
-void simControl::newRover(simGLView* vw)
+void simControl::newRover()
 {
 	if(!ground) return;
-	
-	if(!sr2) sr2 = new rover(vw);
+	qDebug("new rover");
+	if(!sr2) sr2 = new rover(glView);
 	sr2->placeRoverAt(btVector3(1,1,ground->terrainHeightAt(btVector3(1,1,0))));
 }

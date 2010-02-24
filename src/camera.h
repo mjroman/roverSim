@@ -6,6 +6,7 @@
 #include <LinearMath/btVector3.h>
 #include <LinearMath/btTransform.h>
 
+#define CAMERAINDEXSIZE 5 // should be equal to the number of elements in the BELOW enum
 enum viewIndex {
         FreeView,
         RoverCenter,
@@ -13,8 +14,6 @@ enum viewIndex {
         RoverView,
         RoverPanCam
 };
-
-#define CAMERAINDEXSIZE 5 // should be equal to the number of elements in the above enum
 
 class rover;
 
@@ -35,10 +34,17 @@ public:
     void cameraMouseMove(QPoint delta,QMouseEvent *event);
     void cameraMouseWheel(QWheelEvent *event);
     void cameraToggleView();
+	void cameraSetView(viewIndex x);
 	QString	cameraViewName();
     void cameraSetRoverPointer(rover* rp){ robot = rp; }
     btVector3 cameraDirection(){ return direction; }
     btVector3 cameraPitchYawZoom();
+
+	void cameraFreeView();
+	void cameraRoverCenter();
+	void cameraRoverFollow();
+	void cameraRoverView();
+	void cameraRoverPanCam();
 };
 
 #endif // CAMERA_H

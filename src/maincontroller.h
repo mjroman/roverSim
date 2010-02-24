@@ -34,8 +34,15 @@ public slots:
 	void openGround();
 	void saveGround();
 	void rescaleGround();
+	void flattenGround();
 	void generateObstacles();
 	void removeAllObstacles();
+	void newRover();
+	void cameraFreeView();
+	void cameraRoverCenter();
+	void cameraRoverFollow();
+	void cameraRoverView();
+	void cameraRoverPanCam();
 
     void closeEvent(QCloseEvent *event);
     void updateGUI();

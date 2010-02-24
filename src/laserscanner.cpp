@@ -183,16 +183,16 @@ void laserScanner::drawLaser(btTransform botTrans)
         }
         glEnd();
     }
-    else {
-        glColor3f(0.,1.,0.);
-        glPointSize(3);
-        glBegin(GL_POINTS);
-        for(i=0;i<m_dataSize;i++){
-            btVector3 beam = m_beamVector[i] * m_rangeData[i];
-            glVertex3f(beam.x(),beam.y(),beam.z());
-        }
-        glEnd();
-    }
-    glEnable(GL_LIGHTING);
-    glPopMatrix();
+
+    glColor3f(0.,1.,0.);
+	glPointSize(3);
+	glBegin(GL_POINTS);
+	for(i=0;i<m_dataSize;i++){
+		btVector3 beam = m_beamVector[i] * m_rangeData[i];
+		glVertex3f(beam.x(),beam.y(),beam.z());
+	}
+	glEnd();
+
+	glEnable(GL_LIGHTING);
+	glPopMatrix();
 }

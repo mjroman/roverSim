@@ -138,6 +138,12 @@ void camera::cameraToggleView()
     //qDebug("View index:%d",cameraView);
 }
 
+void camera::cameraSetView(viewIndex x)
+{
+	if(x > CAMERAINDEXSIZE || x < 0) return;
+	cameraView = x;
+}
+
 QString camera::cameraViewName()
 {
 	switch(cameraView){
@@ -159,3 +165,9 @@ btVector3 camera::cameraPitchYawZoom()
     btVector3 camParm(yaw[cameraView],pitch[cameraView],zoom[cameraView]);
     return camParm;
 }
+
+void camera::cameraFreeView() {cameraView = FreeView;}
+void camera::cameraRoverCenter() {cameraView = RoverCenter;}
+void camera::cameraRoverFollow() {cameraView = RoverFollow;}
+void camera::cameraRoverView() {cameraView = RoverView;}
+void camera::cameraRoverPanCam() {cameraView = RoverPanCam;}

@@ -19,6 +19,7 @@ class simControl : public QObject
 		rover			*sr2;
 		QTimer          *simTimer;
 	    double          delTime;
+		simGLView		*glView;
 	
 	public:
 		// obstacle members
@@ -39,7 +40,7 @@ class simControl : public QObject
 		void startSimTimer(int msec);
 		void stopSimTimer();
 		
-		void stepTimevals(int tStep,int fixedtStep,int subSteps);
+		void stepTimevals(float tStep,float fixedtStep,int subSteps);
 		void pauseSim();
 	
 		// terrain control functions
@@ -49,18 +50,17 @@ class simControl : public QObject
 		// rover control functions
 		rover* getRover() { return sr2; }
 		bool removeRover();
-		void newRover(simGLView* vw=0);
+		
 		
 	public slots:
 	// obstacle control functions
 		void removeObstacles();
 		void generateObstacles();
-		
 		void stepSim();
 		
 		void openNewGround(QString filename);
 		void flattenGround();
 		
-
+		void newRover();
 };
 #endif  //SIMCONTROL_H
