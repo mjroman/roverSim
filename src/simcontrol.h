@@ -5,7 +5,7 @@
 #include "physicsWorld.h"
 
 class terrain;
-class rover;
+class SR2rover;
 class skydome;
 class simGLView;
 
@@ -16,7 +16,7 @@ class simControl : public QObject
 		physicsWorld    *arena;
 		terrain         *ground;
 		skydome         *sky;
-		rover			*sr2;
+		SR2rover		*sr2;
 		QTimer          *simTimer;
 	    double          delTime;
 		simGLView		*glView;
@@ -48,9 +48,8 @@ class simControl : public QObject
 		void rescaleGround(btVector3 scale);
 		
 		// rover control functions
-		rover* getRover() { return sr2; }
+		SR2rover* getRover() { return sr2; }
 		bool removeRover();
-		
 		
 	public slots:
 	// obstacle control functions

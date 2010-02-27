@@ -17,7 +17,7 @@ m_dropHeight(5.0)
     setupUi(this);
     QWidget::setWindowFlags(Qt::Sheet);
 	
-    connect(ComboShapeType, SIGNAL(currentIndexChanged(int)), this, SLOT(updateLabels()));
+    connect(ComboShapeType, SIGNAL(currentIndexChanged(int)), this, SLOT(updateLabels(int)));
 	
     ComboShapeType->addItem("Box",0);
     ComboShapeType->addItem("Sphere",0);
@@ -37,7 +37,7 @@ m_dropHeight(5.0)
     LineEditMinYaw->setText(QString::number(m_minObstYaw));
     LineEditMaxYaw->setText(QString::number(m_maxObstYaw));
     LineEditDensity->setText(QString::number(m_density));
-    updateLabels();
+    updateLabels(0);
 }
 
 obstacleTool::~obstacleTool()
@@ -50,9 +50,9 @@ void obstacleTool::raise()
     SpinBoxObstCount->setValue(m_obstacleCount);
 }
 
-void obstacleTool::updateLabels()
+void obstacleTool::updateLabels(int index)
 {
-    switch(ComboShapeType->currentIndex()){
+    switch(index){
         case 0:
             LabelLength->setText("Length");
             LabelWidth->setText("Width");

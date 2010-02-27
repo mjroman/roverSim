@@ -9,10 +9,10 @@ skydome::skydome(simGLView* glView)
 {
     qDebug("skydome startup");
 
-    //if(glView == NULL) return NULL;
-
-    this->buildDome();
-    this->createTextCords();
+	if(glView){
+		this->buildDome();
+		this->createTextCords();
+	}
 }
 
 skydome::~skydome()

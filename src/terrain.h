@@ -45,7 +45,7 @@ protected:
     btAlignedObjectArray<btCollisionShape*>     m_terrainShapes;
 
 public:
-    terrain(QString filename, simGLView* glView = 0);
+    terrain(QString filename, simGLView* glView = NULL);
     ~terrain();
 
     btVector3 terrainScale() { return m_terrainScale; }

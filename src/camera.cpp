@@ -1,5 +1,5 @@
 #include "camera.h"
-#include "rover.h"
+#include "sr2rover.h"
 #include "utility/definitions.h"
 #include <OpenGL/gl.h>
 #include <OpenGL/glu.h>
@@ -28,7 +28,7 @@ camera::camera(const btVector3& pos,const btVector3& dir)
     zoom[RoverPanCam] = 1.0;
 
     position = pos;
-    robot = 0;
+    bot = 0;
     direction = dir;
 	
     btVector3 upVector(0.f,1.f,0.f);
@@ -36,7 +36,7 @@ camera::camera(const btVector3& pos,const btVector3& dir)
 
 void camera::cameraUpdate()
 {
-    if(!robot) cameraView = FreeView;
+    if(!bot) cameraView = FreeView;
 
     float tPitch = pitch[cameraView];
     float tYaw = yaw[cameraView];
@@ -47,11 +47,11 @@ void camera::cameraUpdate()
             zoom[cameraView] = 1.0;
             yaw[cameraView] = 0;
 
-            btTransform rFrame = robot->getRoverTransform();
+            btTransform rFrame = bot->getRobotTransform();
             position = rFrame(btVector3(0,0.022,0));
             direction = rFrame(btVector3(0,cos(DEGTORAD(tPitch)),sin(DEGTORAD(tPitch))));
-            upVector = rFrame(btVector3(0,0,1)) - robot->position;
-			robot->paintBodyLaser(false);
+            upVector = rFrame(btVector3(0,0,1)) - bot->position;
+			bot->paintBodyLaser(false);
             break;
         }
     case RoverPanCam:   // the PanCam view
@@ -60,25 +60,25 @@ void camera::cameraUpdate()
             yaw[cameraView] = 0;
             pitch[cameraView] =  0;
 
-            float pan = -DEGTORAD(robot->panAngle);
-            float tilt = DEGTORAD(robot->tiltAngle);
+            float pan = -DEGTORAD(bot->panAngle);
+            float tilt = DEGTORAD(bot->tiltAngle);
             direction.setX(sin(pan)*cos(tilt));
             direction.setY(cos(pan)*cos(tilt));
             direction.setZ(sin(tilt));
             btVector3 horz(sin(pan+PI/2),cos(pan+PI/2),0);
             btVector3 camUp = horz.cross(direction);
 
-            btTransform rFrame = robot->getRoverTransform();
+            btTransform rFrame = bot->getRobotTransform();
             position = rFrame(btVector3(0,0.03,0.4));
             direction = rFrame(direction+btVector3(0,0.03,0.4));
-            upVector = rFrame(camUp) - robot->position;
+            upVector = rFrame(camUp) - bot->position;
             break;
         }
     case RoverFollow:   // floating view which follows the rovers heading
-        tYaw = RADTODEG(robot->heading) + yaw[cameraView];
+        tYaw = RADTODEG(bot->heading) + yaw[cameraView];
     case RoverCenter:   // floating view which follows the rovers position but not heading
-        direction = robot->position;
-		robot->paintBodyLaser(true);
+        direction = bot->position;
+		bot->paintBodyLaser(true);
     case FreeView:      // free camera view
     default:
 
@@ -157,6 +157,8 @@ QString camera::cameraViewName()
 		return QString("Camera Rover View");
 		case RoverPanCam:
 		return QString("Camera PanCam View");
+		default: 
+		return QString("NULL");
 	}
 }
 

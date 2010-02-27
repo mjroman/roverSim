@@ -1,10 +1,9 @@
-#include "maincontroller.h"
+#include "mainGUI.h"
 #include "camera.h"
 #include "terrain.h"
-#include "rover.h"
+#include "sr2rover.h"
 
-
-MainController::MainController(QWidget *parent)
+MainGUI::MainGUI(QWidget *parent)
 :
 QMainWindow(parent),
 m_oTool(this),
@@ -13,7 +12,7 @@ m_tTool(this)
 {
     qDebug("UI setup");
     setupUi(this);
-    move(240,22);
+	move(240,22);
     resize(1200,700);
 	
     m_oTool.close();
@@ -34,7 +33,6 @@ m_tTool(this)
 	connect(actionRover_View, SIGNAL(triggered()), this, SLOT(cameraRoverView()));
 	connect(actionRover_PanCam, SIGNAL(triggered()), this, SLOT(cameraRoverPanCam()));
 	menuRoverView->setEnabled(false);
-	
 // obstacles menu
     connect(actionRandomize_Obstacles, SIGNAL(triggered()), SController, SLOT(generateObstacles()));
     connect(actionRemove_Obstacles, SIGNAL(triggered()), SController, SLOT(removeObstacles()));
@@ -54,6 +52,9 @@ m_tTool(this)
     // tool bar terrain scale update
     connect(&m_tTool, SIGNAL(scaleUpdate()), this, SLOT(rescaleGround()));
 
+// server connections
+	connect(&m_TCPserver, SIGNAL(newConnection()),this, SLOT(serverAcceptConnect()));
+	
     connect(glView, SIGNAL(refreshView()), this, SLOT(updateGUI()));
 	
     labelTerrainFilename->setText(SController->getGround()->terrainFilename());
@@ -61,28 +62,29 @@ m_tTool(this)
     m_tTool.setScale(SController->getGround()->terrainScale());
 }
 
-MainController::~MainController()
+MainGUI::~MainGUI()
 {
     qDebug("deleting UI");
+	m_serverConnection->close();
 }
 
-void MainController::closeEvent(QCloseEvent *event)
+void MainGUI::closeEvent(QCloseEvent *event)
 {
     delete SController;
     event->accept();
 }
 
-void MainController::stepTimevals()
+void MainGUI::stepTimevals()
 {
     SController->stepTimevals(m_simTool.getTimeStep(),m_simTool.getFixedTimeStep(),m_simTool.getSubSteps());
 }
 
-void MainController::simGravity()
+void MainGUI::simGravity()
 {
     SController->setGravity(m_tTool.gravity());
 }
 
-void MainController::openGround()
+void MainGUI::openGround()
 {
 	// open an Open File dialog to look for a PNG image to represent a height map
     QString filename = QFileDialog::getOpenFileName(this,tr("Open Terrain"), tr("/Users"),tr("Image File (*.png)"));
@@ -93,7 +95,7 @@ void MainController::openGround()
 	menuRoverView->setEnabled(false);
 }
 
-void MainController::saveGround()
+void MainGUI::saveGround()
 {
 	// open a Save File dialog and select location and filename
 	QString filename = QFileDialog::getSaveFileName(this,tr("Save Terrain PNG"), tr("/Users"),tr("Image File (*.png)"));
@@ -103,20 +105,20 @@ void MainController::saveGround()
 	SController->getGround()->saveTerrain(filename);
 }
 
-void MainController::flattenGround()
+void MainGUI::flattenGround()
 {
 	SController->flattenGround();
 	menuRoverView->setEnabled(false);
 }
 
-void MainController::rescaleGround()
+void MainGUI::rescaleGround()
 {
     SController->rescaleGround(m_tTool.scale());
     SController->setGravity(m_tTool.gravity());
 	menuRoverView->setEnabled(false);
 }
 
-void MainController::generateObstacles()
+void MainGUI::generateObstacles()
 {
 	SController->m_obstType = m_oTool.obstacleType();
 	SController->m_obstCount = m_oTool.obstacleCount();
@@ -129,28 +131,28 @@ void MainController::generateObstacles()
 	SController->generateObstacles();
 }
 
-void MainController::removeAllObstacles()
+void MainGUI::removeAllObstacles()
 {
     m_oTool.setObstacleCount(0);
 	SController->removeObstacles();
 }
 
-void MainController::newRover()
+void MainGUI::newRover()
 {
 	SController->newRover();
 	menuRoverView->setEnabled(true);
 }
 
-void MainController::cameraFreeView(){glView->getCamera()->cameraFreeView(); glView->setViewAngle(1.0);}
-void MainController::cameraRoverCenter(){glView->getCamera()->cameraRoverCenter(); glView->setViewAngle(1.0);}
-void MainController::cameraRoverFollow(){glView->getCamera()->cameraRoverFollow(); glView->setViewAngle(1.0);}
-void MainController::cameraRoverView(){glView->getCamera()->cameraRoverView(); glView->setViewAngle(0.5);}
-void MainController::cameraRoverPanCam(){glView->getCamera()->cameraRoverPanCam(); glView->setViewAngle(1.0);}
+void MainGUI::cameraFreeView(){glView->getCamera()->cameraFreeView(); glView->setViewAngle(1.0);}
+void MainGUI::cameraRoverCenter(){glView->getCamera()->cameraRoverCenter(); glView->setViewAngle(1.0);}
+void MainGUI::cameraRoverFollow(){glView->getCamera()->cameraRoverFollow(); glView->setViewAngle(1.0);}
+void MainGUI::cameraRoverView(){glView->getCamera()->cameraRoverView(); glView->setViewAngle(0.5);}
+void MainGUI::cameraRoverPanCam(){glView->getCamera()->cameraRoverPanCam(); glView->setViewAngle(1.0);}
 
 /////////////////////////////////////////
 // user input
 /////////////
-void MainController::keyPressEvent(QKeyEvent *event)
+void MainGUI::keyPressEvent(QKeyEvent *event)
 {
     switch(event->key()){
         case ' ':
@@ -158,7 +160,18 @@ void MainController::keyPressEvent(QKeyEvent *event)
 			SController->pauseSim();
             return;
         }
-        case 'v':
+		case 'P':
+		{
+			qDebug("stop drawing");
+			glView->stopDrawing();
+			return;
+		}
+		case 'O':
+		{
+			qDebug("start drawing");
+			glView->startDrawing();
+			return;
+		}
         case 'V':
         {
             glView->getCamera()->cameraToggleView();
@@ -186,23 +199,20 @@ void MainController::keyPressEvent(QKeyEvent *event)
             break;
     }
 
-	rover *sr2;
+	SR2rover *sr2;
 	sr2 = SController->getRover();
     if(sr2){
         switch(event->key()){
-        case 'b':
         case 'B':
             {
-                sr2->resetRover();
+                sr2->resetRobot();
                 break;
             }
-        case 'f':
         case 'F':
             {
                 //sr2->m_bodyParts[0]->applyCentralImpulse(btVector3(sin(sr2->heading),cos(sr2->heading),10));
                 break;
             }
-        case 'l':
         case 'L':
             {
                 sr2->toggleSensors();
@@ -259,21 +269,21 @@ void MainController::keyPressEvent(QKeyEvent *event)
     }
 }
 
-void MainController::keyReleaseEvent(QKeyEvent *event)
+void MainGUI::keyReleaseEvent(QKeyEvent *event)
 {
-	rover *sr2;
+	SR2rover *sr2;
 	sr2 = SController->getRover();
  
    if(!sr2) return;	
     switch(event->key()){
         case Qt::Key_Up:
         {
-            //sr2->stopRover();
+            //sr2->stopRobot();
             break;
         }
         case Qt::Key_Down:
         {
-            sr2->stopRover();	
+            sr2->stopRobot();	
             break;
         }
         case Qt::Key_Left:
@@ -296,15 +306,16 @@ void MainController::keyReleaseEvent(QKeyEvent *event)
 /////////////////////////////////////////
 // GUI labels
 /////////////
-void MainController::updateGUI()
+void MainGUI::updateGUI()
 {
-	rover *sr2;
+	SR2rover *sr2;
 	sr2 = SController->getRover();
 	// GUI SR2 properties
     if(sr2){
         labelRoverPosition->setText(QString("(%1 ,%2)").arg(sr2->position.x(),0,'f',2).arg(sr2->position.y(),0,'f',2));
         labelRoverSpeed->setText(QString("(%1 ,%2)").arg(sr2->leftSpeed,0,'f',2).arg(sr2->rightSpeed,0,'f',2));
-        labelRoverHeading->setText(QString().setNum(RADTODEG(sr2->heading),'f',2));
+		labelDiffAngle->setText(QString().setNum(RADTODEG(sr2->differentialAngle),'f',1));
+		labelRoverHeading->setText(QString().setNum(RADTODEG(sr2->heading),'f',2));
         labelRoverPitch->setText(QString().setNum(RADTODEG(sr2->pitch),'f',1));
         labelRoverRoll->setText(QString().setNum(RADTODEG(sr2->roll),'f',1));
         labelLeftEncoder->setText(QString().setNum(sr2->leftEncoder()));
@@ -325,3 +336,40 @@ void MainController::updateGUI()
 /////////////////////////////////////////
 // network functions
 /////////////
+void MainGUI::serverStart()
+{
+	if (!m_TCPserver.isListening() && !m_TCPserver.listen()) 
+	{
+		QMessageBox::StandardButton ret = QMessageBox::critical(this,
+			tr("Server error"),
+			tr("Unable to start loopback connection: %1.")
+			.arg(m_TCPserver.errorString()),
+			QMessageBox::Retry
+			| QMessageBox::Cancel);
+		if (ret == QMessageBox::Cancel)
+			return;
+	}
+}
+void MainGUI::serverAcceptConnect()
+{
+	m_serverConnection = m_TCPserver.nextPendingConnection();
+    connect(m_serverConnection, SIGNAL(readyRead()),this, SLOT(serverUpdate()));
+    connect(m_serverConnection, SIGNAL(error(QAbstractSocket::SocketError)),
+            this, SLOT(serverError(QAbstractSocket::SocketError)));
+	m_TCPserver.close();
+}
+void MainGUI::serverUpdate()
+{
+	
+}
+void MainGUI::serverError(QAbstractSocket::SocketError socketError)
+{
+	if (socketError == QTcpSocket::RemoteHostClosedError)
+        return;
+
+    QMessageBox::information(this, tr("Network error"),
+                             tr("The server error occurred: %1.")
+                             .arg(m_TCPserver.errorString()));
+
+    m_TCPserver.close();
+}

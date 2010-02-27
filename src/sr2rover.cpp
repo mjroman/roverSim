@@ -1,5 +1,4 @@
-#include "rover.h"
-#include "utility/glshapes.h"
+#include "sr2rover.h"
 
 // Use if Bullet frameworks are used
 #include <BulletCollision/CollisionShapes/btBoxShape.h>
@@ -28,6 +27,13 @@
 #define PANELTHICKNESS  0.01
 #define PANELOFFSET     -0.06
 
+// SR2 motor and joint definitions
+#define RFWHEEL			0
+#define RRWHEEL			1
+#define LFWHEEL			2
+#define LRWHEEL			3
+#define RSUSPEN			0
+#define LSUSPEN			1
 
 static void solarPanel()
 {
@@ -67,30 +73,34 @@ static void solarPanel()
     glEnd();
 }
 
-rover::rover(simGLView* glView)
+SR2rover::SR2rover(simGLView* glView)
 :
-simGLObject(glView),
-m_rightEncoder(0),
-m_leftEncoder(0),
+robot(glView),
 m_gearTrain(192),
 m_encoderRes(16),
-m_numWheels(4),
-m_numPassive(2),
-m_numMotors(4),
-m_numBodyParts(3)
+m_rightEncoder(0),
+m_leftEncoder(0),
+panAngle(0),
+tiltAngle(-15)
 {
-    qDebug("rover startup");
+	int i;
+    qDebug("SR2rover startup");
 
-    wheelFriction.setValue(3,5,5);
-    motorImpulse = 0.1;
-    panAngle = 0;
-    tiltAngle = -15;
+// rpc struct hold the number of motor and passive joints, body parts, wheels and sensors.
+	robotParts rpc;
+	rpc.wheels = 4;
+	rpc.passiveJoints = 2;
+	rpc.motors = 4;
+	rpc.bodyParts = 3;
+	rpc.sensors = 3;
+	
+	initalloc(rpc);
+	
+	for(i=0;i<rpc.motors;i++) m_motorImpulse[i] = 0.1;
 
-    arena = physicsWorld::instance(); // get the physics world object
-
-    // construct rover and suspension constraints
+    // construct SR2rover and suspension constraints
     this->constructRover(btVector3(1,1,arena->worldSize().z()));
-    this->stopRover();
+    this->stopRobot();
 
     if(m_view) {
         m_view->getCamera()->cameraSetRoverPointer(this);
@@ -118,63 +128,39 @@ m_numBodyParts(3)
     frame.setOrigin(btVector3(-0.1,BODYLENGTH+0.08,BODYHEIGHT+0.025));
     frame.getBasis().setEulerZYX(-HALFPI,0,-HALFPI);
     profileLaser = new laserScanner(frame,HALFPI,DEGTORAD(5),DEGTORAD(-45));
-
-    this->resetEncoders();
 }
 
-rover::~rover()
+SR2rover::~SR2rover()
 {   
-    int i=0;
+	qDebug("deleting SR2rover");
+	if(m_view) m_view->getCamera()->cameraSetRoverPointer(0);
 	
-    qDebug("deleting rover");
-
-    if(m_view) m_view->getCamera()->cameraSetRoverPointer(0);
-    
-    //cleanup in the reverse order of creation/initialization
-    while(i < arena->getDynamicsWorld()->getNumConstraints())
-    {
-        btTypedConstraint* constraint = arena->getDynamicsWorld()->getConstraint(i);
-        arena->getDynamicsWorld()->removeConstraint(constraint);
-        delete constraint;
-    }
-	
-    //remove the rigidbodies from the dynamics world and delete them
-    arena->deleteGroup(ROVER_GROUP);
-	
-    m_roverShapes.clear();
-
     glDeleteLists(m_aWheel,1);
     glDeleteLists(m_aSuspension,1);
     glDeleteLists(m_aBody,1);
     glDeleteLists(m_aSPanel,1);
 
-    delete [] m_motorJoints;
-    delete [] m_passiveJoints;
-    delete [] m_bodyParts;
-    delete [] m_bodyAttachPoints;
     delete bodyLaser;
     delete panelLaser;
     delete profileLaser;
 }
 
-void rover::constructRover(const btVector3& positionOffset)
+void SR2rover::constructRover(const btVector3& positionOffset)
 {
 //////////////////////////////////////////////////////////////////////////////
 // body shape geometry
     btCollisionShape* bodyShape = new btBoxShape(btVector3(BODYWIDTH,BODYLENGTH,BODYHEIGHT));
-    m_roverShapes.push_back(bodyShape);
+    m_robotShapes.push_back(bodyShape);
 // wheel shape
     btCollisionShape* wheelShape = new btCylinderShapeX(btVector3(WHEELWIDTH/2.0,WHEELRAD,WHEELRAD));
-    m_roverShapes.push_back(wheelShape);
+    m_robotShapes.push_back(wheelShape);
 // suspension shape
     btCollisionShape* susShape = new btCylinderShapeX(btVector3(btScalar(0.03),0.05,0.05));
-    m_roverShapes.push_back(susShape);
+    m_robotShapes.push_back(susShape);
 	
 //////////////////////////////////////////////////////////////////////////////
 // construct rigid bodies
-    m_bodyParts = new btRigidBody *[m_numBodyParts + m_numWheels];        // allocate memory for rigid bodies that make up the rover
-    m_bodyAttachPoints = new btVector3 [m_numBodyParts + m_numWheels];    // create an array for all the body parts attachment points
-    int partIndex = 0;
+	int partIndex = 0;
 
     btTransform offset;
     offset.setIdentity();
@@ -234,22 +220,17 @@ void rover::constructRover(const btVector3& positionOffset)
     partIndex++;
 
 // set rigid body damping and friction parameters
-    for(int i=0;i<m_numBodyParts+m_numWheels;i++){
+    for(int i=0;i<m_partCount.bodyParts+m_partCount.wheels;i++){
         //m_bodyParts[i]->setActivationState(DISABLE_DEACTIVATION);
         m_bodyParts[i]->setDamping(0.05, 0.85);
         m_bodyParts[i]->setSleepingThresholds(0.025f, 0.5f);
-        if(i>=m_numBodyParts) m_bodyParts[i]->setAnisotropicFriction(wheelFriction);
+        if(i>=m_partCount.bodyParts) m_bodyParts[i]->setAnisotropicFriction(m_wheelFriction);
     }
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // add Joint Constraints
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    m_motorJoints = new btTypedConstraint *[m_numMotors];             // allocate memory for motor joint pointers
-    m_passiveJoints = new btTypedConstraint *[m_numPassive];              // allocate memory for passive joint pointers
-    m_previousPosition = new float[m_numMotors];
-    memset(m_previousPosition,0,sizeof(m_previousPosition));
-
     btTransform frameA,frameB,frameC;
     btHingeConstraint* joint;
 
@@ -261,7 +242,7 @@ void rover::constructRover(const btVector3& positionOffset)
     frameB = m_bodyParts[1]->getWorldTransform().inverse() * m_bodyParts[0]->getWorldTransform() * frameA;
     joint = new btHingeConstraint(*m_bodyParts[0],*m_bodyParts[1], frameA, frameB);
     joint->setLimit(-DEGTORAD(75),DEGTORAD(75),0.5,0.5,0.5);
-    m_passiveJoints[0] = joint;
+    m_passiveJoints[RSUSPEN] = joint;
     arena->getDynamicsWorld()->addConstraint(joint,true);
     joint->enableMotor(true);
     joint->setMaxMotorImpulse(0.5);
@@ -276,7 +257,7 @@ void rover::constructRover(const btVector3& positionOffset)
     frameB = m_bodyParts[1]->getWorldTransform().inverse() * m_bodyParts[0]->getWorldTransform() * frameA;
     frameC = m_bodyParts[3]->getWorldTransform().inverse() * m_bodyParts[0]->getWorldTransform() * frameA;
     joint = new btHingeConstraint(*m_bodyParts[1],*m_bodyParts[3], frameB, frameC);
-    m_motorJoints[0] = joint;
+    m_motorJoints[RFWHEEL] = joint;
     arena->getDynamicsWorld()->addConstraint(joint,true);
 
 // Right Rear Axle
@@ -288,7 +269,7 @@ void rover::constructRover(const btVector3& positionOffset)
     frameB = m_bodyParts[1]->getWorldTransform().inverse() * m_bodyParts[0]->getWorldTransform() * frameA;
     frameC = m_bodyParts[4]->getWorldTransform().inverse() * m_bodyParts[0]->getWorldTransform() * frameA;
     joint = new btHingeConstraint(*m_bodyParts[1],*m_bodyParts[4], frameB, frameC);
-    m_motorJoints[1] = joint;
+    m_motorJoints[RRWHEEL] = joint;
     arena->getDynamicsWorld()->addConstraint(joint,true);
 
 // Left Suspension
@@ -299,7 +280,7 @@ void rover::constructRover(const btVector3& positionOffset)
     frameB = m_bodyParts[2]->getWorldTransform().inverse() * m_bodyParts[0]->getWorldTransform() * frameA;
     joint = new btHingeConstraint(*m_bodyParts[0],*m_bodyParts[2], frameA, frameB);
     joint->setLimit(-DEGTORAD(75),DEGTORAD(75),0.5,0.5,0.5);
-    m_passiveJoints[1] = joint;
+    m_passiveJoints[LSUSPEN] = joint;
     arena->getDynamicsWorld()->addConstraint(joint,true);
 
 // Left front wheel
@@ -311,7 +292,7 @@ void rover::constructRover(const btVector3& positionOffset)
     frameB = m_bodyParts[2]->getWorldTransform().inverse() * m_bodyParts[0]->getWorldTransform() * frameA;
     frameC = m_bodyParts[5]->getWorldTransform().inverse() * m_bodyParts[0]->getWorldTransform() * frameA;
     joint = new btHingeConstraint(*m_bodyParts[2],*m_bodyParts[5], frameB, frameC);
-    m_motorJoints[2] = joint;
+    m_motorJoints[LFWHEEL] = joint;
     arena->getDynamicsWorld()->addConstraint(joint,true);
 
 // Left rear wheel
@@ -323,14 +304,14 @@ void rover::constructRover(const btVector3& positionOffset)
     frameB = m_bodyParts[2]->getWorldTransform().inverse() * m_bodyParts[0]->getWorldTransform() * frameA;
     frameC = m_bodyParts[6]->getWorldTransform().inverse() * m_bodyParts[0]->getWorldTransform() * frameA;
     joint = new btHingeConstraint(*m_bodyParts[2],*m_bodyParts[6], frameB, frameC);
-    m_motorJoints[3] = joint;
+    m_motorJoints[LRWHEEL] = joint;
     arena->getDynamicsWorld()->addConstraint(joint,true);
 
-    generateGLLists();
+    if(m_view) generateGLLists();
 }
 
     // create drawing lists
-void rover::generateGLLists()
+void SR2rover::generateGLLists()
 {
     m_aWheel = glGenLists(1);
     glNewList(m_aWheel, GL_COMPILE);
@@ -385,182 +366,103 @@ void rover::generateGLLists()
     glEndList();
 }
 
-void rover::setRightSpeed(float spd)
+void SR2rover::setRightSpeed(float spd)
 {
     rightSpeed = spd;
-}
-void rover::setLeftSpeed(float spd)
-{
-    leftSpeed = spd;
-}
-void rover::incRightSpeed(float spd)
-{
-    rightSpeed += spd;
-}
-void rover::incLeftSpeed(float spd)
-{
-    leftSpeed += spd;
-}
-void rover::stopRover()
-{
-    setRightSpeed(0);
-    setLeftSpeed(0);
-}
-void rover::updateMotors()
-{
-    // set max, min, and off motor speeds
     if(rightSpeed > MAXSPEED) rightSpeed = MAXSPEED;
     else if(rightSpeed < -MAXSPEED) rightSpeed = -MAXSPEED;
-    if(leftSpeed > MAXSPEED) leftSpeed = MAXSPEED;
+	m_motorVelocity[RFWHEEL] = rightSpeed;
+	m_motorVelocity[RRWHEEL] = rightSpeed;
+}
+void SR2rover::setLeftSpeed(float spd)
+{
+    leftSpeed = spd;
+	if(leftSpeed > MAXSPEED) leftSpeed = MAXSPEED;
     else if(leftSpeed < -MAXSPEED) leftSpeed = -MAXSPEED;
-    //qDebug("left:%f right:%f",leftSpeed,rightSpeed);
+	m_motorVelocity[LFWHEEL] = leftSpeed;
+	m_motorVelocity[LRWHEEL] = leftSpeed;
+}
+void SR2rover::incRightSpeed(float spd)
+{
+    rightSpeed += spd;
+    if(rightSpeed > MAXSPEED) rightSpeed = MAXSPEED;
+    else if(rightSpeed < -MAXSPEED) rightSpeed = -MAXSPEED;
+	m_motorVelocity[RFWHEEL] = rightSpeed;
+	m_motorVelocity[RRWHEEL] = rightSpeed;
+}
+void SR2rover::incLeftSpeed(float spd)
+{
+    leftSpeed += spd;
+	if(leftSpeed > MAXSPEED) leftSpeed = MAXSPEED;
+    else if(leftSpeed < -MAXSPEED) leftSpeed = -MAXSPEED;
+	m_motorVelocity[LFWHEEL] = leftSpeed;
+	m_motorVelocity[LRWHEEL] = leftSpeed;
+}
+void SR2rover::stopRobot()
+{
+	leftSpeed = rightSpeed = 0;
+	robot::stopRobot();
+}
+void SR2rover::resetRobot()
+{
+	panAngle = 0;
+	tiltAngle = -15;
+	robot::resetRobot();
+}
+
+void SR2rover::updateRobot()
+{
+    // update rover position,pose and all motors to keep roundoff errors at a minimum
+	robot::updateRobot();
 	
-    // update the right side motors
-    btHingeConstraint* frontRight = static_cast<btHingeConstraint*>(m_motorJoints[0]);
-    frontRight->enableAngularMotor(true,rightSpeed,motorImpulse);
-    btHingeConstraint* rearRight = static_cast<btHingeConstraint*>(m_motorJoints[1]);
-    rearRight->enableAngularMotor(true,rightSpeed,motorImpulse);
-
-    { // update right encoder
-        float dFront = frontRight->getHingeAngle() - m_previousPosition[0];
-        if(dFront < -PI) dFront = TWOPI + dFront;
-        else if(dFront > PI) dFront -= TWOPI;
-        m_previousPosition[0] = frontRight->getHingeAngle();
-
-        float dRear = rearRight->getHingeAngle() - m_previousPosition[1];
-        if(dRear < -PI) dRear = TWOPI + dRear;
-        else if(dRear > PI) dRear -= TWOPI;
-         m_previousPosition[1] = rearRight->getHingeAngle();
-
-        m_rightEncoder += ((dFront + dRear)/(2*TWOPI)) * m_encoderRes * m_gearTrain;
-    }
-
+	// update the right side motors
+	m_rightEncoder = ((getMotorAngle(RFWHEEL) + getMotorAngle(RRWHEEL))/(2*TWOPI)) * m_encoderRes * m_gearTrain;
+    
     // update the left side motors
-    btHingeConstraint* frontLeft = static_cast<btHingeConstraint*>(m_motorJoints[2]);
-    frontLeft->enableAngularMotor(true,leftSpeed,motorImpulse);
-    btHingeConstraint* rearLeft = static_cast<btHingeConstraint*>(m_motorJoints[3]);
-    rearLeft->enableAngularMotor(true,leftSpeed,motorImpulse);
+    m_leftEncoder = ((getMotorAngle(LFWHEEL) + getMotorAngle(LRWHEEL))/(2*TWOPI)) * m_encoderRes * m_gearTrain;
 
-    { // update left encoder
-        float dFront = frontLeft->getHingeAngle() - m_previousPosition[2];
-        if(dFront < -PI) dFront = TWOPI + dFront;
-        else if(dFront > PI) dFront -= TWOPI;
-        m_previousPosition[2] = frontLeft->getHingeAngle();
-
-        float dRear = rearLeft->getHingeAngle() - m_previousPosition[3];
-        if(dRear < -PI) dRear = TWOPI + dRear;
-        else if(dRear > PI) dRear -= TWOPI;
-         m_previousPosition[3] = rearLeft->getHingeAngle();
-
-        m_leftEncoder += ((dFront + dRear)/(2*TWOPI)) * m_encoderRes * m_gearTrain;
-    }
-
-    btHingeConstraint* rightHinge = static_cast<btHingeConstraint*>(m_passiveJoints[0]);
-    btHingeConstraint* leftHinge = static_cast<btHingeConstraint*>(m_passiveJoints[1]);
-    float diffAngle = (rightHinge->getHingeAngle() - leftHinge->getHingeAngle())/2;
-    rightHinge->setMotorTarget(diffAngle,0.1);
+	// update the body angle of the SR2 robot.
+	// the body of this rover is connected through a differential mechanism therefore, the body
+	// is always half the angle between the left and right suspension angles
+    btHingeConstraint* rightHinge = static_cast<btHingeConstraint*>(m_passiveJoints[RSUSPEN]);
+    btHingeConstraint* leftHinge = static_cast<btHingeConstraint*>(m_passiveJoints[LSUSPEN]);
+    differentialAngle = (rightHinge->getHingeAngle() - leftHinge->getHingeAngle())/2;
+    rightHinge->setMotorTarget(differentialAngle,0.1);
     //qDebug("%f  %f  %f",RADTODEG(diffAngle),RADTODEG(rightHinge->getHingeAngle()),RADTODEG(leftHinge->getHingeAngle()));
 
-    // activate all rigid bodies
-   if(leftSpeed || rightSpeed){
-        for(int i=0;i<m_numWheels+m_numBodyParts;i++)
+    // activate all rigid bodies only if a motor is in motion to reduce errors
+   	if(leftSpeed || rightSpeed)
+	{
+        for(int i=0;i<m_partCount.wheels+m_partCount.bodyParts;i++)
             m_bodyParts[i]->activate(true);
-   }
-}
-void rover::resetEncoders()
-{
-    m_leftEncoder = 0;
-    m_rightEncoder = 0;
-
-    for(int i=0;i<m_numMotors;i++) m_previousPosition[i] = 0;
-}
-
-// sets the rover speeds to zero
-// drops it on the terrain upright where it was
-void rover::placeRoverAt(btVector3 here)
-{
-    stopRover();
-	
-    here.setZ(here.z() + 0.2);
-    btTransform trans;
-    trans.setIdentity();
-    trans.setOrigin(here);
-
-    for(int i=0;i<m_numBodyParts+m_numWheels;i++){
-        btRigidBody* body = m_bodyParts[i];
-        if(body && body->getMotionState()){
-            btDefaultMotionState* bodyMotionState = (btDefaultMotionState*)body->getMotionState();
-            btTransform bodyTrans;
-            bodyTrans.setIdentity();
-            bodyTrans.setOrigin(m_bodyAttachPoints[i]);
-            //qDebug("body:%d  %f,%f,%f",i,trans(m_bodyAttachPoints[i]).x(),trans(m_bodyAttachPoints[i]).y(),trans(m_bodyAttachPoints[i]).z());
-
-            bodyMotionState->m_startWorldTrans = bodyTrans * trans;
-            bodyMotionState->m_graphicsWorldTrans = bodyMotionState->m_startWorldTrans;
-            body->setCenterOfMassTransform( bodyMotionState->m_startWorldTrans );
-            body->setInterpolationWorldTransform( bodyMotionState->m_startWorldTrans );
-            body->setAngularVelocity(btVector3(0,0,0));
-            body->setLinearVelocity(btVector3(0,0,0));
-        }
-    }
-    arena->resetBroadphaseSolver();
-    resetEncoders();
-}
-
-void rover::resetRover()
-{
-    btVector3 place = m_bodyParts[0]->getCenterOfMassPosition();
-    placeRoverAt(place);
-}
-
-void rover::updateRover()
-{
-    // update rover motors to keep roundoff errors to a minimum
-    updateMotors();
+	}
 
     // update rover sensors
     bodyLaser->update(m_bodyParts[0]->getWorldTransform());
     panelLaser->update(m_bodyParts[0]->getWorldTransform());
     profileLaser->update(m_bodyParts[0]->getWorldTransform());
-
-    // update rover position
-    position = m_bodyParts[0]->getCenterOfMassPosition();
-
-    // update rover heading, pitch, and roll
-    btTransform roverTrans = m_bodyParts[0]->getCenterOfMassTransform();
-    btVector3 column = roverTrans.getBasis().getColumn(0);
-    btVector3 row = roverTrans.getBasis().getRow(2);
-    heading = atan2(-column.y(),column.x());
-    if(heading < 0) heading = TWOPI + heading;
-    roll = atan2(column.z(),sqrt(row.y()*row.y() + row.z()*row.z()));
-    pitch = atan2(row.y(),row.z());
 }
 
-void rover::paintLasers(bool state)
+void SR2rover::paintLasers(bool state)
 {
     bodyLaser->setBeamVisable(state);
     panelLaser->setBeamVisable(state);
     profileLaser->setBeamVisable(state);
 }
 
-void rover::paintBodyLaser(bool state)
+void SR2rover::paintBodyLaser(bool state)
 {
 	bodyLaser->setBodyVisable(state);
 }
 	
-void rover::toggleSensors()
+void SR2rover::toggleSensors()
 {
     static bool state = true;
     paintLasers(state);
     state = !state;
 }
 
-btTransform rover::getRoverTransform()
-{
-    return m_bodyParts[0]->getCenterOfMassTransform();
-}
-
-void rover::renderGLObject()
+void SR2rover::renderGLObject()
 {
     int i=0;
     btScalar	glm[16];
@@ -620,7 +522,7 @@ void rover::renderGLObject()
     }
 
     // draw wheels
-    for(i=m_numBodyParts;i<m_numWheels+m_numBodyParts;i++){
+    for(i=m_partCount.bodyParts;i<m_partCount.wheels+m_partCount.bodyParts;i++){
             btDefaultMotionState* objMotionState = (btDefaultMotionState*)m_bodyParts[i]->getMotionState();
             objMotionState->m_graphicsWorldTrans.getOpenGLMatrix(glm);
 
@@ -635,37 +537,10 @@ void rover::renderGLObject()
     panelLaser->drawLaser(m_bodyParts[0]->getWorldTransform());
     profileLaser->drawLaser(m_bodyParts[0]->getWorldTransform());
 
-    /*for(i=0;i<m_numBodyParts;i++){
+    /*for(i=0;i<m_partCount.bodyParts;i++){
         drawFrame(m_bodyParts[i]->getWorldTransform());
     }*/
-
 }
 
-void rover::drawFrame(btTransform &tr)
 
-{
-        const float fSize = 0.5f;
-        glLineWidth(1.0);
-        glBegin(GL_LINES);
-
-        // x
-        glColor3f(255.f,0,0);
-        btVector3 vX = tr*btVector3(fSize,0,0);	
-        glVertex3d(tr.getOrigin().getX(), tr.getOrigin().getY(), tr.getOrigin().getZ());
-        glVertex3d(vX.getX(), vX.getY(), vX.getZ());
-
-        // y
-        glColor3f(0,255.f,0);
-        btVector3 vY = tr*btVector3(0,fSize,0);
-        glVertex3d(tr.getOrigin().getX(), tr.getOrigin().getY(), tr.getOrigin().getZ());
-        glVertex3d(vY.getX(), vY.getY(), vY.getZ());
-
-        // z
-        glColor3f(0,0,255.f);
-        btVector3 vZ = tr*btVector3(0,0,fSize);
-        glVertex3d(tr.getOrigin().getX(), tr.getOrigin().getY(), tr.getOrigin().getZ());
-        glVertex3d(vZ.getX(), vZ.getY(), vZ.getZ());
-
-        glEnd();
-}
 

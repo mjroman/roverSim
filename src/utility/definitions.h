@@ -4,7 +4,7 @@
 #define FARCLIPPING     1001.0
 #define NEARCLIPPING    0.05
 
-#define	PI			3.14159265358979323846
+#define	PI				3.14159265358979323846
 #define TWOPI			2*PI
 #define HALFPI 			1.57079632679489661923
 #define SQRTTWO			1.41421356
@@ -61,10 +61,10 @@ typedef enum _WPscienceType {
 } WPscienceType;
 
 typedef struct _wayPoint{
-	int			uuid; //just a number so we can tell one from another
-	Vertex		position;
+	int				uuid; //just a number so we can tell one from another
+	Vertex			position;
 	WPscienceType	science;
-	WPstate		state; // to be visited, visitied, current, etc
+	WPstate			state; // to be visited, visitied, current, etc
 	struct _wayPoint *next; //linked list so this is the next point the rover should visit
 }wayPoint;
 

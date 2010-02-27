@@ -31,7 +31,7 @@ public:
 public slots:
     void raise();
     void on_ButtonGenerate_clicked(bool checked=false);
-    void updateLabels();
+    void updateLabels(int index);
 	
 signals:
     void regenerateObstacles();

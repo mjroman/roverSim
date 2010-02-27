@@ -15,7 +15,7 @@ enum viewIndex {
         RoverPanCam
 };
 
-class rover;
+class SR2rover;
 
 class camera : public QObject
 {
@@ -24,7 +24,7 @@ private:
     float               pitch[CAMERAINDEXSIZE];
     float               yaw[CAMERAINDEXSIZE];
     float               zoom[CAMERAINDEXSIZE];
-    rover               *robot;
+    SR2rover            *bot;
 
 public:
     int                 cameraView;
@@ -36,7 +36,7 @@ public:
     void cameraToggleView();
 	void cameraSetView(viewIndex x);
 	QString	cameraViewName();
-    void cameraSetRoverPointer(rover* rp){ robot = rp; }
+    void cameraSetRoverPointer(SR2rover* rp){ bot = rp; }
     btVector3 cameraDirection(){ return direction; }
     btVector3 cameraPitchYawZoom();
 

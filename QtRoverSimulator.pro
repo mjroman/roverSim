@@ -5,6 +5,7 @@ CONFIG += qt
 DESTDIR = build
 # QT-= gui to build project without gui library
 QT += opengl # add network, xml, xmlpatterns for more qt modules
+QT += network
 
 TARGET = QtRoverSimulator
 CONFIG(debug, debug|release){
@@ -26,7 +27,7 @@ TEMPLATE = app \
 INCLUDEPATH += . \
     src
 SOURCES += main.cpp \
-    src/maincontroller.cpp \
+    src/mainGUI.cpp \
 	src/simcontrol.cpp \
     src/physicsWorld.cpp \
     src/simglview.cpp \
@@ -35,14 +36,15 @@ SOURCES += main.cpp \
     src/utility/rngs.c \
     src/utility/definitions.c \
     src/terrain.cpp \
-    src/rover.cpp \
+	src/robot.cpp \
+    src/sr2rover.cpp \
     src/laserscanner.cpp \
     src/utility/glshapes.c \
     src/tools/terraintool.cpp \
     src/tools/simtool.cpp \
     src/tools/obstacletool.cpp \
     src/skydome.cpp
-HEADERS += src/maincontroller.h \
+HEADERS += src/mainGUI.h \
 	src/simcontrol.h \
     src/physicsWorld.h \
     src/simglview.h \
@@ -51,7 +53,8 @@ HEADERS += src/maincontroller.h \
     src/utility/rngs.h \
     src/utility/definitions.h \
     src/terrain.h \
-    src/rover.h \
+	src/robot.h \
+    src/sr2rover.h \
     src/laserscanner.h \
     src/simglobject.h \
     src/utility/glshapes.h \
@@ -59,7 +62,7 @@ HEADERS += src/maincontroller.h \
     src/tools/simtool.h \
     src/tools/obstacletool.h \
     src/skydome.h
-FORMS += src/maincontroller.ui \
+FORMS += src/mainGUI.ui \
     src/tools/terraintool.ui \
     src/tools/obstacletool.ui
 LIBS += -framework BulletCollision \

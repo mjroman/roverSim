@@ -21,7 +21,7 @@ private:
     void createTextCords();
 
 public:
-    skydome(simGLView* glView = 0);
+    skydome(simGLView* glView = NULL);
     ~skydome();
 
     void renderGLObject();

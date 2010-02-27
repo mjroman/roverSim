@@ -40,6 +40,8 @@ public:
     ~simGLView();
 
     QSize sizeHint() const;
+	void stopDrawing();
+	void startDrawing();
     camera* getCamera() { return m_eye; }
     void setViewAngle(float angle);
     float getViewAngle(){ return m_viewAngle; }

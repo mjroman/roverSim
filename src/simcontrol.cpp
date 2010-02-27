@@ -1,7 +1,7 @@
 #include "simcontrol.h"
 #include "skydome.h"
 #include "terrain.h"
-#include "rover.h"
+#include "sr2rover.h"
 #include "simGLView.h"
 #include "utility/rngs.h"
 
@@ -57,7 +57,7 @@ void simControl::stopSimTimer()
 
 void simControl::stepSim()
 {
-    if(sr2) sr2->updateRover();
+    if(sr2) sr2->updateRobot();
     arena->simulatStep();
 }
 
@@ -182,6 +182,6 @@ void simControl::newRover()
 {
 	if(!ground) return;
 	qDebug("new rover");
-	if(!sr2) sr2 = new rover(glView);
-	sr2->placeRoverAt(btVector3(1,1,ground->terrainHeightAt(btVector3(1,1,0))));
+	if(!sr2) sr2 = new SR2rover(glView);
+	sr2->placeRobotAt(btVector3(1,1,ground->terrainHeightAt(btVector3(1,1,0))));
 }

@@ -9,11 +9,11 @@ protected:
     simGLView      *m_view;
 
 public:
-    simGLObject(simGLView *view):m_view(view) {
-        m_view->registerGLObject(this);
+    simGLObject(simGLView *view=NULL):m_view(view) {
+        if(m_view) m_view->registerGLObject(this);
     }
     virtual ~simGLObject() {
-        m_view->unregisterGLObject(this);
+        if(m_view) m_view->unregisterGLObject(this);
     }
     virtual void renderGLObject(){};
 };

@@ -1,20 +1,24 @@
-#ifndef MAINCONTROLLER_H
-#define MAINCONTROLLER_H
+#ifndef MainGUI_H
+#define MainGUI_H
 
 #include <QtGui/QMainWindow>
+#include <QTcpServer>
+#include <QTcpSocket>
 #include "simcontrol.h"
-#include "ui_maincontroller.h"
+#include "ui_mainGUI.h"
 #include "tools/obstacletool.h"
 #include "tools/simtool.h"
 #include "tools/terraintool.h"
 
 class simControl;
 
-class MainController : public QMainWindow, private Ui::MainController
+class MainGUI : public QMainWindow, private Ui::MainGUI
 {
     Q_OBJECT
 	
 private:
+	QTcpServer		m_TCPserver;
+	QTcpSocket		*m_serverConnection;
 	simControl		*SController;
 	
     obstacleTool    m_oTool;
@@ -22,8 +26,8 @@ private:
     terrainTool     m_tTool;
 
 public:
-    MainController(QWidget *parent = 0);
-    ~MainController();
+    MainGUI(QWidget *parent = 0);
+    ~MainGUI();
 
     void keyPressEvent(QKeyEvent *event);
     void keyReleaseEvent(QKeyEvent *event);
@@ -43,9 +47,14 @@ public slots:
 	void cameraRoverFollow();
 	void cameraRoverView();
 	void cameraRoverPanCam();
+	
+	void serverStart();
+	void serverAcceptConnect();
+	void serverUpdate();
+	void serverError(QAbstractSocket::SocketError socketError);
 
     void closeEvent(QCloseEvent *event);
     void updateGUI();
 };
 
-#endif // MAINCONTROLLER_H
+#endif // MainGUI_H

@@ -49,6 +49,14 @@ QSize simGLView::sizeHint() const
     return QSize(800, 400);
 }
 
+void simGLView::stopDrawing()
+{
+	m_timer->stop();
+}
+void simGLView::startDrawing()
+{
+	m_timer->start(100);
+}
 simGLView::~simGLView()
 {
 	m_timer->stop();
