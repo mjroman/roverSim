@@ -4,6 +4,7 @@
 #include <QtGui/QMainWindow>
 #include <QTcpServer>
 #include <QTcpSocket>
+#include <QDataStream>
 #include "simcontrol.h"
 #include "ui_mainGUI.h"
 #include "tools/obstacletool.h"
@@ -12,18 +13,31 @@
 
 class simControl;
 
+enum serverCommand {
+		ROBOT,
+		OBSTACLES,
+		TERRAIN,
+		SIMULATION,
+		STRING
+};
+
 class MainGUI : public QMainWindow, private Ui::MainGUI
 {
     Q_OBJECT
 	
 private:
-	QTcpServer		m_TCPserver;
-	QTcpSocket		*m_serverConnection;
+	QTcpServer		m_tcpServer;
+	QTcpSocket		*m_tcpSocket;
+	qint64			m_blockSize;
+	QDataStream		inStream;
+	QDataStream		outStream;
 	simControl		*SController;
 	
     obstacleTool    m_oTool;
     simtool         m_simTool;
     terrainTool     m_tTool;
+
+	void serverStart();
 
 public:
     MainGUI(QWidget *parent = 0);
@@ -48,10 +62,8 @@ public slots:
 	void cameraRoverView();
 	void cameraRoverPanCam();
 	
-	void serverStart();
 	void serverAcceptConnect();
 	void serverUpdate();
-	void serverError(QAbstractSocket::SocketError socketError);
 
     void closeEvent(QCloseEvent *event);
     void updateGUI();

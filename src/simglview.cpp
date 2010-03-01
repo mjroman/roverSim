@@ -42,6 +42,7 @@ simGLView::simGLView(QWidget *parent) : QGLWidget(parent)
     m_timer->start(100);
 
     arena = physicsWorld::instance(); // get the physics world object
+	
 }
 
 QSize simGLView::sizeHint() const
@@ -85,7 +86,8 @@ void simGLView::loadTextures()
     m_texture[0] = this->bindTexture(QPixmap(QString(":/textures/src/textures/domePan1.png")),GL_TEXTURE_2D,GL_RGBA);
     m_texture[1] = this->bindTexture(QPixmap(QString(":/textures/src/textures/pancam.png")),GL_TEXTURE_2D,GL_RGBA);
     m_texture[2] = this->bindTexture(QPixmap(QString(":/textures/src/textures/solarPanel2.png")),GL_TEXTURE_2D,GL_RGBA);
-    glBindTexture(GL_TEXTURE_2D, m_texture[0]);
+	m_texture[3] = this->bindTexture(QPixmap(QString(":/textures/src/textures/spark.png")),GL_TEXTURE_2D,GL_RGBA);
+	glBindTexture(GL_TEXTURE_2D, m_texture[0]);
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
 }

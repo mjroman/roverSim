@@ -1,5 +1,6 @@
 #ifndef GLSHAPES_H
 #define GLSHAPES_H
+#include "definitions.h"
 
 #ifdef __cplusplus
 extern "C" {

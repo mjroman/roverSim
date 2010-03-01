@@ -49,6 +49,7 @@ class simControl : public QObject
 		
 		// rover control functions
 		SR2rover* getRover() { return sr2; }
+		int	parameterRover(quint8 p);
 		bool removeRover();
 		
 	public slots:

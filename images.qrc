@@ -6,6 +6,7 @@
         <file>src/textures/pack1.jpg</file>
         <file>src/textures/pack2.gif</file>
         <file>src/textures/solarPanel2.png</file>
+		<file>src/textures/spark.png</file>
         <file>src/textures/defaultTerrain.png</file>
         <file>src/textures/domePan1.png</file>
     </qresource>

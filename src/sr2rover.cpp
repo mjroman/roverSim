@@ -128,6 +128,9 @@ tiltAngle(-15)
     frame.setOrigin(btVector3(-0.1,BODYLENGTH+0.08,BODYHEIGHT+0.025));
     frame.getBasis().setEulerZYX(-HALFPI,0,-HALFPI);
     profileLaser = new laserScanner(frame,HALFPI,DEGTORAD(5),DEGTORAD(-45));
+
+
+	//testParticle = new GLParticle(2,2,3,glView);
 }
 
 SR2rover::~SR2rover()
@@ -143,6 +146,7 @@ SR2rover::~SR2rover()
     delete bodyLaser;
     delete panelLaser;
     delete profileLaser;
+	//delete testParticle;
 }
 
 void SR2rover::constructRover(const btVector3& positionOffset)
@@ -517,7 +521,7 @@ void SR2rover::renderGLObject()
             box(0.06,0.0125,0.03);
         }
         else glCallList(m_aSPanel);
-
+		
         glPopMatrix();
     }
 

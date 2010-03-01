@@ -40,6 +40,7 @@ SOURCES += main.cpp \
     src/sr2rover.cpp \
     src/laserscanner.cpp \
     src/utility/glshapes.c \
+	src/utility/glparticle.cpp \
     src/tools/terraintool.cpp \
     src/tools/simtool.cpp \
     src/tools/obstacletool.cpp \
@@ -58,6 +59,7 @@ HEADERS += src/mainGUI.h \
     src/laserscanner.h \
     src/simglobject.h \
     src/utility/glshapes.h \
+	src/utility/glparticle.h \
     src/tools/terraintool.h \
     src/tools/simtool.h \
     src/tools/obstacletool.h \

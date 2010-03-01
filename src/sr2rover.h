@@ -4,6 +4,7 @@
 #include <QObject>
 #include "laserscanner.h"
 #include "robot.h"
+#include "utility/glparticle.h"
 
 class SR2rover : public QObject, public robot
 {
@@ -22,6 +23,8 @@ private:
     laserScanner*   bodyLaser;
     laserScanner*   panelLaser;
     laserScanner*   profileLaser;
+
+	//GLParticle*		testParticle;
 
     void constructRover(const btVector3& positionOffset);
     void generateGLLists();

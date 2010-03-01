@@ -53,23 +53,28 @@ m_tTool(this)
     connect(&m_tTool, SIGNAL(scaleUpdate()), this, SLOT(rescaleGround()));
 
 // server connections
-	connect(&m_TCPserver, SIGNAL(newConnection()),this, SLOT(serverAcceptConnect()));
+	connect(&m_tcpServer, SIGNAL(newConnection()),this, SLOT(serverAcceptConnect()));
+	m_tcpSocket = NULL;
+	this->serverStart();
 	
     connect(glView, SIGNAL(refreshView()), this, SLOT(updateGUI()));
 	
     labelTerrainFilename->setText(SController->getGround()->terrainFilename());
     
     m_tTool.setScale(SController->getGround()->terrainScale());
+
+	glView->setFocusPolicy(Qt::ClickFocus);
+	textConsole->setFocusPolicy(Qt::ClickFocus);
 }
 
 MainGUI::~MainGUI()
 {
     qDebug("deleting UI");
-	m_serverConnection->close();
 }
 
 void MainGUI::closeEvent(QCloseEvent *event)
 {
+	m_tcpSocket->disconnectFromHost();
     delete SController;
     event->accept();
 }
@@ -154,6 +159,7 @@ void MainGUI::cameraRoverPanCam(){glView->getCamera()->cameraRoverPanCam(); glVi
 /////////////
 void MainGUI::keyPressEvent(QKeyEvent *event)
 {
+	if(!glView->hasFocus()) return;
     switch(event->key()){
         case ' ':
         {
@@ -271,6 +277,7 @@ void MainGUI::keyPressEvent(QKeyEvent *event)
 
 void MainGUI::keyReleaseEvent(QKeyEvent *event)
 {
+	if(!glView->hasFocus()) return;
 	SR2rover *sr2;
 	sr2 = SController->getRover();
  
@@ -338,38 +345,73 @@ void MainGUI::updateGUI()
 /////////////
 void MainGUI::serverStart()
 {
-	if (!m_TCPserver.isListening() && !m_TCPserver.listen()) 
+	if (!m_tcpServer.isListening() && !m_tcpServer.listen()) 
 	{
 		QMessageBox::StandardButton ret = QMessageBox::critical(this,
 			tr("Server error"),
 			tr("Unable to start loopback connection: %1.")
-			.arg(m_TCPserver.errorString()),
+			.arg(m_tcpServer.errorString()),
 			QMessageBox::Retry
 			| QMessageBox::Cancel);
 		if (ret == QMessageBox::Cancel)
 			return;
 	}
+	textConsole->append(QString("Server Started at:")+QHostAddress(QHostAddress::LocalHost).toString()+"\n");
 }
 void MainGUI::serverAcceptConnect()
 {
-	m_serverConnection = m_TCPserver.nextPendingConnection();
-    connect(m_serverConnection, SIGNAL(readyRead()),this, SLOT(serverUpdate()));
-    connect(m_serverConnection, SIGNAL(error(QAbstractSocket::SocketError)),
-            this, SLOT(serverError(QAbstractSocket::SocketError)));
-	m_TCPserver.close();
+	m_tcpSocket = m_tcpServer.nextPendingConnection();
+    connect(m_tcpSocket, SIGNAL(readyRead()),this, SLOT(serverUpdate()));
+    connect(m_tcpSocket, SIGNAL(disconnected()), m_tcpSocket, SLOT(deleteLater()));
+	m_tcpServer.close();
+	m_blockSize = 0;
+	inStream.setDevice(m_tcpSocket);
+	inStream.setVersion(QDataStream::Qt_4_0);
+	textConsole->append(QString("Connection:")+m_tcpSocket->peerAddress().toString()+"\n");
 }
 void MainGUI::serverUpdate()
 {
+	qint64 byteAvailable = m_tcpSocket->bytesAvailable();
 	
-}
-void MainGUI::serverError(QAbstractSocket::SocketError socketError)
-{
-	if (socketError == QTcpSocket::RemoteHostClosedError)
-        return;
+	if (m_blockSize == 0) {
+        if (byteAvailable < (int)sizeof(qint64)) return;
+        inStream >> m_blockSize;
+    }
 
-    QMessageBox::information(this, tr("Network error"),
-                             tr("The server error occurred: %1.")
-                             .arg(m_TCPserver.errorString()));
+    if (byteAvailable < m_blockSize) return;
 
-    m_TCPserver.close();
+	quint8 command;
+	bool state;
+	quint8 parameter;
+	inStream >> command >> state >> parameter;
+	
+	m_blockSize -= (sizeof(command) + sizeof(state) + sizeof(parameter));
+	
+	char *data = NULL;
+	if(m_blockSize > 0){
+		data = new char[m_blockSize];
+		inStream.readRawData(data, m_blockSize);
+	}
+	
+	switch((serverCommand) command){
+		case ROBOT:
+			//if(state) SController->setRoverData(parameter,data);
+			//else SController->getRoverData(parameter,data);
+		break;
+		case OBSTACLES:
+		break;
+		case TERRAIN:
+		break;
+		case SIMULATION:
+		break;
+		case STRING:
+		{
+			textConsole->append(QString(QByteArray(data,m_blockSize))+"\n");
+			break;
+		}
+		default:
+		break;
+	}
+	m_blockSize = 0;
+	if(data) delete [] data;
 }
