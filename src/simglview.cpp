@@ -87,6 +87,7 @@ void simGLView::loadTextures()
     m_texture[1] = this->bindTexture(QPixmap(QString(":/textures/src/textures/pancam.png")),GL_TEXTURE_2D,GL_RGBA);
     m_texture[2] = this->bindTexture(QPixmap(QString(":/textures/src/textures/solarPanel2.png")),GL_TEXTURE_2D,GL_RGBA);
 	m_texture[3] = this->bindTexture(QPixmap(QString(":/textures/src/textures/spark.png")),GL_TEXTURE_2D,GL_RGBA);
+	m_texture[4] = this->bindTexture(QPixmap(QString(":/textures/src/textures/mud.png")),GL_TEXTURE_2D,GL_RGBA);
 	glBindTexture(GL_TEXTURE_2D, m_texture[0]);
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );

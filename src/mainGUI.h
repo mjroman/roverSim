@@ -13,6 +13,7 @@
 
 class simControl;
 
+// the following enum is used under the server update switch
 enum serverCommand {
 		ROBOT,
 		OBSTACLES,
@@ -31,6 +32,7 @@ private:
 	qint64			m_blockSize;
 	QDataStream		inStream;
 	QDataStream		outStream;
+	
 	simControl		*SController;
 	
     obstacleTool    m_oTool;
@@ -63,6 +65,7 @@ public slots:
 	void cameraRoverPanCam();
 	
 	void serverAcceptConnect();
+	void serverDisconnect();
 	void serverUpdate();
 
     void closeEvent(QCloseEvent *event);

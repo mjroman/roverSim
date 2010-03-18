@@ -18,7 +18,7 @@ private:
     physicsWorld        *arena;
     camera              *m_eye;
     QList<simGLObject*> renderList;
-    GLuint              m_texture[2];
+    GLuint              m_texture[5];
 
 protected:
     void loadTextures();

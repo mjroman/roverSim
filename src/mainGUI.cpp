@@ -74,7 +74,6 @@ MainGUI::~MainGUI()
 
 void MainGUI::closeEvent(QCloseEvent *event)
 {
-	m_tcpSocket->disconnectFromHost();
     delete SController;
     event->accept();
 }
@@ -345,7 +344,7 @@ void MainGUI::updateGUI()
 /////////////
 void MainGUI::serverStart()
 {
-	if (!m_tcpServer.isListening() && !m_tcpServer.listen()) 
+	if (!m_tcpServer.isListening() && !m_tcpServer.listen(QHostAddress::Any,50657)) 
 	{
 		QMessageBox::StandardButton ret = QMessageBox::critical(this,
 			tr("Server error"),
@@ -356,18 +355,29 @@ void MainGUI::serverStart()
 		if (ret == QMessageBox::Cancel)
 			return;
 	}
-	textConsole->append(QString("Server Started at:")+QHostAddress(QHostAddress::LocalHost).toString()+"\n");
+	textConsole->append("Server waiting at:"+
+						QHostAddress(QHostAddress::LocalHost).toString()+
+						"\tPort:"+
+						QString::number(m_tcpServer.serverPort()));
 }
 void MainGUI::serverAcceptConnect()
 {
 	m_tcpSocket = m_tcpServer.nextPendingConnection();
     connect(m_tcpSocket, SIGNAL(readyRead()),this, SLOT(serverUpdate()));
     connect(m_tcpSocket, SIGNAL(disconnected()), m_tcpSocket, SLOT(deleteLater()));
+	connect(m_tcpSocket, SIGNAL(disconnected()), this, SLOT(serverDisconnect()));
 	m_tcpServer.close();
 	m_blockSize = 0;
 	inStream.setDevice(m_tcpSocket);
 	inStream.setVersion(QDataStream::Qt_4_0);
-	textConsole->append(QString("Connection:")+m_tcpSocket->peerAddress().toString()+"\n");
+	textConsole->append(QString("Connection:")+m_tcpSocket->peerAddress().toString());
+}
+void MainGUI::serverDisconnect()
+{
+	inStream.setDevice(0);
+	m_tcpSocket->disconnect();
+	textConsole->append("client disconnected");
+	this->serverStart();
 }
 void MainGUI::serverUpdate()
 {
@@ -406,7 +416,7 @@ void MainGUI::serverUpdate()
 		break;
 		case STRING:
 		{
-			textConsole->append(QString(QByteArray(data,m_blockSize))+"\n");
+			textConsole->append(QString(QByteArray(data,m_blockSize)));
 			break;
 		}
 		default:

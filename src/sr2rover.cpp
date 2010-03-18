@@ -129,8 +129,7 @@ tiltAngle(-15)
     frame.getBasis().setEulerZYX(-HALFPI,0,-HALFPI);
     profileLaser = new laserScanner(frame,HALFPI,DEGTORAD(5),DEGTORAD(-45));
 
-
-	//testParticle = new GLParticle(2,2,3,glView);
+	//mudParticle = new GLParticle(1,1,1,glView);
 }
 
 SR2rover::~SR2rover()
@@ -146,7 +145,7 @@ SR2rover::~SR2rover()
     delete bodyLaser;
     delete panelLaser;
     delete profileLaser;
-	//delete testParticle;
+	//delete mudParticle;
 }
 
 void SR2rover::constructRover(const btVector3& positionOffset)
@@ -445,6 +444,10 @@ void SR2rover::updateRobot()
     bodyLaser->update(m_bodyParts[0]->getWorldTransform());
     panelLaser->update(m_bodyParts[0]->getWorldTransform());
     profileLaser->update(m_bodyParts[0]->getWorldTransform());
+	
+	//btTransform wheelTF = m_bodyParts[1]->getCenterOfMassTransform();
+	//btVector3 mudPos = wheelTF(btVector3(0.05,-0.35,-0.3));
+	//mudParticle->setPosition(mudPos.x(),mudPos.y(),mudPos.z());
 }
 
 void SR2rover::paintLasers(bool state)

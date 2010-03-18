@@ -24,7 +24,7 @@ private:
     laserScanner*   panelLaser;
     laserScanner*   profileLaser;
 
-	//GLParticle*		testParticle;
+	//GLParticle*		mudParticle;
 
     void constructRover(const btVector3& positionOffset);
     void generateGLLists();

@@ -11,16 +11,16 @@ partCount(100)
 	initPart.position.x = x;
 	initPart.position.y = y;
 	initPart.position.z = z;
-	initPart.motion.x = 0.1;
+	initPart.motion.x = 0.03;
 	initPart.motion.y = 0.1;
 	initPart.motion.z = 0.2;
-	initPart.color.x = 1;
+	initPart.color.x = 0.8;
 	initPart.color.y = 1;
-	initPart.color.z = 0;
+	initPart.color.z = 0.7;
 	initPart.rotation = 90;
-	initPart.accel = 0.08;
+	initPart.accel = 0.04;
 	initPart.decel = 0.0025;
-	initPart.scale = 0.1;
+	initPart.scale = 0.05;
 	
 	// initialize all particles
 	partList = new particle[partCount];
@@ -54,7 +54,7 @@ void GLParticle::renderGLObject()
 	glBindTexture(GL_TEXTURE_2D,m_view->getTexture(3));
 	
 	for(i=0;i<partCount;i++){
-		if(partList[i].scale < 0.01){
+		if(partList[i].position.z < initPart.position.z - 0.2){
 			partList[i] = initPart;
 			partList[i].motion.x *= (Randomn() - 0.5);
 			partList[i].motion.y *= (Randomn() - 0.5);
@@ -68,7 +68,7 @@ void GLParticle::renderGLObject()
 			partList[i].position.z += (partList[i].accel - partList[i].decel);
 			partList[i].decel += 0.005;
 			partList[i].rotation += 20;
-			partList[i].scale -= 0.01;
+			partList[i].scale -= 0.001;
 		}
 		glColor3f(partList[i].color.x,partList[i].color.y,partList[i].color.z);
 
