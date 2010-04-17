@@ -60,13 +60,12 @@ typedef enum _WPscienceType {
     WPsciencePanoramaAndSpectra = 3
 } WPscienceType;
 
-typedef struct _wayPoint{
+typedef struct _WayPoint{
 	int				uuid; //just a number so we can tell one from another
 	Vertex			position;
 	WPscienceType	science;
 	WPstate			state; // to be visited, visitied, current, etc
-	struct _wayPoint *next; //linked list so this is the next point the rover should visit
-}wayPoint;
+}WayPoint;
 
 Vertex diff(Vertex v1,Vertex v2);
 Vertex mult(Vertex v1,Vertex v2);
@@ -74,6 +73,7 @@ Vertex normalize(Vertex v1);
 Vertex normalCross(Vertex v1,Vertex v2);
 Vertex vertToVec(Vertex a,Vertex b);
 Vertex sumNormals(int v0,int v1,int v2,int v3,int v4,Vertex *verts);
+float distBtwVerts(Vertex p1,Vertex p2);
 
 #ifdef __cplusplus
 }

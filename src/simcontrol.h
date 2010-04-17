@@ -43,6 +43,9 @@ class simControl : public QObject
 		void stepTimevals(float tStep,float fixedtStep,int subSteps);
 		void pauseSim();
 	
+		// obstacles setting functions
+		//void setObstacleData(int param, char *data);
+	
 		// terrain control functions
 		terrain* getGround() { return ground; }
 		void rescaleGround(btVector3 scale);

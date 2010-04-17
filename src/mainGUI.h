@@ -29,7 +29,7 @@ class MainGUI : public QMainWindow, private Ui::MainGUI
 private:
 	QTcpServer		m_tcpServer;
 	QTcpSocket		*m_tcpSocket;
-	qint64			m_blockSize;
+	quint16			m_blockSize;
 	QDataStream		inStream;
 	QDataStream		outStream;
 	

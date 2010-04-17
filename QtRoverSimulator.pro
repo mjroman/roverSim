@@ -44,7 +44,9 @@ SOURCES += main.cpp \
     src/tools/terraintool.cpp \
     src/tools/simtool.cpp \
     src/tools/obstacletool.cpp \
-    src/skydome.cpp
+    src/skydome.cpp \
+	src/autoCode.cpp
+	
 HEADERS += src/mainGUI.h \
 	src/simcontrol.h \
     src/physicsWorld.h \
@@ -63,7 +65,9 @@ HEADERS += src/mainGUI.h \
     src/tools/terraintool.h \
     src/tools/simtool.h \
     src/tools/obstacletool.h \
-    src/skydome.h
+    src/skydome.h \
+	src/autoCode.h
+	
 FORMS += src/mainGUI.ui \
     src/tools/terraintool.ui \
     src/tools/obstacletool.ui

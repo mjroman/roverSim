@@ -41,6 +41,7 @@ protected:
 	btVector3   		m_wheelFriction;
 
 	void drawFrame(btTransform &tr);
+	void drawWaypoints();
 	
 public:
 	float                                       *m_previousPosition;
@@ -52,8 +53,10 @@ public:
 
 	float       		pitch,roll,heading;
 	btVector3   		position;
+	float				odometer;
 	LatLonCoord			GPSposition;
 	float				voltage;
+	QList<WayPoint>		waypointList;
 	//QList<robotView> 	viewList;
 	
 	robot(simGLView* glView);

@@ -318,7 +318,7 @@ void SR2rover::generateGLLists()
 {
     m_aWheel = glGenLists(1);
     glNewList(m_aWheel, GL_COMPILE);
-        wheel(WHEELRAD+0.01,WHEELWIDTH);
+        wheel(WHEELRAD+0.01,WHEELWIDTH);	// add a little extra to the graphics, makes it look like soft soil
     glEndList();
 
     // create suspension list
@@ -424,6 +424,9 @@ void SR2rover::updateRobot()
     // update the left side motors
     m_leftEncoder = ((getMotorAngle(LFWHEEL) + getMotorAngle(LRWHEEL))/(2*TWOPI)) * m_encoderRes * m_gearTrain;
 
+	// update the odometer, I'm getting some roundoff error here
+	odometer = WHEELRAD * (getMotorAngle(RFWHEEL) + getMotorAngle(RRWHEEL) + getMotorAngle(LFWHEEL) + getMotorAngle(LRWHEEL))/4.0;
+	
 	// update the body angle of the SR2 robot.
 	// the body of this rover is connected through a differential mechanism therefore, the body
 	// is always half the angle between the left and right suspension angles
@@ -547,6 +550,7 @@ void SR2rover::renderGLObject()
     /*for(i=0;i<m_partCount.bodyParts;i++){
         drawFrame(m_bodyParts[i]->getWorldTransform());
     }*/
+		drawWaypoints();
 }
 
 

@@ -210,3 +210,34 @@ void robot::drawFrame(btTransform &tr)
 
         glEnd();
 }
+
+void robot::drawWaypoints()
+{
+	int i;
+	
+	for(i=0;i<waypointList.size();i++){
+		WayPoint wp = waypointList[i];
+		switch (wp.state){
+			case WPstateNew:
+				glColor3f(1,1,0);
+				break;
+			case WPstateOld:
+				glColor3f(0,1,0);
+				break;
+			case WPstateCurrent:
+				glColor3f(0,0,1);
+				break;
+			case WPstateSkipped:
+				glColor3f(1,0,0);
+				break;
+			default:
+				glColor3f(0,1,1);
+				break;
+		}
+		
+		glPushMatrix();
+		glTranslatef(wp.position.x,wp.position.y,wp.position.z);
+		box(0.1,0.1,1);
+		glPopMatrix();
+	}
+}

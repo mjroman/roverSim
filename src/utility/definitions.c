@@ -94,3 +94,12 @@ Vertex sumNormals(int v0,int v1,int v2,int v3,int v4,Vertex *verts)
 
     return nsum;
 }
+
+float distBtwVerts(Vertex p1,Vertex p2)
+{
+	float xdiff = p1.x - p2.x;
+	float ydiff = p1.y - p2.y;
+	float zdiff = p1.z - p2.z;
+	float dist = sqrt(xdiff*xdiff + ydiff*ydiff + zdiff*zdiff);
+	return dist;
+}

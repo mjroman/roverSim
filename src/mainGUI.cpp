@@ -326,6 +326,7 @@ void MainGUI::updateGUI()
         labelRoverRoll->setText(QString().setNum(RADTODEG(sr2->roll),'f',1));
         labelLeftEncoder->setText(QString().setNum(sr2->leftEncoder()));
         labelRightEncoder->setText(QString().setNum(sr2->rightEncoder()));
+		labelRoverOdometer->setText(QString("%1m").arg(sr2->odometer,0,'f',2));
     }
 
 // GUI camera properties
@@ -381,47 +382,52 @@ void MainGUI::serverDisconnect()
 }
 void MainGUI::serverUpdate()
 {
-	qint64 byteAvailable = m_tcpSocket->bytesAvailable();
-	
 	if (m_blockSize == 0) {
-        if (byteAvailable < (int)sizeof(qint64)) return;
+        if (m_tcpSocket->bytesAvailable() < (int)sizeof(quint16)) return;
         inStream >> m_blockSize;
     }
 
-    if (byteAvailable < m_blockSize) return;
+    if (m_tcpSocket->bytesAvailable() < m_blockSize) return;
 
 	quint8 command;
 	bool state;
 	quint8 parameter;
-	inStream >> command >> state >> parameter;
+	inStream >> command;
 	
-	m_blockSize -= (sizeof(command) + sizeof(state) + sizeof(parameter));
-	
-	char *data = NULL;
-	if(m_blockSize > 0){
-		data = new char[m_blockSize];
-		inStream.readRawData(data, m_blockSize);
+	if(command == STRING)
+	{
+		QString textString;
+		inStream >> textString;
+		textConsole->append(textString);
 	}
-	
-	switch((serverCommand) command){
-		case ROBOT:
+	else
+	{
+		inStream >> state >> parameter;
+		textConsole->append(QString("%1 cmd %2 state %3 parm").arg(command).arg(state).arg(parameter));
+
+		char *data = NULL;
+		m_blockSize = m_tcpSocket->bytesAvailable();
+		if(m_blockSize > 0){
+			data = new char[m_blockSize];
+			inStream.readRawData(data, m_blockSize);
+		}
+
+		switch((serverCommand) command){
+			case ROBOT:
 			//if(state) SController->setRoverData(parameter,data);
 			//else SController->getRoverData(parameter,data);
-		break;
-		case OBSTACLES:
-		break;
-		case TERRAIN:
-		break;
-		case SIMULATION:
-		break;
-		case STRING:
-		{
-			textConsole->append(QString(QByteArray(data,m_blockSize)));
+			break;
+			case OBSTACLES:
+				//if(state) SController->setObstacleData(parameter,data);
+			break;
+			case TERRAIN:
+			break;
+			case SIMULATION:
+			break;
+			default:
 			break;
 		}
-		default:
-		break;
+		if(data) delete [] data;
 	}
 	m_blockSize = 0;
-	if(data) delete [] data;
 }
