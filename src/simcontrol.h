@@ -8,6 +8,7 @@ class terrain;
 class SR2rover;
 class skydome;
 class simGLView;
+class autoCode;
 
 class simControl : public QObject
 {
@@ -17,6 +18,7 @@ class simControl : public QObject
 		terrain         *ground;
 		skydome         *sky;
 		SR2rover		*sr2;
+		autoCode		*autoNav;
 		QTimer          *simTimer;
 	    double          delTime;
 		simGLView		*glView;
@@ -54,6 +56,9 @@ class simControl : public QObject
 		SR2rover* getRover() { return sr2; }
 		int	parameterRover(quint8 p);
 		bool removeRover();
+		
+		// autonomous rover control object
+		autoCode* getAutoNav() { return autoNav; }
 		
 	public slots:
 	// obstacle control functions

@@ -2,6 +2,7 @@
 #include "skydome.h"
 #include "terrain.h"
 #include "sr2rover.h"
+#include "autoCode.h"
 #include "simGLView.h"
 #include "utility/rngs.h"
 
@@ -11,7 +12,7 @@
 #include <BulletDynamics/Dynamics/btRigidBody.h>
 
 simControl::simControl(simGLView* vw)
-:	ground(NULL),sky(NULL),sr2(NULL),glView(vw),
+	:	ground(NULL),sky(NULL),sr2(NULL),autoNav(NULL),glView(vw),
 m_obstType(),
 m_obstCount(50),
 m_dropHeight(5),
@@ -39,6 +40,7 @@ simControl::~simControl()
 {
 	simTimer->stop();
 	delete simTimer;
+	if(autoNav) delete autoNav;
 	if(sr2) delete sr2;
 	if(sky) delete sky;
 	if(ground) delete ground;
@@ -171,6 +173,7 @@ void simControl::generateObstacles()
 bool simControl::removeRover()
 {
     if(sr2){
+		delete autoNav;
         delete sr2;
         sr2 = 0;
         return true;
@@ -199,4 +202,5 @@ void simControl::newRover()
 	}
 	
 	sr2->placeRobotAt(btVector3(1,1,ground->terrainHeightAt(btVector3(1,1,0))));
+	autoNav = new autoCode(sr2);
 }

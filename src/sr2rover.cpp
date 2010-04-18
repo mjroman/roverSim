@@ -451,6 +451,7 @@ void SR2rover::updateRobot()
 	//btTransform wheelTF = m_bodyParts[1]->getCenterOfMassTransform();
 	//btVector3 mudPos = wheelTF(btVector3(0.05,-0.35,-0.3));
 	//mudParticle->setPosition(mudPos.x(),mudPos.y(),mudPos.z());
+	emit updated();
 }
 
 void SR2rover::paintLasers(bool state)

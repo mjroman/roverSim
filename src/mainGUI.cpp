@@ -2,6 +2,7 @@
 #include "camera.h"
 #include "terrain.h"
 #include "sr2rover.h"
+#include "autoCode.h"
 
 MainGUI::MainGUI(QWidget *parent)
 :
@@ -327,6 +328,9 @@ void MainGUI::updateGUI()
         labelLeftEncoder->setText(QString().setNum(sr2->leftEncoder()));
         labelRightEncoder->setText(QString().setNum(sr2->rightEncoder()));
 		labelRoverOdometer->setText(QString("%1m").arg(sr2->odometer,0,'f',2));
+		autoCode *debugCode;
+		debugCode = SController->getAutoNav();
+		labelDebug->setText(QString().setNum(debugCode->getCurrentWaypoint()));
     }
 
 // GUI camera properties

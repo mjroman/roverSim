@@ -1,7 +1,6 @@
 #ifndef GLPARTICLE_H
 #define GLPARTICLE_H
 
-#include <QObject>
 #include <OpenGL/gl.h>
 #include "../simglobject.h"
 #include "definitions.h"
@@ -17,7 +16,7 @@ typedef struct _particle
 	float	scale;
 }particle;
 
-class GLParticle : public QObject, public simGLObject
+class GLParticle : public simGLObject
 {
 private:
 	int			partCount;

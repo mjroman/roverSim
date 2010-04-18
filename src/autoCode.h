@@ -29,28 +29,38 @@ typedef	enum _RoverError{
 
 class autoCode : public QObject
 {
+	Q_OBJECT
 	private:
 		SR2rover 	*sr2;
-		int 		state;
-		int 		error;
+		RoverState 	state;
+		RoverError	error;
+		int			wpCompleteCount;
+		WayPoint 	currentWaypoint;
 		
-		void callForHelp(int errCode);
-		float compassToCartDegrees(float deg);
-		float avgAngle(float deg1, float deg2);
-		float compassWaypointHeading(int wp);
-		float roverWaypointHeading(int wp);
-		float distanceToWaypoint(int wp);
-		void turnToHeading(float relHead);
-		void moveToWaypoint();
+		void callForHelp(RoverError errCode);
+		float compassToCartRadians(float rad);
+		float avgAngle(float rad1, float rad2);
+		float compassWaypointHeading();
+		//float roverWaypointHeading();
+		float distanceToWaypoint();
+		void turnToward(float relHead);
 		
 	protected:
 		float	POINTTURNSPEED;
 		float	POINTTURNANGLE;
-		float	TURNMULTIPLIER;			
+		float	TURNMULTIPLIER;	
+		float	CLOSEENOUGH;
+		float 	TURNACCURACYLIMIT;
+		int		ROVERCRUISESPEED;		
 		
 	public:
+		int getCurrentWaypoint() { return wpCompleteCount; }
+		float roverWaypointHeading();
 		autoCode(SR2rover *bot);
 		~autoCode();
+	
+	public slots:
+		void moveToWaypoint();
 };
 
 #endif //AUTOCODE_H

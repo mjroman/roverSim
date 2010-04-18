@@ -1,13 +1,12 @@
 #ifndef SKYDOME_H
 #define SKYDOME_H
 
-#include <QObject>
 #include <OpenGL/gl.h>
 
 #include "simglobject.h"
 #include "utility/definitions.h"
 
-class skydome : public QObject, public simGLObject
+class skydome : public simGLObject
 {
 private:
     Vertex          *m_domeVerts;

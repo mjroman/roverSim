@@ -6,8 +6,9 @@
 #include "robot.h"
 #include "utility/glparticle.h"
 
-class SR2rover : public QObject, public robot
+class SR2rover : public robot
 {
+	Q_OBJECT
 private:
     int             m_gearTrain;
     int             m_encoderRes;
@@ -51,6 +52,8 @@ public:
 	void paintBodyLaser(bool state);
     void toggleSensors();
     void renderGLObject();
+signals:
+	void updated();
 };
 
 #endif // SR2rover_H

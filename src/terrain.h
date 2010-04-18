@@ -1,7 +1,6 @@
 #ifndef TERRAIN_H
 #define TERRAIN_H
 
-#include <QObject>
 #include <OpenGL/gl.h>
 #include "simglobject.h"
 #include "physicsWorld.h"
@@ -11,7 +10,7 @@
 class	btRigidBody;
 class   btBvhTriangleMeshShape;
 
-class terrain : public QObject, public simGLObject
+class terrain : public simGLObject
 {
 private:
     Vertex          *m_terrainVerts;
