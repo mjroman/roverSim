@@ -183,24 +183,32 @@ bool simControl::removeRover()
 
 void simControl::newRover()
 {
-	int i;
+	delete autoNav;
 	if(!ground) return;
 	qDebug("new rover");
 	if(!sr2) sr2 = new SR2rover(glView);
 	sr2->waypointList.clear();
 	
-	// add a few test waypoints 
-	for(i=2;i<6;i++){
-		WayPoint wp;
-		wp.position.x = i*i;
-		wp.position.y = i*3;
-		wp.position.z = ground->terrainHeightAt(btVector3(i*i,i*3,0));
-		wp.uuid = i-2;
-		wp.state = WPstateNew;
-		wp.science = WPscienceNone;
-		sr2->waypointList << wp;
-	}
+	// add a few test waypoints
+	sr2->addWaypointAt(11,4.0,4.0);
+	sr2->addWaypointAt(32,10.0,2.0);
+	sr2->addWaypointAt(535,25.0,15.0);
+	sr2->addWaypointAt(657,6.0,14.0);
+	this->setWaypointGroundHeight();
 	
 	sr2->placeRobotAt(btVector3(1,1,ground->terrainHeightAt(btVector3(1,1,0))));
 	autoNav = new autoCode(sr2);
+}
+
+void simControl::setWaypointGroundHeight()
+{
+	if(!sr2->waypointList.size()) return; // return if no waypoints
+	
+	int i=0;
+	while(i < sr2->waypointList.size()){
+		btVector3 position(sr2->waypointList[i].position.x,sr2->waypointList[i].position.y,0);
+		// set the z position of the waypoint for visability
+		sr2->waypointList[i].position.z = ground->terrainHeightAt(position);
+		i++;
+	}
 }

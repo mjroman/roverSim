@@ -1,66 +1,72 @@
 #ifndef AUTOCODE_H
 #define AUTOCODE_H
 
+#include <QtGui>
+#include "ui_autoCode.h"
 #include "sr2rover.h"
+#include "laserscanner.h"
+#include "utility/definitions.h"
 
-typedef	enum _RoverState{
-	RSStopped = 0, //Rover is stopped (may or may not be remaining WP). State for resetting position, etc
-	RSMovingTowardsWaypoint = 1, // Normal state when moving
-	RSNoRemainingWaypoints = 2, // No plan or plan is finished
-	RSGoingToSleep = 3, //Power monitor or user has told rover to sleep
-	RSWakingFromSleep = 4, // after mac has woke up but while senors, etc are booting
-	RSDoingScience = 5, // taking pictures, etc.  Rover is not moving
-	RSCallingForHelp = 6, // progress alarm, long stalls, or teleport problems
-	RSInTeleopMode = 7, // when being teleoperated
-	RSAvoidingNearbyObstacles = 8, // when path is being modified to avoid obstacles sensed by panel or profile laser
-	RSAvoidingDistantObstacles = 9, // when path is being modified to avoid obstacles sensed by body laser
-	RSReachedWaypoint = 10, // a momentary state when the point is reached but science or next point not started
-	RSGoingPastObstacles = 11  // the rover is ignoring the current waypoint direction in order to drive clear of an obstacle
-} RoverState;
-
-typedef	enum _RoverError{
-	RENone = 0,
-	REPosition = 1,
-	REStall = 2,
-	REProgress = 3,
-	REPitch = 4,
-	RERoll = 5
-} RoverError;
-
-class autoCode : public QObject
+class autoCode : public QWidget, private Ui::autoCode
 {
 	Q_OBJECT
-	private:
-		SR2rover 	*sr2;
-		RoverState 	state;
-		RoverError	error;
-		int			wpCompleteCount;
-		WayPoint 	currentWaypoint;
-		
-		void callForHelp(RoverError errCode);
-		float compassToCartRadians(float rad);
-		float avgAngle(float rad1, float rad2);
-		float compassWaypointHeading();
-		//float roverWaypointHeading();
-		float distanceToWaypoint();
-		void turnToward(float relHead);
-		
+	public:
+		autoCode(SR2rover *bot, QWidget *parent = 0);
+		~autoCode();
+		void goAutonomous();
+		void stopAutonomous(RoverState rs);
+		void toggleAutonomous();
+		float checkForObstacles(float distTo);
+		int getCurrentWaypoint() { return wpIndex; }
+
+	public slots:
+		//void raise();
+		void moveToWaypoint();
+		void on_combo_wpSelect_activated(int index);
+		void displayCurrentWaypoint();
+			
 	protected:
 		float	POINTTURNSPEED;
 		float	POINTTURNANGLE;
 		float	TURNMULTIPLIER;	
 		float	CLOSEENOUGH;
 		float 	TURNACCURACYLIMIT;
-		int		ROVERCRUISESPEED;		
-		
-	public:
-		int getCurrentWaypoint() { return wpCompleteCount; }
+		int		ROVERCRUISESPEED;
+		float 	BODYDIST;	
+		float	PROFILEOBSTACLEMAX;	
+		float 	MAXPITCH;
+		float   MAXROLL;
+		float   PITCHDOWNIGNOREDISTOBSTACLES;
+		float   BODYTOOCLOSE;
+		float 	PANELOBSTACLEMAX;
+
+	private:
+		SR2rover 			*sr2;
+		bool				autoRunning;
+		RoverState 			state;
+		RoverError			error;
+		int					wpIndex;
+		WayPoint 			currentWaypoint;
+		bool				currentWaypointDisplay;
+		QMap<int, QString>	RSmap;
+		QMap<int, QString>	REmap;
+		QMap<int, QString>  WPmap;
+		QMap<int, QString>	WSmap;
+
+		void callForHelp(RoverError errCode);
+		float compassToCartRadians(float rad);
+		float avgAngle(float rad1, float rad2);
+		float compassWaypointHeading();
 		float roverWaypointHeading();
-		autoCode(SR2rover *bot);
-		~autoCode();
-	
-	public slots:
-		void moveToWaypoint();
+		float distanceToWaypoint(int i);
+		void driveToward(float relHead, float distTo);
+		void getPanelHeights(float* heights);
+		void roverStateKeyMapping();
+		void roverErrorKeyMapping();
+		void waypointStateKeyMapping();
+		void waypointScienceKeyMapping();
+		void setComboWaypointList();
+		void updateGUI();
 };
 
 #endif //AUTOCODE_H

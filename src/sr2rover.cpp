@@ -35,6 +35,9 @@
 #define RSUSPEN			0
 #define LSUSPEN			1
 
+#define PANELLASERHEIGHT	0.48
+#define PROFILELASERHEIGHT	0.475
+
 static void solarPanel()
 {
     // solar panel
@@ -110,30 +113,37 @@ tiltAngle(-15)
     // add laser scanner sensors
     // the transform frame of reference is from the rover body center
     btTransform frame;
-
+	laserScanner *laser;
+	
     // body laser
     frame.setIdentity();
     frame.setOrigin(btVector3(0,BODYLENGTH+0.02,-(BODYHEIGHT-0.01)));
     frame.getBasis().setEulerZYX(0,PI,0);
-    bodyLaser = new laserScanner(frame,HALFPI,DEGTORAD(5),0);
+    laser = new laserScanner(frame,HALFPI,DEGTORAD(5),0);
+	m_laserList << laser;
 
     // panel laser
     frame.setIdentity();
-    frame.setOrigin(btVector3(0,BODYLENGTH+0.1,BODYHEIGHT+0.03));
+	frame.setOrigin(btVector3(0,BODYLENGTH+0.1,BODYHEIGHT+0.03));
     frame.getBasis().setEulerZYX(-PI/4,0,0);
-    panelLaser = new laserScanner(frame,HALFPI,DEGTORAD(5),0);
-
+    laser = new laserScanner(frame,HALFPI,DEGTORAD(5),0);
+	m_PLheights = new float[(int)(HALFPI/DEGTORAD(5))];
+	m_laserList << laser;
+	
     // profile laser
     frame.setIdentity();
     frame.setOrigin(btVector3(-0.1,BODYLENGTH+0.08,BODYHEIGHT+0.025));
     frame.getBasis().setEulerZYX(-HALFPI,0,-HALFPI);
-    profileLaser = new laserScanner(frame,HALFPI,DEGTORAD(5),DEGTORAD(-45));
-
+    laser = new laserScanner(frame,HALFPI,DEGTORAD(5),DEGTORAD(-45));
+	m_PRheights = new float[(int)(HALFPI/DEGTORAD(5))];
+	m_laserList << laser;
+	
 	//mudParticle = new GLParticle(1,1,1,glView);
 }
 
 SR2rover::~SR2rover()
 {   
+	int i;
 	qDebug("deleting SR2rover");
 	if(m_view) m_view->getCamera()->cameraSetRoverPointer(0);
 	
@@ -142,9 +152,13 @@ SR2rover::~SR2rover()
     glDeleteLists(m_aBody,1);
     glDeleteLists(m_aSPanel,1);
 
-    delete bodyLaser;
-    delete panelLaser;
-    delete profileLaser;
+	for(i = 0; i < m_laserList.size(); ++i)
+	{
+		delete m_laserList[i];
+	}
+	delete [] m_PLheights;
+	delete [] m_PRheights;
+	m_laserList.clear();
 	//delete mudParticle;
 }
 
@@ -444,9 +458,10 @@ void SR2rover::updateRobot()
 	}
 
     // update rover sensors
-    bodyLaser->update(m_bodyParts[0]->getWorldTransform());
-    panelLaser->update(m_bodyParts[0]->getWorldTransform());
-    profileLaser->update(m_bodyParts[0]->getWorldTransform());
+	for(int i = 0; i < m_laserList.size(); ++i)
+	{
+		m_laserList[i]->update(m_bodyParts[0]->getWorldTransform());
+	}
 	
 	//btTransform wheelTF = m_bodyParts[1]->getCenterOfMassTransform();
 	//btVector3 mudPos = wheelTF(btVector3(0.05,-0.35,-0.3));
@@ -456,16 +471,60 @@ void SR2rover::updateRobot()
 
 void SR2rover::paintLasers(bool state)
 {
-    bodyLaser->setBeamVisable(state);
-    panelLaser->setBeamVisable(state);
-    profileLaser->setBeamVisable(state);
+	for(int i = 0; i < m_laserList.size(); ++i)
+	{
+		m_laserList[i]->setBeamVisable(state);
+	}
 }
 
 void SR2rover::paintBodyLaser(bool state)
 {
-	bodyLaser->setBodyVisable(state);
+	m_laserList[BODYLASER]->setBodyVisable(state);
 }
 	
+/////////////////////////////////////////
+// converts the panel laser points to height values
+/////////////
+float* SR2rover::getPanelLaserHeights()
+{
+	int i,j;
+	laserScanner* ls = m_laserList[PANELLASER];
+	float* ranges = ls->getData();
+	int segments = ls->getDataSize();
+	float halfSegments = segments/2;
+	
+	for(i = 0; i < halfSegments; ++i)
+	{
+		j=halfSegments-i;
+		m_PLheights[i] = PANELLASERHEIGHT - cos(j*ls->dTheta)*ranges[i]/(SQRTTWO);
+	}
+	for(i = halfSegments; i < segments; ++i)
+	{
+		j=i-halfSegments;
+		m_PLheights[i] = PANELLASERHEIGHT - cos(j*ls->dTheta)*ranges[i]/(SQRTTWO);
+	}
+	return m_PLheights;
+}
+/////////////////////////////////////////
+// converts the profile laser points to height values
+/////////////
+float* SR2rover::getProfileLaserHeights()
+{
+	int i;
+	laserScanner* ls = m_laserList[PROFILELASER];
+	float* ranges = ls->getData();
+	int segments = ls->getDataSize();
+	
+	for(i = 0; i < segments; ++i)
+	{
+		m_PRheights[i] = PROFILELASERHEIGHT - cos(i*ls->dTheta)*ranges[i];
+	}
+	return m_PRheights;
+}
+
+/////////////////////////////////////////
+// displays laser beams
+/////////////
 void SR2rover::toggleSensors()
 {
     static bool state = true;
@@ -544,14 +603,12 @@ void SR2rover::renderGLObject()
     }
 
     // draw body scanner
-    bodyLaser->drawLaser(m_bodyParts[0]->getWorldTransform());
-    panelLaser->drawLaser(m_bodyParts[0]->getWorldTransform());
-    profileLaser->drawLaser(m_bodyParts[0]->getWorldTransform());
+	for(i = 0; i < m_laserList.size(); ++i)
+	{
+		m_laserList[i]->drawLaser(m_bodyParts[0]->getWorldTransform());
+	}
 
-    /*for(i=0;i<m_partCount.bodyParts;i++){
-        drawFrame(m_bodyParts[i]->getWorldTransform());
-    }*/
-		drawWaypoints();
+	drawWaypoints();
 }
 
 

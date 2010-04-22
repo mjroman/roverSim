@@ -58,6 +58,7 @@ public slots:
 	void generateObstacles();
 	void removeAllObstacles();
 	void newRover();
+	void waypointInfo();
 	void cameraFreeView();
 	void cameraRoverCenter();
 	void cameraRoverFollow();

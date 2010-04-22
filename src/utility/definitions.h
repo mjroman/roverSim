@@ -53,19 +53,43 @@ typedef	enum _WPstate{
 	WPstateSkipped = 3
 } WPstate;
 
-typedef enum _WPscienceType {
+typedef enum _WPscience {
     WPscienceNone = 0,
     WPsciencePanorama = 1,
     WPscienceSpectra = 2,
     WPsciencePanoramaAndSpectra = 3
-} WPscienceType;
+} WPscience;
 
 typedef struct _WayPoint{
 	int				uuid; //just a number so we can tell one from another
 	Vertex			position;
-	WPscienceType	science;
+	WPscience		science;
 	WPstate			state; // to be visited, visitied, current, etc
 }WayPoint;
+
+typedef	enum _RoverState{
+	RSStopped = 0, //Rover is stopped (may or may not be remaining WP). State for resetting position, etc
+	RSMovingTowardsWaypoint = 1, // Normal state when moving
+	RSNoRemainingWaypoints = 2, // No plan or plan is finished
+	RSGoingToSleep = 3, //Power monitor or user has told rover to sleep
+	RSWakingFromSleep = 4, // after mac has woke up but while senors, etc are booting
+	RSDoingScience = 5, // taking pictures, etc.  Rover is not moving
+	RSCallingForHelp = 6, // progress alarm, long stalls, or teleport problems
+	RSInTeleopMode = 7, // when being teleoperated
+	RSAvoidingNearbyObstacles = 8, // when path is being modified to avoid obstacles sensed by panel or profile laser
+	RSAvoidingDistantObstacles = 9, // when path is being modified to avoid obstacles sensed by body laser
+	RSReachedWaypoint = 10, // a momentary state when the point is reached but science or next point not started
+	RSGoingPastObstacles = 11  // the rover is ignoring the current waypoint direction in order to drive clear of an obstacle
+} RoverState;
+
+typedef	enum _RoverError{
+	RENone = 0,
+	REPosition = 1,
+	REStall = 2,
+	REProgress = 3,
+	REPitch = 4,
+	RERoll = 5
+} RoverError;
 
 Vertex diff(Vertex v1,Vertex v2);
 Vertex mult(Vertex v1,Vertex v2);

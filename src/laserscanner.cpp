@@ -77,7 +77,13 @@ static void hokuyoCase(void)
         glPopMatrix();
 }
 
-
+/////////////////////////////////////////
+// Hokuyo laser scanner
+// th = laser swath angle
+// delta = angle between beams
+// offset = swath angle offset from forward direction
+// all angles are in radians
+/////////////
 laserScanner::laserScanner(btTransform xForm,float th,float delta,float offset)
 :
 m_rangeData(NULL)
@@ -91,7 +97,8 @@ m_rangeData(NULL)
 
     m_rangeData = NULL;
     m_beamVector = NULL;
-    configure();
+
+    configure();	// configures the laser scanner, sets up position and data arrays
 
     m_displayBeam = false;
 	m_displayBody = true;
@@ -134,16 +141,15 @@ void laserScanner::configure()
     if(oldVector) delete [] oldVector;
 }
 
-int laserScanner::getData(float *data)
-{
-    data = m_rangeData;
-    return m_dataSize;
-}
 
+// returns the number of data points, points data to the range data array
+
+// calculates the ray intersection of all the laser points
 void laserScanner::update(btTransform botTrans)
 {
-    btTransform tTrans = botTrans * m_scanTrans;
-    btVector3 rayFrom = tTrans.getOrigin();
+	// get the global position of the scanner
+    btTransform tTrans = botTrans * m_scanTrans; 
+    btVector3 rayFrom = tTrans.getOrigin();	
 
     for(int i=0;i<m_dataSize;i++){
         btVector3 rayTo = tTrans(m_beamVector[i] * maxRange);

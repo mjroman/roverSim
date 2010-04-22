@@ -6,6 +6,11 @@
 #include "robot.h"
 #include "utility/glparticle.h"
 
+// SR2 laser position labels
+#define BODYLASER		0
+#define PANELLASER		1
+#define PROFILELASER	2
+
 class SR2rover : public robot
 {
 	Q_OBJECT
@@ -21,9 +26,9 @@ private:
     GLuint          m_aBody;
     GLuint          m_aSPanel;
 
-    laserScanner*   bodyLaser;
-    laserScanner*   panelLaser;
-    laserScanner*   profileLaser;
+	QList<laserScanner*>	m_laserList;
+	float*					m_PLheights;
+	float*					m_PRheights;
 
 	//GLParticle*		mudParticle;
 
@@ -48,10 +53,15 @@ public:
     void incLeftSpeed(float spd);
 	void stopRobot();
 	
+	
     void paintLasers(bool state);
 	void paintBodyLaser(bool state);
+	laserScanner* getLaserScanner(int i) { return m_laserList[i]; }
+	float* getPanelLaserHeights();
+	float* getProfileLaserHeights();
     void toggleSensors();
     void renderGLObject();
+
 signals:
 	void updated();
 };

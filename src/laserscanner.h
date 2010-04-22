@@ -32,7 +32,9 @@ public:
     ~laserScanner();
 
     void configure();
-    int getData(float *data);
+	btVector3 getPosition() { return m_scanTrans.getOrigin(); }
+	float* getData() {return m_rangeData; }
+	int getDataSize() { return m_dataSize; }
     void setTransform(const btTransform& xForm){ m_scanTrans = xForm; }
     void update(btTransform botTrans);
     void setBeamVisable(bool q){ m_displayBeam = q; }

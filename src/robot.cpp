@@ -241,3 +241,14 @@ void robot::drawWaypoints()
 		glPopMatrix();
 	}
 }
+
+void robot::addWaypointAt(int uuid, float x,float y, WPstate st, WPscience sc)
+{
+	WayPoint wp;
+	wp.uuid = uuid;
+	wp.position.x = x;
+	wp.position.y = y;
+	wp.state = st;
+	wp.science = sc;
+	waypointList << wp;
+}

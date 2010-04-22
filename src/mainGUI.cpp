@@ -27,7 +27,9 @@ m_tTool(this)
     connect(actionSim_Timing, SIGNAL(triggered()), &m_simTool, SLOT(show()));
 // rover menu
 	connect(actionNew_Rover, SIGNAL(triggered()), this, SLOT(newRover()));
-	// setup the rover view menu
+	connect(actionShow_Waypoint_Info, SIGNAL(triggered()), this, SLOT(waypointInfo()));
+	actionShow_Waypoint_Info->setEnabled(false);
+// setup the rover view menu
 	connect(actionFree_View, SIGNAL(triggered()), this, SLOT(cameraFreeView()));
 	connect(actionRover_Center, SIGNAL(triggered()), this, SLOT(cameraRoverCenter()));
 	connect(actionRover_Follow, SIGNAL(triggered()), this, SLOT(cameraRoverFollow()));
@@ -146,6 +148,13 @@ void MainGUI::newRover()
 {
 	SController->newRover();
 	menuRoverView->setEnabled(true);
+	actionShow_Waypoint_Info->setEnabled(true);
+}
+
+void MainGUI::waypointInfo()
+{
+	if(SController->getRover())
+		SController->getAutoNav()->show();
 }
 
 void MainGUI::cameraFreeView(){glView->getCamera()->cameraFreeView(); glView->setViewAngle(1.0);}
@@ -209,6 +218,11 @@ void MainGUI::keyPressEvent(QKeyEvent *event)
 	sr2 = SController->getRover();
     if(sr2){
         switch(event->key()){
+		case 'A':
+			{
+				SController->getAutoNav()->toggleAutonomous();
+				break;
+			}
         case 'B':
             {
                 sr2->resetRobot();
@@ -328,9 +342,26 @@ void MainGUI::updateGUI()
         labelLeftEncoder->setText(QString().setNum(sr2->leftEncoder()));
         labelRightEncoder->setText(QString().setNum(sr2->rightEncoder()));
 		labelRoverOdometer->setText(QString("%1m").arg(sr2->odometer,0,'f',2));
-		autoCode *debugCode;
-		debugCode = SController->getAutoNav();
-		labelDebug->setText(QString().setNum(debugCode->getCurrentWaypoint()));
+		
+		// autoCode *debugCode;
+		// debugCode = SController->getAutoNav();
+		// labelDebug->setText(QString().setNum(debugCode->getCurrentWaypoint()));
+		
+		textConsole->clear();
+		int size = 0;
+		size = sr2->getLaserScanner(PROFILELASER)->getDataSize();
+		float* heights = sr2->getProfileLaserHeights();
+		for(int i = 0; i < size; ++i)
+		{
+			textConsole->insertPlainText(QString("%1 ").arg(heights[i],0,'f',3));
+		}
+		float *ranges = sr2->getLaserScanner(PROFILELASER)->getData();
+		size = sr2->getLaserScanner(PROFILELASER)->getDataSize();
+		textConsole->append("\n");
+		for(int i = 0; i < size; ++i)
+		{
+			textConsole->insertPlainText(QString("%1 ").arg(ranges[i],0,'f',3));
+		}
     }
 
 // GUI camera properties

@@ -23,6 +23,8 @@ class simControl : public QObject
 	    double          delTime;
 		simGLView		*glView;
 	
+		void setWaypointGroundHeight();
+		
 	public:
 		// obstacle members
 		int				m_obstType;
