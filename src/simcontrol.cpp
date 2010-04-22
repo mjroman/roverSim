@@ -175,6 +175,7 @@ bool simControl::removeRover()
     if(sr2){
 		delete autoNav;
         delete sr2;
+		autoNav = 0;
         sr2 = 0;
         return true;
     }
@@ -183,7 +184,7 @@ bool simControl::removeRover()
 
 void simControl::newRover()
 {
-	delete autoNav;
+	if(autoNav) delete autoNav;
 	if(!ground) return;
 	qDebug("new rover");
 	if(!sr2) sr2 = new SR2rover(glView);

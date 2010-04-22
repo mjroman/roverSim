@@ -69,9 +69,9 @@ int terrain::terrainLoadFile()
     }
 
     QStringList keyList = heightMap.textKeys();
-    if(keyList.contains("scalex")) m_terrainScale.setX(heightMap.text("scalex").toFloat());
-    if(keyList.contains("scaley")) m_terrainScale.setY(heightMap.text("scaley").toFloat());
-    if(keyList.contains("scalez")) m_terrainScale.setZ(heightMap.text("scalez").toFloat());
+     if(keyList.contains("scalex")) m_terrainScale.setX(heightMap.text("scalex").toFloat());
+     if(keyList.contains("scaley")) m_terrainScale.setY(heightMap.text("scaley").toFloat());
+     if(keyList.contains("scalez")) m_terrainScale.setZ(heightMap.text("scalez").toFloat());
 
     m_pixelx = heightMap.width();
     m_pixely = heightMap.height();

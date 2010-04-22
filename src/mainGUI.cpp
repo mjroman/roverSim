@@ -228,6 +228,16 @@ void MainGUI::keyPressEvent(QKeyEvent *event)
                 sr2->resetRobot();
                 break;
             }
+		case 'C':
+			{
+				SController->getAutoNav()->quickObstacleCheck();
+				break;
+			}
+		case 'D':
+			{
+				SController->removeRover();
+				break;
+			}
         case 'F':
             {
                 //sr2->m_bodyParts[0]->applyCentralImpulse(btVector3(sin(sr2->heading),cos(sr2->heading),10));
@@ -349,14 +359,14 @@ void MainGUI::updateGUI()
 		
 		textConsole->clear();
 		int size = 0;
-		size = sr2->getLaserScanner(PROFILELASER)->getDataSize();
-		float* heights = sr2->getProfileLaserHeights();
+		size = sr2->getLaserScanner(PANELLASER)->getDataSize();
+		float* heights = sr2->getPanelLaserHeights();
 		for(int i = 0; i < size; ++i)
 		{
 			textConsole->insertPlainText(QString("%1 ").arg(heights[i],0,'f',3));
 		}
-		float *ranges = sr2->getLaserScanner(PROFILELASER)->getData();
-		size = sr2->getLaserScanner(PROFILELASER)->getDataSize();
+		float *ranges = sr2->getLaserScanner(PANELLASER)->getData();
+		size = sr2->getLaserScanner(PANELLASER)->getDataSize();
 		textConsole->append("\n");
 		for(int i = 0; i < size; ++i)
 		{

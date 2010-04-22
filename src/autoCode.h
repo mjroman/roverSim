@@ -16,14 +16,13 @@ class autoCode : public QWidget, private Ui::autoCode
 		void goAutonomous();
 		void stopAutonomous(RoverState rs);
 		void toggleAutonomous();
-		float checkForObstacles(float distTo);
 		int getCurrentWaypoint() { return wpIndex; }
 
 	public slots:
-		//void raise();
 		void moveToWaypoint();
 		void on_combo_wpSelect_activated(int index);
 		void displayCurrentWaypoint();
+		void quickObstacleCheck();
 			
 	protected:
 		float	POINTTURNSPEED;
@@ -39,6 +38,9 @@ class autoCode : public QWidget, private Ui::autoCode
 		float   PITCHDOWNIGNOREDISTOBSTACLES;
 		float   BODYTOOCLOSE;
 		float 	PANELOBSTACLEMAX;
+		float   TURNFACTOR;
+		float 	GOPASTDISTANCE;
+		float	PATHEFFICIENCY;
 
 	private:
 		SR2rover 			*sr2;
@@ -52,6 +54,10 @@ class autoCode : public QWidget, private Ui::autoCode
 		QMap<int, QString>	REmap;
 		QMap<int, QString>  WPmap;
 		QMap<int, QString>	WSmap;
+		float				expectedDistance;
+		float				blockedDirection;
+		btVector3			lastBlockedPosition;
+		int					lastBlockedDirection;
 
 		void callForHelp(RoverError errCode);
 		float compassToCartRadians(float rad);
@@ -61,6 +67,8 @@ class autoCode : public QWidget, private Ui::autoCode
 		float distanceToWaypoint(int i);
 		void driveToward(float relHead, float distTo);
 		void getPanelHeights(float* heights);
+		bool checkForObstacles(float distTo);
+		void avoidingTurn();
 		void roverStateKeyMapping();
 		void roverErrorKeyMapping();
 		void waypointStateKeyMapping();

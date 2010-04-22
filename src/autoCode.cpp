@@ -19,14 +19,17 @@ sr2(bot)
 	TURNMULTIPLIER = 6;
 	CLOSEENOUGH = 1;
 	TURNACCURACYLIMIT = DEGTORAD(4);
-	ROVERCRUISESPEED = 18;
+	ROVERCRUISESPEED = 10;
 	BODYDIST = 1.5;
 	PROFILEOBSTACLEMAX = 0.15;
-	MAXPITCH = 15.0;
-	MAXROLL = 20.0;
-	PITCHDOWNIGNOREDISTOBSTACLES = 10;
+	MAXPITCH = DEGTORAD(15.0);
+	MAXROLL = DEGTORAD(20.0);
+	PITCHDOWNIGNOREDISTOBSTACLES = DEGTORAD(10);
 	BODYTOOCLOSE = 0.5;
 	PANELOBSTACLEMAX = 0.15;
+	TURNFACTOR = 0.5;
+	GOPASTDISTANCE = 2;
+	PATHEFFICIENCY = 0.2; 
 	
 	wpIndex = 0;
 	sr2->waypointList[wpIndex].state = WPstateCurrent;
@@ -51,9 +54,8 @@ autoCode::~autoCode()
 
 void autoCode::callForHelp(RoverError errCode)
 {
-	stopAutonomous(RSCallingForHelp);
 	error = errCode;
-	label_error->setText(REmap[error]);
+	stopAutonomous(RSCallingForHelp);
 }
 // Convert from compass angles where N=0 and E=90 to Cartesian where N=90 and E=0
 float autoCode::compassToCartRadians(float rad)
@@ -100,6 +102,35 @@ float autoCode::distanceToWaypoint(int i)
 	return distBtwVerts(sr2->waypointList[i].position,rover);
 }
 
+void autoCode::goAutonomous()
+{
+	autoRunning = true;
+	connect(sr2, SIGNAL(updated()),this, SLOT(moveToWaypoint()));
+	state = RSMovingTowardsWaypoint; // reset the rover state
+	error = RENone;	// reset the rover error
+	lastBlockedDirection = 0;
+	expectedDistance = sr2->odometer + (1+PATHEFFICIENCY) * distanceToWaypoint(wpIndex); // reset the expected distance
+	label_running->setText("Auto running");
+	updateGUI();
+}
+
+void autoCode::stopAutonomous(RoverState rs)
+{
+	autoRunning = false;
+	sr2->stopRobot();
+	// disconnect from sr2 update signal
+	disconnect(sr2,0,this,0);
+	state = rs;
+	label_running->setText("Auto Stopped");
+	updateGUI();
+}
+
+void autoCode::toggleAutonomous()
+{
+	if(autoRunning) stopAutonomous(RSInTeleopMode);
+	else goAutonomous();
+}
+
 /////////////////////////////////////////
 // Gets the rover turning the requested amount (large turns are done as point turns. Small turns done gradually).
 // this function just sets the speeds and returns. relHeading = turn angle relative to the rover.
@@ -130,9 +161,9 @@ void autoCode::driveToward(float relHeading,float distTo)
 }
 
 /////////////////////////////////////////
-// Moves robot towards waypoint.  When WP is reached it stops rover and returns -1, otherwise
-// the distance to the waypoint is returned. Note if WP is almost close enough and rover is 
-// avoiding obstacles, that WP will be skipped
+// THIS IS THE HIGHEST LEVEL FUNCTION CALL !!!!
+// Moves robot towards waypoint.  When WP is reached it stops rover.
+// Note: if WP is almost close enough and rover is avoiding obstacles, that WP will be skipped
 /////////////
 void autoCode::moveToWaypoint()
 {
@@ -143,10 +174,15 @@ void autoCode::moveToWaypoint()
 	if(wpRange < CLOSEENOUGH){ 	
 		sr2->waypointList[wpIndex].state = WPstateOld;	
 		wpIndex++;
-		if(wpIndex < sr2->waypointList.size()) { // get the next waypoint in the list
+		// get the next waypoint in the list
+		if(wpIndex < sr2->waypointList.size()) { 
 			sr2->waypointList[wpIndex].state = WPstateCurrent;
 			currentWaypoint = sr2->waypointList[wpIndex];
-			state = RSMovingTowardsWaypoint;
+			// set the expected drive distance to the new waypoint
+			expectedDistance = sr2->odometer + (1.0+PATHEFFICIENCY) * distanceToWaypoint(wpIndex);
+			state = RSReachedWaypoint;
+			updateGUI();
+			return;
 		}
 		else{ // waypoint list is complete should be at goal or no plan
 			wpIndex = sr2->waypointList.size() - 1;
@@ -154,56 +190,67 @@ void autoCode::moveToWaypoint()
 			return;
 		}
 	}
-
-	float relTargetHeading = roverWaypointHeading();	
-	// check for obstacles
 	
+// if the rover has driven farther than expected to the next waypoint
+	if(expectedDistance < sr2->odometer){
+		// stop and call for help
+		callForHelp(REProgress);
+		return;
+	}
+
+	float relTargetHeading = roverWaypointHeading();
+		
+// check for obstacles, returns false if there was an error
+	if(!checkForObstacles(wpRange)) return;
 	
-	// if not avoiding drive to waypoint
-	driveToward(relTargetHeading,wpRange);
+	// drive to waypoint
+	if(state == RSMovingTowardsWaypoint){
+		lastBlockedDirection = 0;
+		driveToward(relTargetHeading,wpRange);	
+	}
+	// drive past obstacle
+	else if(state == RSGoingPastObstacles){
+		// continue driving to the waypoint if past the obstacle
+		if(lastBlockedPosition.distance2(sr2->position) > GOPASTDISTANCE){
+			lastBlockedDirection = 0;
+			state = RSMovingTowardsWaypoint;
+			driveToward(relTargetHeading,wpRange);
+		}
+		else{
+			// no obstacle in view so drive past it
+			if(state == RSGoingPastObstacles){
+				sr2->setRightSpeed(ROVERCRUISESPEED);
+				sr2->setLeftSpeed(ROVERCRUISESPEED);
+			}
+		}
+	}
+	// avoid obstacles
+	else{
+		lastBlockedPosition = sr2->position;  // mark this spot as latest position where obstacle was seen
+		avoidingTurn();
+	}
+	
+	if(blockedDirection < 0.0) lastBlockedDirection = -1;
+	else lastBlockedDirection = 1;
+	
 	updateGUI();
-}
-
-void autoCode::goAutonomous()
-{
-	autoRunning = true;
-	connect(sr2, SIGNAL(updated()),this, SLOT(moveToWaypoint()));
-	state = RSMovingTowardsWaypoint;
-	error = RENone;
-	label_running->setText("Auto running");
-	updateGUI();
-}
-
-void autoCode::stopAutonomous(RoverState rs)
-{
-	autoRunning = false;
-	sr2->stopRobot();
-	// disconnect from sr2 update signal
-	disconnect(sr2,0,this,0);
-	state = rs;
-	label_running->setText("Auto Stopped");
-	updateGUI();
-}
-
-void autoCode::toggleAutonomous()
-{
-	if(autoRunning) stopAutonomous(RSInTeleopMode);
-	else goAutonomous();
 }
 
 /////////////////////////////////////////
-// Checks for obstacles and returns the direction it is relative to the rover + is right, - is left
+// Checks for obstacles and sets the direction the rover is blocked , + is right, - is left
+// sets the rover state if avoiding near or far, driving past, or driving to waypoint
 /////////////
-float autoCode::checkForObstacles(float distTo)
+bool autoCode::checkForObstacles(float distTo)
 {
 	float criticalDist = distTo;
 	int size = sr2->getLaserScanner(PANELLASER)->getDataSize();
 	float* heights = sr2->getPanelLaserHeights();
 	float* ranges = sr2->getLaserScanner(BODYLASER)->getData();
 	int i,aheadBlockedLong=0, aheadBlockedShort=0, instShort=0,instLong=0;
-	float aheadBlockedDir=0;
 	static int prevBlockedShort=0, prevBlockedLong=0;
 	int slopeObstacle = 0;
+	
+	blockedDirection = 0;
 	
 	//set to minimum of critDistance and BODYDIST
 	criticalDist = (criticalDist < BODYDIST) ? criticalDist : BODYDIST;
@@ -211,76 +258,123 @@ float autoCode::checkForObstacles(float distTo)
 // check rover POSE SLOPE, roll and pitch to so it doesn't flip over	
 	// roll maxed out by itself is an emergency
 	if(fabs(sr2->roll) > MAXROLL){
+		blockedDirection = (sr2->roll > 0.0) ? 5 /*rolling LEFT*/ : -5 /*rolling RIGHT*/;
 		callForHelp(RERoll);
-		return(-4.0); // Roll is maxed out!!!!!!
+		return false; // Roll is maxed out!!!!!!
 	}
 	else if(sr2->pitch > MAXPITCH){
 		aheadBlockedLong=1;
-		aheadBlockedDir = (sr2->roll > 0.0) ? 5 /*turn right*/ : -5 /*turn left*/;
+		blockedDirection = (sr2->roll > 0.0) ? 5 /*rolling LEFT*/ : -5 /*rolling RIGHT*/;
 		slopeObstacle = 1;
 	}
 	
-// look for any blocking obstacles directly in front of the rover
+// look for any BODY blocking obstacles directly in front of the rover
 	if(!slopeObstacle || (slopeObstacle && sr2->pitch > PITCHDOWNIGNOREDISTOBSTACLES)){
 		for(i=0;i<size;i++){
 			// check for near obstacles
 			if(ranges[i] < BODYTOOCLOSE){
-				if(prevBlockedShort) aheadBlockedShort = 1;
-				else prevBlockedShort = instShort = 1;
-				//+ is blocked on right, - is blocked on left
-				aheadBlockedDir = aheadBlockedDir + 2/(i - 7.5);
+				if(instShort) aheadBlockedShort = 1;
+				else instShort = 1;
+				// + is blocked on right, - is blocked on left
+				blockedDirection = blockedDirection + 2/(i - 7.5);
 			}
 			// check for far obstacles
 			else if(ranges[i] < criticalDist 
 				&& ranges[i+1] < criticalDist
 				&& i > 3
 				&& i < 13){
-				if(prevBlockedLong) aheadBlockedLong = 1;
-				else prevBlockedLong = instLong = 1;
+				if(instLong) aheadBlockedLong = 1;
+				else instLong = 1;
 				// + is blocked on right, - is blocked on left
-				aheadBlockedDir = aheadBlockedDir + 1/(i - 7.5);
+				blockedDirection = blockedDirection + 1/(i - 7.5);
 			}
 		}
 	}
 	//something directly ahead turn right
-	if(aheadBlockedDir == 0.0 && (aheadBlockedShort || aheadBlockedLong)) aheadBlockedDir = -2.;
+	if(blockedDirection == 0.0 && (aheadBlockedShort || aheadBlockedLong)) blockedDirection = -2.0;
 		
 // look through PANEL laser points in front of right and left wheels for obstacles
 	for(i=1;i<5; i++){	// right wheel
-			//is there a rock or hole?
+	//is there a rock or hole?
 		if((fabs(heights[i]) > PANELOBSTACLEMAX) 
 			&& (fabs(heights[i+1]) > PANELOBSTACLEMAX) 
-		&& (fabs(heights[i+2]) > PANELOBSTACLEMAX)){
-			if(prevBlockedShort) aheadBlockedShort = 1;
-			else prevBlockedShort = instShort = 1;
+			&& (fabs(heights[i+2]) > PANELOBSTACLEMAX)){
+				if(instShort) aheadBlockedShort = 1;
+				else instShort = 1;
 				// + is blocked on right, - is blocked on left
-			aheadBlockedDir = aheadBlockedDir + 1/(i - 7.5);
+				blockedDirection = blockedDirection + 1/(7.5 - i);
 		}
 	}
 	for(i=14;i>10; i--){  // left wheel
-			//is there a rock or hole?
+//is there a rock or hole?
 		if((fabs(heights[i]) > PANELOBSTACLEMAX) 
 			&& (fabs(heights[i-1]) > PANELOBSTACLEMAX)
-		&& (fabs(heights[i-2]) > PANELOBSTACLEMAX)){
-			if(prevBlockedShort)aheadBlockedShort=1;
-			else prevBlockedShort=instShort=1;
+			&& (fabs(heights[i-2]) > PANELOBSTACLEMAX)){
+				if(instShort)aheadBlockedShort=1;
+				else instShort = 1;
 				// + is blocked on right, - is blocked on left
-			aheadBlockedDir = aheadBlockedDir + 2/(i - 7.5);
+				blockedDirection = blockedDirection + 2/(7.5 - i);
 		}
 	}
 	
-	
-	//no hits this time, reset two in a row counter
-	if(!instShort && !aheadBlockedShort) prevBlockedShort=0;
-	if(!instLong && !aheadBlockedLong) prevBlockedLong=0;
-	
 	// mark that you are avoiding
 	if(aheadBlockedLong) state = RSAvoidingDistantObstacles;
-	if(aheadBlockedShort) state = RSAvoidingNearbyObstacles;
-	if(!aheadBlockedLong && !aheadBlockedShort) state = RSMovingTowardsWaypoint;
-	return(aheadBlockedDir);
+	else if(aheadBlockedShort) state = RSAvoidingNearbyObstacles;
+	else if(prevBlockedShort || prevBlockedLong) state = RSGoingPastObstacles;
+	else if(state != RSGoingPastObstacles) state = RSMovingTowardsWaypoint;
+	
+	prevBlockedShort = aheadBlockedShort;
+	prevBlockedLong = aheadBlockedLong;
+	return true;
 }
 
+// checks for obstacles without driving to waypoint, used for debugging
+void autoCode::quickObstacleCheck()
+{
+	error = RENone;
+	// run the obstacle check function where the waypoint is 3.0 meters away
+	checkForObstacles(3.0);
+	updateGUI();
+}
+
+/////////////////////////////////////////
+// Drives around obstacles if any were detected
+// This function turns wide or sharp or extreme as needed
+/////////////
+void autoCode::avoidingTurn()
+{
+	float closeTurnFactor = (TURNFACTOR > 0.0)? 0.0 : TURNFACTOR;
+
+	// last block was to the left
+	if(lastBlockedDirection < 0){
+			// obstacle to the left or far off to the right
+		if(blockedDirection < 0.0 || (blockedDirection > 0.0 && state == RSAvoidingDistantObstacles)){
+			sr2->setLeftSpeed(ROVERCRUISESPEED);
+			sr2->setRightSpeed(ROVERCRUISESPEED*((state == RSAvoidingNearbyObstacles) ? closeTurnFactor : TURNFACTOR));
+			return;
+		}
+			// obstacle close to the right
+		else if(blockedDirection > 0.0){
+			sr2->setLeftSpeed(0);
+			sr2->setRightSpeed(-ROVERCRUISESPEED);
+			return;
+		}
+	}
+	else{//last block was on right
+			// obstacle to the right or far off to the left
+		if(blockedDirection > 0.0 || (blockedDirection < 0.0 && state == RSAvoidingDistantObstacles)){
+			sr2->setRightSpeed(ROVERCRUISESPEED);
+			sr2->setLeftSpeed(ROVERCRUISESPEED*((state == RSAvoidingNearbyObstacles) ? closeTurnFactor : TURNFACTOR));
+			return;
+		}
+			// obstacle close to the left
+		else if(blockedDirection < 0.0){
+			sr2->setRightSpeed(0);
+			sr2->setLeftSpeed(-ROVERCRUISESPEED);
+			return;
+		}
+	}
+}
 
 /////////////////////////////////////////
 // GUI window update functions and setup
@@ -348,6 +442,7 @@ void autoCode::updateGUI()
 	label_state->setText(RSmap[state]);
 	label_error->setText(REmap[error]);
 	label_wpCount->setText(QString::number(wpIndex));
+	label_obstDirection->setText(QString::number(blockedDirection,'f',4));
 	
 	int i;
 	if(currentWaypointDisplay) {
@@ -364,6 +459,7 @@ void autoCode::updateGUI()
 								.arg(w.position.y,0,'f',2)
 								.arg(w.position.z,0,'f',2));
 	label_wpDistance->setText(QString::number(distanceToWaypoint(i),'f',3));
+	label_debug->setText(QString::number(expectedDistance));
 }
 
 void autoCode::displayCurrentWaypoint()
