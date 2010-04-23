@@ -9,7 +9,7 @@ terrainTool::terrainTool(QWidget *parent) :
     setupUi(this);
     QWidget::setWindowFlags(Qt::Window);
 
-    m_scale.setValue(1,1,5);
+    m_scale.setValue(1,1,1);
     m_gravity.setValue(0,0,-9.8);
 
     lineEdit_ScaleWidth->setText(QString::number(m_scale.x()));
@@ -58,10 +58,11 @@ void terrainTool::setScale(btVector3 scale)
 }
 
 void terrainTool::rescale()
-{
-    m_scale.setX(lineEdit_ScaleWidth->text().toFloat());
+{   
+	m_scale.setX(lineEdit_ScaleWidth->text().toFloat());
     m_scale.setY(lineEdit_ScaleLength->text().toFloat());
     m_scale.setZ(lineEdit_ScaleHeight->text().toFloat());
+	
     emit scaleUpdate();
 }
 

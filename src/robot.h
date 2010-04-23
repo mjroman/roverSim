@@ -78,6 +78,6 @@ public:
 	void setMotorImpulse(int motor,float imp);
 	void setWheelFriction(btVector3 fric) { m_wheelFriction = fric; }
 	
-	void addWaypointAt(int uuid, float x,float y, WPstate st=WPstateNew, WPscience sc=WPscienceNone);
+	void addWaypointAt(int uuid, float x,float y, WPstate st=WPstateNew, WPscience sc=WPscienceNone, int i = -1);
 };
 #endif // ROBOT_H

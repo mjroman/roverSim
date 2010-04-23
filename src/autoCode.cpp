@@ -13,6 +13,7 @@ sr2(bot)
 	setupUi(this);
 	move(20,100);
 	setWindowFlags(Qt::WindowStaysOnTopHint);
+	setWindowTitle("Navigation Info.");
 	
 	POINTTURNSPEED = 6;
 	POINTTURNANGLE = DEGTORAD(30);
@@ -28,8 +29,8 @@ sr2(bot)
 	BODYTOOCLOSE = 0.5;
 	PANELOBSTACLEMAX = 0.15;
 	TURNFACTOR = 0.5;
-	GOPASTDISTANCE = 2;
-	PATHEFFICIENCY = 0.2; 
+	GOPASTDISTANCE = 3;
+	PATHEFFICIENCY = 0.3; 
 	
 	wpIndex = 0;
 	sr2->waypointList[wpIndex].state = WPstateCurrent;
@@ -43,13 +44,25 @@ sr2(bot)
 	stopAutonomous(RSInTeleopMode);
 	error = RENone;
 	setComboWaypointList();
+	setComboScienceList();
 	updateGUI();
 	
-	show();
+	raise();
 }
 
 autoCode::~autoCode()
 {
+}
+
+void autoCode::raise()
+{
+	connect(this, SIGNAL(GUIUpdate()), this, SLOT(updateGUI()));
+	show();
+}
+
+void autoCode::closeEvent(QCloseEvent *event)
+{
+	disconnect(this, SIGNAL(GUIUpdate()), this, SLOT(updateGUI()));
 }
 
 void autoCode::callForHelp(RoverError errCode)
@@ -102,6 +115,12 @@ float autoCode::distanceToWaypoint(int i)
 	return distBtwVerts(sr2->waypointList[i].position,rover);
 }
 
+void autoCode::on_button_running_clicked(bool checked)
+{
+	if(checked) goAutonomous();
+	else stopAutonomous(RSInTeleopMode);
+}
+
 void autoCode::goAutonomous()
 {
 	autoRunning = true;
@@ -110,7 +129,7 @@ void autoCode::goAutonomous()
 	error = RENone;	// reset the rover error
 	lastBlockedDirection = 0;
 	expectedDistance = sr2->odometer + (1+PATHEFFICIENCY) * distanceToWaypoint(wpIndex); // reset the expected distance
-	label_running->setText("Auto running");
+	button_running->setText("Stop Auto");
 	updateGUI();
 }
 
@@ -119,9 +138,10 @@ void autoCode::stopAutonomous(RoverState rs)
 	autoRunning = false;
 	sr2->stopRobot();
 	// disconnect from sr2 update signal
-	disconnect(sr2,0,this,0);
+	disconnect(sr2, SIGNAL(updated()),this,SLOT(moveToWaypoint()));
 	state = rs;
-	label_running->setText("Auto Stopped");
+	button_running->setChecked(false);
+	button_running->setText("Go Auto");
 	updateGUI();
 }
 
@@ -181,7 +201,7 @@ void autoCode::moveToWaypoint()
 			// set the expected drive distance to the new waypoint
 			expectedDistance = sr2->odometer + (1.0+PATHEFFICIENCY) * distanceToWaypoint(wpIndex);
 			state = RSReachedWaypoint;
-			updateGUI();
+			emit GUIUpdate();
 			return;
 		}
 		else{ // waypoint list is complete should be at goal or no plan
@@ -233,7 +253,7 @@ void autoCode::moveToWaypoint()
 	if(blockedDirection < 0.0) lastBlockedDirection = -1;
 	else lastBlockedDirection = 1;
 	
-	updateGUI();
+	emit GUIUpdate();
 }
 
 /////////////////////////////////////////
@@ -430,11 +450,21 @@ void autoCode::setComboWaypointList()
 	}
 }
 
+void autoCode::setComboScienceList()
+{
+	QMapIterator<int, QString> i(WSmap);
+	
+	while(i.hasNext()){
+		i.next();
+		combo_science->addItem(i.value(), QVariant(i.key()));
+	}
+}
+
 void autoCode::on_combo_wpSelect_activated(int index)
 {
 	currentWaypointDisplay = false;
 	updateGUI();
-	QTimer::singleShot(5000,this, SLOT(displayCurrentWaypoint()));
+	if(autoRunning) QTimer::singleShot(5000,this, SLOT(displayCurrentWaypoint()));
 }
 
 void autoCode::updateGUI()
@@ -442,7 +472,9 @@ void autoCode::updateGUI()
 	label_state->setText(RSmap[state]);
 	label_error->setText(REmap[error]);
 	label_wpCount->setText(QString::number(wpIndex));
-	label_obstDirection->setText(QString::number(blockedDirection,'f',4));
+	
+	if(blockedDirection == 0.0) label_obstDirection->setText("No Obstacles");
+	else label_obstDirection->setText(QString::number(blockedDirection,'f',4));
 	
 	int i;
 	if(currentWaypointDisplay) {
@@ -466,4 +498,22 @@ void autoCode::displayCurrentWaypoint()
 {
 	currentWaypointDisplay = true;
 	updateGUI();
+}
+
+void autoCode::on_button_add_waypoint_clicked()
+{
+	button_add_waypoint->setEnabled(false);
+}
+
+void autoCode::on_button_done_adding_clicked()
+{
+	sr2->addWaypointAt(lineEdit_uuid->text().toInt()
+		,lineEdit_xPosition->text().toFloat()
+		,lineEdit_yPosition->text().toFloat()
+		,WPstateNew
+		,(WPscience)combo_science->itemData(combo_science->currentIndex()).toInt()
+		,combo_wpSelect->currentIndex()+1);
+	
+	setComboWaypointList();
+	button_add_waypoint->setEnabled(true);
 }

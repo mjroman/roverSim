@@ -191,10 +191,10 @@ void simControl::newRover()
 	sr2->waypointList.clear();
 	
 	// add a few test waypoints
-	sr2->addWaypointAt(11,4.0,4.0);
-	sr2->addWaypointAt(32,10.0,2.0);
-	sr2->addWaypointAt(535,25.0,15.0);
-	sr2->addWaypointAt(657,6.0,14.0);
+	sr2->addWaypointAt(657,90.0,90.0);
+	//sr2->addWaypointAt(32,10.0,2.0);
+	//sr2->addWaypointAt(535,25.0,15.0);
+	//sr2->addWaypointAt(657,6.0,14.0);
 	this->setWaypointGroundHeight();
 	
 	sr2->placeRobotAt(btVector3(1,1,ground->terrainHeightAt(btVector3(1,1,0))));

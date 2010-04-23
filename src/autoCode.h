@@ -19,12 +19,20 @@ class autoCode : public QWidget, private Ui::autoCode
 		int getCurrentWaypoint() { return wpIndex; }
 
 	public slots:
+		void on_button_add_waypoint_clicked();
+		void on_button_done_adding_clicked();
+		void on_button_running_clicked(bool checked = false);
 		void moveToWaypoint();
 		void on_combo_wpSelect_activated(int index);
 		void displayCurrentWaypoint();
 		void quickObstacleCheck();
+		void raise();
+	
+	signals:
+		void GUIUpdate();
 			
 	protected:
+		void closeEvent(QCloseEvent *event);
 		float	POINTTURNSPEED;
 		float	POINTTURNANGLE;
 		float	TURNMULTIPLIER;	
@@ -74,6 +82,9 @@ class autoCode : public QWidget, private Ui::autoCode
 		void waypointStateKeyMapping();
 		void waypointScienceKeyMapping();
 		void setComboWaypointList();
+		void setComboScienceList();
+		
+	private slots:
 		void updateGUI();
 };
 

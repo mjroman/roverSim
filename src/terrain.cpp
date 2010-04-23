@@ -133,7 +133,7 @@ void terrain::terrainCreateMesh(unsigned int *heightData)
         m_terrainVerts[i].x = (i % xWorld) * m_terrainScale.x();
         m_terrainVerts[i].y = (i / xWorld) * m_terrainScale.y();
         if(heightData != NULL) temp = (float)heightData[i]/(float)heightData[m_terrainVertexCount]; // get the height from the image data
-		else temp = 0.5; //(m_terrainMaxHeight + m_terrainMinHeight)/2;
+		else temp = 0.5;
         m_terrainVerts[i].z = temp * m_terrainScale.z();  // scale the height
         if(m_terrainVerts[i].z > m_terrainMaxHeight) m_terrainMaxHeight = m_terrainVerts[i].z;
 		
@@ -290,17 +290,20 @@ float terrain::terrainHeightAt(btVector3 pt)
 
 void terrain::terrainRescale(btVector3 scale)
 {
-    m_terrainScale = scale;
-    m_worldSize *= m_terrainScale;
-    m_terrainMaxHeight *= m_terrainScale.z();
-    m_terrainMinHeight *= m_terrainScale.z();
+    m_worldSize *= scale;
+    m_terrainMaxHeight *= scale.z();
+    m_terrainMinHeight *= scale.z();
 
     for(int i=0;i<m_terrainVertexCount;i++){
-        m_terrainVerts[i].x *= m_terrainScale.x();
-        m_terrainVerts[i].y *= m_terrainScale.y();
-        m_terrainVerts[i].z *= m_terrainScale.z();
+        m_terrainVerts[i].x *= scale.x();
+        m_terrainVerts[i].y *= scale.y();
+        m_terrainVerts[i].z *= scale.z();
     }
     buildNormals();
+
+	m_terrainScale.setX(m_terrainScale.x() * scale.x());
+	m_terrainScale.setY(m_terrainScale.y() * scale.y());
+	m_terrainScale.setZ(m_terrainScale.z() * scale.z());
 
     arena->setWorldSize(m_worldSize);
 

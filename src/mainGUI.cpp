@@ -154,7 +154,7 @@ void MainGUI::newRover()
 void MainGUI::waypointInfo()
 {
 	if(SController->getRover())
-		SController->getAutoNav()->show();
+		SController->getAutoNav()->raise();
 }
 
 void MainGUI::cameraFreeView(){glView->getCamera()->cameraFreeView(); glView->setViewAngle(1.0);}

@@ -242,7 +242,7 @@ void robot::drawWaypoints()
 	}
 }
 
-void robot::addWaypointAt(int uuid, float x,float y, WPstate st, WPscience sc)
+void robot::addWaypointAt(int uuid, float x,float y, WPstate st, WPscience sc,int i)
 {
 	WayPoint wp;
 	wp.uuid = uuid;
@@ -250,5 +250,6 @@ void robot::addWaypointAt(int uuid, float x,float y, WPstate st, WPscience sc)
 	wp.position.y = y;
 	wp.state = st;
 	wp.science = sc;
-	waypointList << wp;
+	if(i<0)waypointList << wp;
+	else waypointList.insert(i,wp);
 }
