@@ -41,7 +41,6 @@ protected:
 	btVector3   		m_wheelFriction;
 
 	void drawFrame(btTransform &tr);
-	void drawWaypoints();
 	
 public:
 	float                                       *m_previousPosition;
@@ -56,7 +55,7 @@ public:
 	float				odometer;
 	LatLonCoord			GPSposition;
 	float				voltage;
-	QList<WayPoint>		waypointList;
+	
 	//QList<robotView> 	viewList;
 	
 	robot(simGLView* glView);
@@ -77,7 +76,5 @@ public:
 	float getMotorImpulse(int motor);
 	void setMotorImpulse(int motor,float imp);
 	void setWheelFriction(btVector3 fric) { m_wheelFriction = fric; }
-	
-	void addWaypointAt(int uuid, float x,float y, WPstate st=WPstateNew, WPscience sc=WPscienceNone, int i = -1);
 };
 #endif // ROBOT_H

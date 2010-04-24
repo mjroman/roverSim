@@ -9,16 +9,19 @@ MainGUI::MainGUI(QWidget *parent)
 QMainWindow(parent),
 m_oTool(this),
 m_simTool(this),
-m_tTool(this)
+m_tTool(this),
+m_wTool(this)
 {
     qDebug("UI setup");
     setupUi(this);
 	move(240,22);
     resize(1200,700);
+	setWindowTitle("Rover Simulator");
 	
     m_oTool.close();
     m_simTool.close();
     m_tTool.close();
+	m_wTool.close();
 
 	SController = new simControl(glView);
 	
@@ -27,8 +30,8 @@ m_tTool(this)
     connect(actionSim_Timing, SIGNAL(triggered()), &m_simTool, SLOT(show()));
 // rover menu
 	connect(actionNew_Rover, SIGNAL(triggered()), this, SLOT(newRover()));
-	connect(actionShow_Waypoint_Info, SIGNAL(triggered()), this, SLOT(waypointInfo()));
-	actionShow_Waypoint_Info->setEnabled(false);
+	connect(actionShow_Waypoint_Editor, SIGNAL(triggered()), this, SLOT(waypointSetup()));
+	
 // setup the rover view menu
 	connect(actionFree_View, SIGNAL(triggered()), this, SLOT(cameraFreeView()));
 	connect(actionRover_Center, SIGNAL(triggered()), this, SLOT(cameraRoverCenter()));
@@ -54,6 +57,8 @@ m_tTool(this)
     connect(&m_tTool, SIGNAL(gravityUpdate()), this, SLOT(simGravity()));
     // tool bar terrain scale update
     connect(&m_tTool, SIGNAL(scaleUpdate()), this, SLOT(rescaleGround()));
+	// tool bar add waypoint update
+	connect(&m_wTool, SIGNAL(addedWP()), SController, SLOT(setWaypointGroundHeight()));
 
 // server connections
 	connect(&m_tcpServer, SIGNAL(newConnection()),this, SLOT(serverAcceptConnect()));
@@ -148,13 +153,11 @@ void MainGUI::newRover()
 {
 	SController->newRover();
 	menuRoverView->setEnabled(true);
-	actionShow_Waypoint_Info->setEnabled(true);
 }
 
-void MainGUI::waypointInfo()
+void MainGUI::waypointSetup()
 {
-	if(SController->getRover())
-		SController->getAutoNav()->raise();
+	m_wTool.raiseWaypointEditor(SController->getWaypointList());
 }
 
 void MainGUI::cameraFreeView(){glView->getCamera()->cameraFreeView(); glView->setViewAngle(1.0);}
@@ -333,6 +336,7 @@ void MainGUI::keyReleaseEvent(QKeyEvent *event)
         }
     }
 }
+
 
 /////////////////////////////////////////
 // GUI labels

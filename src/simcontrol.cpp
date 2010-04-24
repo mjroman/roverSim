@@ -31,6 +31,14 @@ m_obstDensity(5)
 	
 	//sky = new skydome(glView);
 	
+	// add a few test waypoints
+	addWaypointAt(657,90.0,90.0);
+	addWaypointAt(658,1.0,4.0);
+	//addWaypointAt(535,25.0,15.0);
+	//addWaypointAt(657,6.0,14.0);
+	
+	glView->setWaypointList(&waypointList);
+	
 	simTimer = new QTimer(this);
     connect(simTimer, SIGNAL(timeout()), this, SLOT(stepSim()));
     this->startSimTimer(10);
@@ -88,6 +96,7 @@ void simControl::openNewGround(QString filename)
 	
 	// generate new obstacles
 	this->generateObstacles();
+	this->setWaypointGroundHeight();
 }
 
 void simControl::flattenGround()
@@ -97,6 +106,7 @@ void simControl::flattenGround()
 	
 	// generate new obstacles
 	this->generateObstacles();
+	this->setWaypointGroundHeight();
 }
 
 void simControl::rescaleGround(btVector3 scale)
@@ -106,6 +116,7 @@ void simControl::rescaleGround(btVector3 scale)
 	
 	// generate new obstacles
 	this->generateObstacles();
+	this->setWaypointGroundHeight();
 }
 
 void simControl::removeObstacles()
@@ -188,28 +199,33 @@ void simControl::newRover()
 	if(!ground) return;
 	qDebug("new rover");
 	if(!sr2) sr2 = new SR2rover(glView);
-	sr2->waypointList.clear();
 	
-	// add a few test waypoints
-	sr2->addWaypointAt(657,90.0,90.0);
-	//sr2->addWaypointAt(32,10.0,2.0);
-	//sr2->addWaypointAt(535,25.0,15.0);
-	//sr2->addWaypointAt(657,6.0,14.0);
 	this->setWaypointGroundHeight();
 	
 	sr2->placeRobotAt(btVector3(1,1,ground->terrainHeightAt(btVector3(1,1,0))));
-	autoNav = new autoCode(sr2);
+	autoNav = new autoCode(sr2, &waypointList);
 }
 
 void simControl::setWaypointGroundHeight()
-{
-	if(!sr2->waypointList.size()) return; // return if no waypoints
-	
+{	
 	int i=0;
-	while(i < sr2->waypointList.size()){
-		btVector3 position(sr2->waypointList[i].position.x,sr2->waypointList[i].position.y,0);
+	while(i < waypointList.size()){
+		btVector3 position(waypointList[i].position.x,waypointList[i].position.y,0);
 		// set the z position of the waypoint for visability
-		sr2->waypointList[i].position.z = ground->terrainHeightAt(position);
+		waypointList[i].position.z = ground->terrainHeightAt(position);
 		i++;
 	}
+}
+
+void simControl::addWaypointAt(int uuid, float x,float y, WPstate st, WPscience sc,int i)
+{
+	WayPoint wp;
+	wp.uuid = uuid;
+	wp.position.x = x;
+	wp.position.y = y;
+	wp.position.z = ground->terrainHeightAt(btVector3(x,y,0));
+	wp.state = st;
+	wp.science = sc;
+	if(i<0)waypointList << wp;
+	else waypointList.insert(i,wp);
 }

@@ -7,7 +7,7 @@ terrainTool::terrainTool(QWidget *parent) :
     m_toolDiameter(0.02)
 {
     setupUi(this);
-    QWidget::setWindowFlags(Qt::Window);
+    QWidget::setWindowFlags(Qt::Sheet);
 
     m_scale.setValue(1,1,1);
     m_gravity.setValue(0,0,-9.8);
@@ -38,6 +38,11 @@ terrainTool::terrainTool(QWidget *parent) :
 
 terrainTool::~terrainTool()
 {
+}
+
+void terrainTool::on_buttonClose_clicked()
+{
+	close();
 }
 
 void terrainTool::setGravity()

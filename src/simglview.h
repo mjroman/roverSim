@@ -4,6 +4,8 @@
 #include <QGLWidget>
 #include "camera.h"
 #include "physicsWorld.h"
+#include "utility/definitions.h"
+
 
 class simGLObject;
 
@@ -19,6 +21,7 @@ private:
     camera              *m_eye;
     QList<simGLObject*> renderList;
     GLuint              m_texture[5];
+	QList<WayPoint>		*WPlist;
 
 protected:
     void loadTextures();
@@ -34,6 +37,7 @@ protected:
     void drawTest();
     void drawPlane(btScalar constant,const btVector3 normal);
     void drawWorld();
+	void drawWaypoints();
 
 public:
     simGLView(QWidget *parent = 0);
@@ -48,6 +52,7 @@ public:
     GLuint getTexture(int n);
     void registerGLObject(simGLObject *obj);
     void unregisterGLObject(simGLObject *obj);
+	void setWaypointList(QList<WayPoint> *list) { WPlist = list; };
 
 signals:
     void refreshView();

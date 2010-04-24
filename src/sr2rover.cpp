@@ -607,8 +607,6 @@ void SR2rover::renderGLObject()
 	{
 		m_laserList[i]->drawLaser(m_bodyParts[0]->getWorldTransform());
 	}
-
-	drawWaypoints();
 }
 
 

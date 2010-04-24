@@ -747,7 +747,7 @@
     <addaction name="actionNew_Rover"/>
     <addaction name="menuRoverView"/>
     <addaction name="separator"/>
-    <addaction name="actionShow_Waypoint_Info"/>
+    <addaction name="actionShow_Waypoint_Editor"/>
    </widget>
    <widget class="QMenu" name="menuTerrain">
     <property name="title">
@@ -868,7 +868,7 @@
     <string>Ctrl+2</string>
    </property>
   </action>
-  <action name="actionShow_Waypoint_Info">
+  <action name="actionShow_Waypoint_Editor">
    <property name="text">
     <string>Show Waypoint Info.</string>
    </property>

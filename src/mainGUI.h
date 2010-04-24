@@ -10,6 +10,7 @@
 #include "tools/obstacletool.h"
 #include "tools/simtool.h"
 #include "tools/terraintool.h"
+#include "tools/waypointtool.h"
 
 class simControl;
 
@@ -38,8 +39,10 @@ private:
     obstacleTool    m_oTool;
     simtool         m_simTool;
     terrainTool     m_tTool;
+	waypointTool	m_wTool;
 
 	void serverStart();
+	//void mousePressEvent(QMouseEvent *event);
 
 public:
     MainGUI(QWidget *parent = 0);
@@ -58,7 +61,7 @@ public slots:
 	void generateObstacles();
 	void removeAllObstacles();
 	void newRover();
-	void waypointInfo();
+	void waypointSetup();
 	void cameraFreeView();
 	void cameraRoverCenter();
 	void cameraRoverFollow();

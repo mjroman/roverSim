@@ -22,8 +22,7 @@ class simControl : public QObject
 		QTimer          *simTimer;
 	    double          delTime;
 		simGLView		*glView;
-	
-		void setWaypointGroundHeight();
+		QList<WayPoint>	waypointList;
 		
 	public:
 		// obstacle members
@@ -62,6 +61,10 @@ class simControl : public QObject
 		// autonomous rover control object
 		autoCode* getAutoNav() { return autoNav; }
 		
+		// waypoint functions
+		QList<WayPoint>* getWaypointList() { return &waypointList; }
+		void addWaypointAt(int uuid, float x,float y, WPstate st=WPstateNew, WPscience sc=WPscienceNone, int i = -1);
+		
 	public slots:
 	// obstacle control functions
 		void removeObstacles();
@@ -70,6 +73,7 @@ class simControl : public QObject
 		
 		void openNewGround(QString filename);
 		void flattenGround();
+		void setWaypointGroundHeight();
 		
 		void newRover();
 };

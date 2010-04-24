@@ -142,5 +142,10 @@ void obstacleTool::on_ButtonGenerate_clicked(bool)
     }
 	
     emit regenerateObstacles();
-    this->close();
+    close();
+}
+
+void obstacleTool::on_ButtonCancel_clicked()
+{
+	close();
 }

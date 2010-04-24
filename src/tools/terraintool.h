@@ -24,6 +24,7 @@ public:
     float increment(){ return m_heightIncrement; }
 
 public slots:
+	void on_buttonClose_clicked();
     void setGravity();
     void rescale();
     void setToolProps();

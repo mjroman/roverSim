@@ -5,16 +5,10 @@
 *  	Copyright 2008 University of Oklahoma. All rights reserved.
 */
 
-autoCode::autoCode(SR2rover *bot, QWidget *parent)
+autoCode::autoCode(SR2rover *bot,QList<WayPoint> *list)
 :
-QWidget(parent),
 sr2(bot)
-{
-	setupUi(this);
-	move(20,100);
-	setWindowFlags(Qt::WindowStaysOnTopHint);
-	setWindowTitle("Navigation Info.");
-	
+{	
 	POINTTURNSPEED = 6;
 	POINTTURNANGLE = DEGTORAD(30);
 	TURNMULTIPLIER = 6;
@@ -33,36 +27,14 @@ sr2(bot)
 	PATHEFFICIENCY = 0.3; 
 	
 	wpIndex = 0;
-	sr2->waypointList[wpIndex].state = WPstateCurrent;
-	currentWaypoint = sr2->waypointList[wpIndex];
-	currentWaypointDisplay = true;
+	WPlist = list;
 	
-	roverStateKeyMapping();
-	roverErrorKeyMapping();
-	waypointStateKeyMapping();
-	waypointScienceKeyMapping();
 	stopAutonomous(RSInTeleopMode);
 	error = RENone;
-	setComboWaypointList();
-	setComboScienceList();
-	updateGUI();
-	
-	raise();
 }
 
 autoCode::~autoCode()
 {
-}
-
-void autoCode::raise()
-{
-	connect(this, SIGNAL(GUIUpdate()), this, SLOT(updateGUI()));
-	show();
-}
-
-void autoCode::closeEvent(QCloseEvent *event)
-{
-	disconnect(this, SIGNAL(GUIUpdate()), this, SLOT(updateGUI()));
 }
 
 void autoCode::callForHelp(RoverError errCode)
@@ -112,43 +84,44 @@ float autoCode::distanceToWaypoint(int i)
 	rover.x = sr2->position.x();
 	rover.y = sr2->position.y();
 	rover.z = sr2->position.z();
-	return distBtwVerts(sr2->waypointList[i].position,rover);
-}
-
-void autoCode::on_button_running_clicked(bool checked)
-{
-	if(checked) goAutonomous();
-	else stopAutonomous(RSInTeleopMode);
+	return distBtwVerts(WPlist->at(i).position,rover);
 }
 
 void autoCode::goAutonomous()
 {
-	autoRunning = true;
+	if(WPlist->isEmpty()) return;
+	if(wpIndex > WPlist->size()) wpIndex = WPlist->size()-1;
+	
+	currentWaypoint = WPlist->at(wpIndex);
+	currentWaypoint.state = WPstateCurrent;
+	WPlist->replace(wpIndex, currentWaypoint);
+	
 	connect(sr2, SIGNAL(updated()),this, SLOT(moveToWaypoint()));
+	
+	currentWaypoint = WPlist->at(wpIndex);
+	running = true;
 	state = RSMovingTowardsWaypoint; // reset the rover state
 	error = RENone;	// reset the rover error
 	lastBlockedDirection = 0;
 	expectedDistance = sr2->odometer + (1+PATHEFFICIENCY) * distanceToWaypoint(wpIndex); // reset the expected distance
-	button_running->setText("Stop Auto");
-	updateGUI();
 }
 
 void autoCode::stopAutonomous(RoverState rs)
 {
-	autoRunning = false;
 	sr2->stopRobot();
 	// disconnect from sr2 update signal
 	disconnect(sr2, SIGNAL(updated()),this,SLOT(moveToWaypoint()));
-	state = rs;
-	button_running->setChecked(false);
-	button_running->setText("Go Auto");
-	updateGUI();
+	
+	running = false;
+	state = rs;	
 }
 
 void autoCode::toggleAutonomous()
 {
-	if(autoRunning) stopAutonomous(RSInTeleopMode);
-	else goAutonomous();
+	if(running) 
+		stopAutonomous(RSInTeleopMode);
+	else
+		goAutonomous();
 }
 
 /////////////////////////////////////////
@@ -192,20 +165,22 @@ void autoCode::moveToWaypoint()
 	// if the rover is close enought to the waypoint consider it complete
 	// set the waypoint as old and move to the next one
 	if(wpRange < CLOSEENOUGH){ 	
-		sr2->waypointList[wpIndex].state = WPstateOld;	
+		currentWaypoint.state = WPstateOld;
+		WPlist->replace(wpIndex, currentWaypoint);
 		wpIndex++;
 		// get the next waypoint in the list
-		if(wpIndex < sr2->waypointList.size()) { 
-			sr2->waypointList[wpIndex].state = WPstateCurrent;
-			currentWaypoint = sr2->waypointList[wpIndex];
+		if(wpIndex < WPlist->size()) { 
+			currentWaypoint = WPlist->at(wpIndex);
+			currentWaypoint.state = WPstateCurrent;
+			WPlist->replace(wpIndex, currentWaypoint);
 			// set the expected drive distance to the new waypoint
 			expectedDistance = sr2->odometer + (1.0+PATHEFFICIENCY) * distanceToWaypoint(wpIndex);
 			state = RSReachedWaypoint;
-			emit GUIUpdate();
+			emit stateUpdate();
 			return;
 		}
 		else{ // waypoint list is complete should be at goal or no plan
-			wpIndex = sr2->waypointList.size() - 1;
+			wpIndex = WPlist->size() - 1;
 			stopAutonomous(RSNoRemainingWaypoints);
 			return;
 		}
@@ -253,7 +228,7 @@ void autoCode::moveToWaypoint()
 	if(blockedDirection < 0.0) lastBlockedDirection = -1;
 	else lastBlockedDirection = 1;
 	
-	emit GUIUpdate();
+	emit stateUpdate();
 }
 
 /////////////////////////////////////////
@@ -354,7 +329,6 @@ void autoCode::quickObstacleCheck()
 	error = RENone;
 	// run the obstacle check function where the waypoint is 3.0 meters away
 	checkForObstacles(3.0);
-	updateGUI();
 }
 
 /////////////////////////////////////////
@@ -396,124 +370,4 @@ void autoCode::avoidingTurn()
 	}
 }
 
-/////////////////////////////////////////
-// GUI window update functions and setup
-/////////////
-void autoCode::roverStateKeyMapping()
-{
-	RSmap[RSStopped] = "Rover Stopped";
-	RSmap[RSMovingTowardsWaypoint] = "Moving toward Waypoint";
-	RSmap[RSNoRemainingWaypoints] = "No remaining Waypoints";
-	RSmap[RSGoingToSleep] = "Going to Sleep";
-	RSmap[RSWakingFromSleep] = "Waking from Sleep";
-	RSmap[RSDoingScience] = "Doing Science";
-	RSmap[RSCallingForHelp] = "Calling for Help";
-	RSmap[RSInTeleopMode] = "Teleoperation Mode";
-	RSmap[RSAvoidingNearbyObstacles] = "Avoiding Near Obstacles";
-	RSmap[RSAvoidingDistantObstacles] = "Avoiding Far Obstacles";
-	RSmap[RSReachedWaypoint] = "Waypoint Reached";
-	RSmap[RSGoingPastObstacles] = "Driving Past Obstacles";
-}
 
-void autoCode::roverErrorKeyMapping()
-{
-	REmap[RENone] = "---";
-	REmap[REPosition] = "Position Error";
-	REmap[REStall] = "Wheel Stall";
-	REmap[REProgress] = "No Progress";
-	REmap[REPitch] = "Pitch Max";
-	REmap[RERoll] = "Roll Max";
-}
-
-void autoCode::waypointStateKeyMapping()
-{
-	WPmap[WPstateNew] = "To be visited";
-	WPmap[WPstateOld] = "Visited";
-	WPmap[WPstateCurrent] = "Driving to now";
-	WPmap[WPstateSkipped] = "Skipped";
-}
-
-void autoCode::waypointScienceKeyMapping()
-{
-	WSmap[WPscienceNone] = "No Science";
-	WSmap[WPsciencePanorama] = "Panorama";
-	WSmap[WPscienceSpectra] = "Spectra";
-	WSmap[WPsciencePanoramaAndSpectra] = "Pan and Spectra";
-}
-
-void autoCode::setComboWaypointList()
-{
-	combo_wpSelect->clear();
-	for(int i = 0; i < sr2->waypointList.size(); ++i)
-	{
-		combo_wpSelect->addItem(QString::number(sr2->waypointList[i].uuid),QVariant(i));
-	}
-}
-
-void autoCode::setComboScienceList()
-{
-	QMapIterator<int, QString> i(WSmap);
-	
-	while(i.hasNext()){
-		i.next();
-		combo_science->addItem(i.value(), QVariant(i.key()));
-	}
-}
-
-void autoCode::on_combo_wpSelect_activated(int index)
-{
-	currentWaypointDisplay = false;
-	updateGUI();
-	if(autoRunning) QTimer::singleShot(5000,this, SLOT(displayCurrentWaypoint()));
-}
-
-void autoCode::updateGUI()
-{
-	label_state->setText(RSmap[state]);
-	label_error->setText(REmap[error]);
-	label_wpCount->setText(QString::number(wpIndex));
-	
-	if(blockedDirection == 0.0) label_obstDirection->setText("No Obstacles");
-	else label_obstDirection->setText(QString::number(blockedDirection,'f',4));
-	
-	int i;
-	if(currentWaypointDisplay) {
-		i = wpIndex;
-		combo_wpSelect->setCurrentIndex(i);
-	}
-	else i = combo_wpSelect->currentIndex();
-	
-	WayPoint w = sr2->waypointList[i];
-	label_wpState->setText(WPmap[w.state]);
-	label_wpScience->setText(WSmap[w.science]);
-	label_wpPosition->setText(QString("(%1 ,%2 ,%3)")
-								.arg(w.position.x,0,'f',2)
-								.arg(w.position.y,0,'f',2)
-								.arg(w.position.z,0,'f',2));
-	label_wpDistance->setText(QString::number(distanceToWaypoint(i),'f',3));
-	label_debug->setText(QString::number(expectedDistance));
-}
-
-void autoCode::displayCurrentWaypoint()
-{
-	currentWaypointDisplay = true;
-	updateGUI();
-}
-
-void autoCode::on_button_add_waypoint_clicked()
-{
-	button_add_waypoint->setEnabled(false);
-}
-
-void autoCode::on_button_done_adding_clicked()
-{
-	sr2->addWaypointAt(lineEdit_uuid->text().toInt()
-		,lineEdit_xPosition->text().toFloat()
-		,lineEdit_yPosition->text().toFloat()
-		,WPstateNew
-		,(WPscience)combo_science->itemData(combo_science->currentIndex()).toInt()
-		,combo_wpSelect->currentIndex()+1);
-	
-	setComboWaypointList();
-	button_add_waypoint->setEnabled(true);
-}

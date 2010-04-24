@@ -1,17 +1,15 @@
 #ifndef AUTOCODE_H
 #define AUTOCODE_H
 
-#include <QtGui>
-#include "ui_autoCode.h"
 #include "sr2rover.h"
 #include "laserscanner.h"
 #include "utility/definitions.h"
 
-class autoCode : public QWidget, private Ui::autoCode
+class autoCode : public QObject
 {
 	Q_OBJECT
 	public:
-		autoCode(SR2rover *bot, QWidget *parent = 0);
+		autoCode(SR2rover *bot,QList<WayPoint> *list);
 		~autoCode();
 		void goAutonomous();
 		void stopAutonomous(RoverState rs);
@@ -19,20 +17,10 @@ class autoCode : public QWidget, private Ui::autoCode
 		int getCurrentWaypoint() { return wpIndex; }
 
 	public slots:
-		void on_button_add_waypoint_clicked();
-		void on_button_done_adding_clicked();
-		void on_button_running_clicked(bool checked = false);
 		void moveToWaypoint();
-		void on_combo_wpSelect_activated(int index);
-		void displayCurrentWaypoint();
 		void quickObstacleCheck();
-		void raise();
-	
-	signals:
-		void GUIUpdate();
 			
 	protected:
-		void closeEvent(QCloseEvent *event);
 		float	POINTTURNSPEED;
 		float	POINTTURNANGLE;
 		float	TURNMULTIPLIER;	
@@ -52,16 +40,12 @@ class autoCode : public QWidget, private Ui::autoCode
 
 	private:
 		SR2rover 			*sr2;
-		bool				autoRunning;
+		QList<WayPoint>		*WPlist;
+		bool				running;
 		RoverState 			state;
 		RoverError			error;
 		int					wpIndex;
 		WayPoint 			currentWaypoint;
-		bool				currentWaypointDisplay;
-		QMap<int, QString>	RSmap;
-		QMap<int, QString>	REmap;
-		QMap<int, QString>  WPmap;
-		QMap<int, QString>	WSmap;
 		float				expectedDistance;
 		float				blockedDirection;
 		btVector3			lastBlockedPosition;
@@ -77,15 +61,9 @@ class autoCode : public QWidget, private Ui::autoCode
 		void getPanelHeights(float* heights);
 		bool checkForObstacles(float distTo);
 		void avoidingTurn();
-		void roverStateKeyMapping();
-		void roverErrorKeyMapping();
-		void waypointStateKeyMapping();
-		void waypointScienceKeyMapping();
-		void setComboWaypointList();
-		void setComboScienceList();
-		
-	private slots:
-		void updateGUI();
+	
+	signals:
+		void stateUpdate();
 };
 
 #endif //AUTOCODE_H
