@@ -5,7 +5,7 @@ waypointTool::waypointTool(QWidget *parent)
 QWidget(parent)
 {
 	setupUi(this);
-	move(20,100);
+	move(25,260);
 	QWidget::setWindowFlags(Qt::Window | Qt::WindowStaysOnTopHint);
 	setWindowTitle("Waypoint Editor");
 	
@@ -44,7 +44,13 @@ void waypointTool::setComboScienceList()
 		comboScience->addItem(i.value(), QVariant(i.key()));
 	}
 }
-
+void waypointTool::waypointStateKeyMapping()
+{
+	WPmap[WPstateNew] = "To be visited";
+	WPmap[WPstateOld] = "Visited";
+	WPmap[WPstateCurrent] = "Driving to now";
+	WPmap[WPstateSkipped] = "Skipped";
+}
 void waypointTool::updateComboWaypointList() // clears then fills the combobox
 {
 	comboWpSelect->clear();
@@ -92,9 +98,8 @@ void waypointTool::on_buttonAdd_clicked()
 	wp.science = WPscienceNone;
 	
 	cIndex++;
-	WPlist->insert(cIndex,wp);
+	emit addedWP(wp,cIndex);
 	updateComboWaypointList();
-	emit addedWP();
 }
 
 void waypointTool::on_buttonDelete_clicked()
@@ -117,5 +122,44 @@ void waypointTool::edited()
 	wp.science = (WPscience)comboScience->currentIndex();
 	wp.position.x = lineEditPositionX->text().toFloat();
 	wp.position.y = lineEditPositionY->text().toFloat();
-	WPlist->replace(cIndex,wp);	
+	WPlist->replace(cIndex,wp);
+	emit editedWP(cIndex);
 }
+
+// void navigationTool::displayCurrentWaypoint()
+// {
+// 	currentWaypointDisplay = true;
+// 	updateGUI();
+// }
+// 
+// void navigationTool::on_comboWpSelect_activated(int index)
+// {
+// 	updateGUI();
+// 	if(buttonRunning->isChecked()) QTimer::singleShot(5000,this, SLOT(displayCurrentWaypoint()));
+// }
+// 
+// void navigationTool::updateGUI()
+// {
+// 	labelState->setText(RSmap[state]);
+// 	label_error->setText(REmap[error]);
+// 	label_wpCount->setText(QString::number(wpIndex));
+// 	
+// 	if(blockedDirection == 0.0) label_obstDirection->setText("No Obstacles");
+// 	else label_obstDirection->setText(QString::number(blockedDirection,'f',4));
+// 	
+// 	int i;
+// 	if(currentWaypointDisplay) {
+// 		i = wpIndex;
+// 		combo_wpSelect->setCurrentIndex(i);
+// 	}
+// 	else i = combo_wpSelect->currentIndex();
+// 	
+// 	WayPoint w = sr2->waypointList[i];
+// 	label_wpState->setText(WPmap[w.state]);
+// 	label_wpScience->setText(WSmap[w.science]);
+// 	label_wpPosition->setText(QString("(%1, %2, %3)")
+// 								.arg(w.position.x,0,'f',2)
+// 								.arg(w.position.y,0,'f',2)
+// 								.arg(w.position.z,0,'f',2));
+// 	label_wpDistance->setText(QString::number(distanceToWaypoint(i),'f',3));
+// }

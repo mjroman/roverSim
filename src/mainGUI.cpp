@@ -31,7 +31,8 @@ m_wTool(this)
 // rover menu
 	connect(actionNew_Rover, SIGNAL(triggered()), this, SLOT(newRover()));
 	connect(actionShow_Waypoint_Editor, SIGNAL(triggered()), this, SLOT(waypointSetup()));
-	
+	connect(actionShow_Rover_Info, SIGNAL(triggered()), SController, SLOT(showNavTool()));
+	actionShow_Rover_Info->setEnabled(false);
 // setup the rover view menu
 	connect(actionFree_View, SIGNAL(triggered()), this, SLOT(cameraFreeView()));
 	connect(actionRover_Center, SIGNAL(triggered()), this, SLOT(cameraRoverCenter()));
@@ -58,7 +59,8 @@ m_wTool(this)
     // tool bar terrain scale update
     connect(&m_tTool, SIGNAL(scaleUpdate()), this, SLOT(rescaleGround()));
 	// tool bar add waypoint update
-	connect(&m_wTool, SIGNAL(addedWP()), SController, SLOT(setWaypointGroundHeight()));
+	connect(&m_wTool, SIGNAL(addedWP(WayPoint,int)), SController, SLOT(addWaypointAt(WayPoint,int)));
+	connect(&m_wTool, SIGNAL(editedWP(int)), SController, SLOT(editWaypoint(int)));
 
 // server connections
 	connect(&m_tcpServer, SIGNAL(newConnection()),this, SLOT(serverAcceptConnect()));
@@ -151,8 +153,9 @@ void MainGUI::removeAllObstacles()
 
 void MainGUI::newRover()
 {
-	SController->newRover();
+	SController->newRover(this);
 	menuRoverView->setEnabled(true);
+	actionShow_Rover_Info->setEnabled(true);
 }
 
 void MainGUI::waypointSetup()
@@ -223,7 +226,7 @@ void MainGUI::keyPressEvent(QKeyEvent *event)
         switch(event->key()){
 		case 'A':
 			{
-				SController->getAutoNav()->toggleAutonomous();
+				//SController->getAutoNav()->toggleAutonomous();
 				break;
 			}
         case 'B':

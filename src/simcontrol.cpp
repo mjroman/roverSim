@@ -32,7 +32,7 @@ m_obstDensity(5)
 	//sky = new skydome(glView);
 	
 	// add a few test waypoints
-	addWaypointAt(657,90.0,90.0);
+	addWaypointAt(657,10.0,10.0);
 	addWaypointAt(658,1.0,4.0);
 	//addWaypointAt(535,25.0,15.0);
 	//addWaypointAt(657,6.0,14.0);
@@ -193,7 +193,7 @@ bool simControl::removeRover()
     return false;
 }
 
-void simControl::newRover()
+void simControl::newRover(QWidget* parent)
 {
 	if(autoNav) delete autoNav;
 	if(!ground) return;
@@ -203,7 +203,12 @@ void simControl::newRover()
 	this->setWaypointGroundHeight();
 	
 	sr2->placeRobotAt(btVector3(1,1,ground->terrainHeightAt(btVector3(1,1,0))));
-	autoNav = new autoCode(sr2, &waypointList);
+	autoNav = new autoCode(sr2, &waypointList, parent);
+}
+
+void simControl::showNavTool()
+{
+	if(autoNav) autoNav->show();
 }
 
 void simControl::setWaypointGroundHeight()
@@ -215,6 +220,20 @@ void simControl::setWaypointGroundHeight()
 		waypointList[i].position.z = ground->terrainHeightAt(position);
 		i++;
 	}
+}
+
+void simControl::addWaypointAt(WayPoint wp, int index)
+{
+	wp.position.z = ground->terrainHeightAt(btVector3(wp.position.x,wp.position.y,0));
+	if(index<0)waypointList << wp;
+	else waypointList.insert(index,wp);
+}
+
+void simControl::editWaypoint(int index)
+{
+	WayPoint wp = waypointList[index];
+	wp.position.z = ground->terrainHeightAt(btVector3(wp.position.x,wp.position.y,0));
+	waypointList.replace(index,wp);
 }
 
 void simControl::addWaypointAt(int uuid, float x,float y, WPstate st, WPscience sc,int i)

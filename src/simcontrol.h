@@ -74,7 +74,10 @@ class simControl : public QObject
 		void openNewGround(QString filename);
 		void flattenGround();
 		void setWaypointGroundHeight();
+		void addWaypointAt(WayPoint wp, int index);
+		void editWaypoint(int index);
 		
-		void newRover();
+		void newRover(QWidget* parent);
+		void showNavTool();
 };
 #endif  //SIMCONTROL_H

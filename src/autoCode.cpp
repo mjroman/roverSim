@@ -5,10 +5,25 @@
 *  	Copyright 2008 University of Oklahoma. All rights reserved.
 */
 
-autoCode::autoCode(SR2rover *bot,QList<WayPoint> *list)
+autoCode::autoCode(SR2rover *bot,QList<WayPoint> *list, QWidget* parent)
 :
-sr2(bot)
+QWidget(parent),
+sr2(bot),
+running(false),
+state(RSInTeleopMode),
+error(RENone),
+WPlist(list),
+wpIndex(0),
+wpRange(0),
+expectedDistance(0),
+blockedDirection(0),
+lastBlockedDirection(0)
 {	
+	setupUi(this);
+	move(20,80);
+	setWindowFlags(Qt::Window | Qt::WindowStaysOnTopHint);
+	setWindowTitle("Navigation Info.");
+	
 	POINTTURNSPEED = 6;
 	POINTTURNANGLE = DEGTORAD(30);
 	TURNMULTIPLIER = 6;
@@ -26,11 +41,11 @@ sr2(bot)
 	GOPASTDISTANCE = 3;
 	PATHEFFICIENCY = 0.3; 
 	
-	wpIndex = 0;
-	WPlist = list;
+	roverStateKeyMapping();
+	roverErrorKeyMapping();
 	
 	stopAutonomous(RSInTeleopMode);
-	error = RENone;
+	show();
 }
 
 autoCode::~autoCode()
@@ -94,34 +109,29 @@ void autoCode::goAutonomous()
 	
 	currentWaypoint = WPlist->at(wpIndex);
 	currentWaypoint.state = WPstateCurrent;
-	WPlist->replace(wpIndex, currentWaypoint);
+	WPlist->replace(wpIndex, currentWaypoint);	
 	
-	connect(sr2, SIGNAL(updated()),this, SLOT(moveToWaypoint()));
-	
-	currentWaypoint = WPlist->at(wpIndex);
 	running = true;
 	state = RSMovingTowardsWaypoint; // reset the rover state
 	error = RENone;	// reset the rover error
-	lastBlockedDirection = 0;
 	expectedDistance = sr2->odometer + (1+PATHEFFICIENCY) * distanceToWaypoint(wpIndex); // reset the expected distance
+	lastBlockedDirection = 0;
+	
+	connect(sr2, SIGNAL(updated()),this, SLOT(moveToWaypoint()));
+	updateTool();
+	buttonRunning->setText("Stop Auto");
 }
 
 void autoCode::stopAutonomous(RoverState rs)
 {
 	sr2->stopRobot();
-	// disconnect from sr2 update signal
-	disconnect(sr2, SIGNAL(updated()),this,SLOT(moveToWaypoint()));
-	
 	running = false;
 	state = rs;	
-}
-
-void autoCode::toggleAutonomous()
-{
-	if(running) 
-		stopAutonomous(RSInTeleopMode);
-	else
-		goAutonomous();
+	
+	disconnect(sr2, SIGNAL(updated()),this,SLOT(moveToWaypoint()));
+	updateTool();
+	buttonRunning->setText("Go Auto");
+	buttonRunning->setChecked(false);
 }
 
 /////////////////////////////////////////
@@ -160,7 +170,7 @@ void autoCode::driveToward(float relHeading,float distTo)
 /////////////
 void autoCode::moveToWaypoint()
 {
-	float wpRange = distanceToWaypoint(wpIndex);
+	wpRange = distanceToWaypoint(wpIndex);
 	
 	// if the rover is close enought to the waypoint consider it complete
 	// set the waypoint as old and move to the next one
@@ -176,7 +186,7 @@ void autoCode::moveToWaypoint()
 			// set the expected drive distance to the new waypoint
 			expectedDistance = sr2->odometer + (1.0+PATHEFFICIENCY) * distanceToWaypoint(wpIndex);
 			state = RSReachedWaypoint;
-			emit stateUpdate();
+			updateTool();
 			return;
 		}
 		else{ // waypoint list is complete should be at goal or no plan
@@ -228,7 +238,7 @@ void autoCode::moveToWaypoint()
 	if(blockedDirection < 0.0) lastBlockedDirection = -1;
 	else lastBlockedDirection = 1;
 	
-	emit stateUpdate();
+	updateTool();
 }
 
 /////////////////////////////////////////
@@ -329,6 +339,7 @@ void autoCode::quickObstacleCheck()
 	error = RENone;
 	// run the obstacle check function where the waypoint is 3.0 meters away
 	checkForObstacles(3.0);
+	updateTool();
 }
 
 /////////////////////////////////////////
@@ -370,4 +381,50 @@ void autoCode::avoidingTurn()
 	}
 }
 
+
+void autoCode::updateTool()
+{	
+	labelState->setText(RSmap[state]);
+	labelError->setText(REmap[error]);
+	labelWpID->setText(QString::number(currentWaypoint.uuid));
+	labelWpDistance->setText(QString::number(wpRange,'f',3));
+	if(blockedDirection == 0.0) labelObstDirection->setText("No Obstacles");
+	else labelObstDirection->setText(QString::number(blockedDirection));
+}
+
+void autoCode::on_buttonRunning_clicked(bool checked)
+{
+	if(checked)
+		goAutonomous();
+	else
+		stopAutonomous(RSInTeleopMode);
+}
+
+/////////////////////////////////////////
+// string key mappings
+/////////////
+void autoCode::roverStateKeyMapping()
+{
+	RSmap[RSStopped] = "Rover Stopped";
+	RSmap[RSMovingTowardsWaypoint] = "Moving toward Waypoint";
+	RSmap[RSNoRemainingWaypoints] = "No remaining Waypoints";
+	RSmap[RSGoingToSleep] = "Going to Sleep";
+	RSmap[RSWakingFromSleep] = "Waking from Sleep";
+	RSmap[RSDoingScience] = "Doing Science";
+	RSmap[RSCallingForHelp] = "Calling for Help";
+	RSmap[RSInTeleopMode] = "Teleoperation Mode";
+	RSmap[RSAvoidingNearbyObstacles] = "Avoiding Near Obstacles";
+	RSmap[RSAvoidingDistantObstacles] = "Avoiding Far Obstacles";
+	RSmap[RSReachedWaypoint] = "Waypoint Reached";
+	RSmap[RSGoingPastObstacles] = "Driving Past Obstacles";
+}
+void autoCode::roverErrorKeyMapping()
+{
+	REmap[RENone] = "---";
+	REmap[REPosition] = "Position Error";
+	REmap[REStall] = "Wheel Stall";
+	REmap[REProgress] = "No Progress";
+	REmap[REPitch] = "Pitch Max";
+	REmap[RERoll] = "Roll Max";
+}
 

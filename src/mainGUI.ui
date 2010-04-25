@@ -746,6 +746,7 @@
     </widget>
     <addaction name="actionNew_Rover"/>
     <addaction name="menuRoverView"/>
+    <addaction name="actionShow_Rover_Info"/>
     <addaction name="separator"/>
     <addaction name="actionShow_Waypoint_Editor"/>
    </widget>
@@ -870,7 +871,12 @@
   </action>
   <action name="actionShow_Waypoint_Editor">
    <property name="text">
-    <string>Show Waypoint Info.</string>
+    <string>Waypoint Editor</string>
+   </property>
+  </action>
+  <action name="actionShow_Rover_Info">
+   <property name="text">
+    <string>Show Rover Info</string>
    </property>
   </action>
  </widget>

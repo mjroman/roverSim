@@ -1,24 +1,27 @@
 #ifndef AUTOCODE_H
 #define AUTOCODE_H
 
+#include <QtGui>
+#include "ui_navigationtool.h"
 #include "sr2rover.h"
 #include "laserscanner.h"
 #include "utility/definitions.h"
 
-class autoCode : public QObject
+class autoCode : public QWidget, private Ui::navigationtool
 {
 	Q_OBJECT
 	public:
-		autoCode(SR2rover *bot,QList<WayPoint> *list);
+		autoCode(SR2rover *bot,QList<WayPoint> *list, QWidget* parent = 0);
 		~autoCode();
+		int getCurrentWaypoint() { return wpIndex; }
+		
+	public slots:
 		void goAutonomous();
 		void stopAutonomous(RoverState rs);
-		void toggleAutonomous();
-		int getCurrentWaypoint() { return wpIndex; }
-
-	public slots:
 		void moveToWaypoint();
 		void quickObstacleCheck();
+		void on_buttonRunning_clicked(bool checked = false);
+		void updateTool();
 			
 	protected:
 		float	POINTTURNSPEED;
@@ -40,16 +43,18 @@ class autoCode : public QObject
 
 	private:
 		SR2rover 			*sr2;
-		QList<WayPoint>		*WPlist;
 		bool				running;
 		RoverState 			state;
 		RoverError			error;
+		QList<WayPoint>		*WPlist;
 		int					wpIndex;
 		WayPoint 			currentWaypoint;
+		float				wpRange;
 		float				expectedDistance;
 		float				blockedDirection;
 		btVector3			lastBlockedPosition;
 		int					lastBlockedDirection;
+		
 
 		void callForHelp(RoverError errCode);
 		float compassToCartRadians(float rad);
@@ -61,9 +66,12 @@ class autoCode : public QObject
 		void getPanelHeights(float* heights);
 		bool checkForObstacles(float distTo);
 		void avoidingTurn();
-	
-	signals:
-		void stateUpdate();
+		
+		QMap<int, QString>	RSmap;	// rover state map
+		QMap<int, QString>	REmap;	// rover error map
+
+		void roverStateKeyMapping();
+		void roverErrorKeyMapping();
 };
 
 #endif //AUTOCODE_H

@@ -73,7 +73,8 @@ HEADERS += src/mainGUI.h \
 FORMS += src/mainGUI.ui \
     src/tools/terraintool.ui \
     src/tools/obstacletool.ui \
-	src/tools/waypointtool.ui
+	src/tools/waypointtool.ui \
+	src/tools/navigationtool.ui
 	
 LIBS += -framework BulletCollision \
     -framework BulletDynamics \

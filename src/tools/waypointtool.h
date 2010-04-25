@@ -22,15 +22,19 @@ class waypointTool : public QWidget, private Ui::waypointtool
 		void edited();
 
 	signals:
-		void addedWP();
+		void addedWP(WayPoint wp,int index);
+		void editedWP(int index);
 
 	private:
 		int					cIndex;
+		bool				currentWaypointDisplay;
 		QList<WayPoint>		*WPlist;
-		QMap<int, QString>	WSmap;
-
+		
 		void waypointScienceKeyMapping();
+		void waypointStateKeyMapping();
 		void setComboScienceList();
+		QMap<int, QString>  WPmap;	// waypoint state map
+		QMap<int, QString>	WSmap;	// waypoint science map
 };
 
 #endif //WAYPOINTTOOL_H
