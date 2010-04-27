@@ -255,8 +255,10 @@ void simGLView::drawWorld()
     btDynamicsWorld *pWorld = arena->getDynamicsWorld();
     const int	numObjects = pWorld->getNumCollisionObjects();
 	
-
-    glColor3f(0.02f,0.52f,0.51f);
+	glColor3f(1,0,0);
+    //glColor3f(0.02f,0.52f,0.51f);	// tron blue
+	//glColor3f(0.1f,0.0f,0.5f); // dark blue
+	//glColor3f(0.7,0.0,0.7);	// dark purple
     //glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
     //glMaterialfv(GL_FRONT, GL_EMISSION, obstacleEmission);
     for(int i=0;i<numObjects;i++){
@@ -312,7 +314,7 @@ void simGLView::drawWorld()
                                 cylinder(halfDims.y(),halfDims.x(),10);
 				break;
 			}
-                        case STATIC_PLANE_PROXYTYPE:
+            case STATIC_PLANE_PROXYTYPE:
                         {
 				const btStaticPlaneShape* staticPlaneShape = static_cast<const btStaticPlaneShape*>(colisShape);
 				btScalar planeConst = staticPlaneShape->getPlaneConstant();
@@ -337,16 +339,16 @@ void simGLView::drawWaypoints()
 		WayPoint wp = WPlist->at(i);
 		switch (wp.state){
 			case WPstateNew:
-				glColor3f(1,1,0);
+				glColor3f(1,1,1);
 				break;
 			case WPstateOld:
-				glColor3f(0,1,0);
+				glColor3f(0.7,0.0,0.7);
 				break;
 			case WPstateCurrent:
-				glColor3f(0,0,1);
+				glColor3f(0,1,0);
 				break;
 			case WPstateSkipped:
-				glColor3f(1,0,0);
+				glColor3f(1,1,0);
 				break;
 			default:
 				glColor3f(0,1,1);

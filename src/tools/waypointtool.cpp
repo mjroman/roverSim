@@ -5,7 +5,7 @@ waypointTool::waypointTool(QWidget *parent)
 QWidget(parent)
 {
 	setupUi(this);
-	move(25,260);
+	move(25,380);
 	QWidget::setWindowFlags(Qt::Window | Qt::WindowStaysOnTopHint);
 	setWindowTitle("Waypoint Editor");
 	

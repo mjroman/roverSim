@@ -5,6 +5,9 @@
 *  	Copyright 2008 University of Oklahoma. All rights reserved.
 */
 
+#define OBSTNAVGROUP	"ObstacleNav" // settings group key value
+
+
 autoCode::autoCode(SR2rover *bot,QList<WayPoint> *list, QWidget* parent)
 :
 QWidget(parent),
@@ -17,29 +20,21 @@ wpIndex(0),
 wpRange(0),
 expectedDistance(0),
 blockedDirection(0),
-lastBlockedDirection(0)
-{	
+lastBlockedDirection(0),
+// location of the settings file ~/.config/OUengineering/Rover_Sim.ini
+simSettings(QSettings::IniFormat,QSettings::UserScope,"OUengineering","Rover_Sim")
+{
 	setupUi(this);
-	move(20,80);
+	move(20,55);
 	setWindowFlags(Qt::Window | Qt::WindowStaysOnTopHint);
 	setWindowTitle("Navigation Info.");
 	
-	POINTTURNSPEED = 6;
-	POINTTURNANGLE = DEGTORAD(30);
-	TURNMULTIPLIER = 6;
-	CLOSEENOUGH = 1;
-	TURNACCURACYLIMIT = DEGTORAD(4);
-	ROVERCRUISESPEED = 10;
-	BODYDIST = 1.5;
-	PROFILEOBSTACLEMAX = 0.15;
-	MAXPITCH = DEGTORAD(15.0);
-	MAXROLL = DEGTORAD(20.0);
-	PITCHDOWNIGNOREDISTOBSTACLES = DEGTORAD(10);
-	BODYTOOCLOSE = 0.5;
-	PANELOBSTACLEMAX = 0.15;
-	TURNFACTOR = 0.5;
-	GOPASTDISTANCE = 3;
-	PATHEFFICIENCY = 0.3; 
+	initSettingsNames();
+	
+	if(!QFile::exists(simSettings.fileName())) initSettings();
+	
+	parameterListInit();
+	tableSetup();
 	
 	roverStateKeyMapping();
 	roverErrorKeyMapping();
@@ -92,7 +87,7 @@ float autoCode::roverWaypointHeading()
 	if(relHeading > PI) return relHeading-TWOPI;
 	return relHeading;
 }
-
+// Returns the distacne from the rover position to i'th waypoint in list
 float autoCode::distanceToWaypoint(int i)
 {
 	Vertex rover;
@@ -102,38 +97,6 @@ float autoCode::distanceToWaypoint(int i)
 	return distBtwVerts(WPlist->at(i).position,rover);
 }
 
-void autoCode::goAutonomous()
-{
-	if(WPlist->isEmpty()) return;
-	if(wpIndex > WPlist->size()) wpIndex = WPlist->size()-1;
-	
-	currentWaypoint = WPlist->at(wpIndex);
-	currentWaypoint.state = WPstateCurrent;
-	WPlist->replace(wpIndex, currentWaypoint);	
-	
-	running = true;
-	state = RSMovingTowardsWaypoint; // reset the rover state
-	error = RENone;	// reset the rover error
-	expectedDistance = sr2->odometer + (1+PATHEFFICIENCY) * distanceToWaypoint(wpIndex); // reset the expected distance
-	lastBlockedDirection = 0;
-	
-	connect(sr2, SIGNAL(updated()),this, SLOT(moveToWaypoint()));
-	updateTool();
-	buttonRunning->setText("Stop Auto");
-}
-
-void autoCode::stopAutonomous(RoverState rs)
-{
-	sr2->stopRobot();
-	running = false;
-	state = rs;	
-	
-	disconnect(sr2, SIGNAL(updated()),this,SLOT(moveToWaypoint()));
-	updateTool();
-	buttonRunning->setText("Go Auto");
-	buttonRunning->setChecked(false);
-}
-
 /////////////////////////////////////////
 // Gets the rover turning the requested amount (large turns are done as point turns. Small turns done gradually).
 // this function just sets the speeds and returns. relHeading = turn angle relative to the rover.
@@ -141,23 +104,23 @@ void autoCode::stopAutonomous(RoverState rs)
 void autoCode::driveToward(float relHeading,float distTo)
 { 
 	float leftSpeed,rightSpeed;
-	if(fabs(relHeading) < TURNACCURACYLIMIT){ // high speed forward
-		distTo -= CLOSEENOUGH;
-		if(distTo < 1) leftSpeed = rightSpeed = (ROVERCRUISESPEED - POINTTURNSPEED)*distTo + POINTTURNSPEED;
-		else leftSpeed = rightSpeed = ROVERCRUISESPEED;
+	if(fabs(relHeading) < TURNACCURACYLIMIT.stuff.toFloat()){ // high speed forward
+		distTo -= CLOSEENOUGH.stuff.toFloat();
+		if(distTo < 1) leftSpeed = rightSpeed = (ROVERCRUISESPEED.stuff.toFloat() - POINTTURNSPEED.stuff.toFloat())*distTo + POINTTURNSPEED.stuff.toFloat();
+		else leftSpeed = rightSpeed = ROVERCRUISESPEED.stuff.toFloat();
 		
-		if(relHeading > 0.0) rightSpeed = rightSpeed - (relHeading/TURNACCURACYLIMIT)*5;
-		else leftSpeed = leftSpeed + (relHeading/TURNACCURACYLIMIT)*5;
+		if(relHeading > 0.0) rightSpeed = rightSpeed - (relHeading/TURNACCURACYLIMIT.stuff.toFloat())*5;
+		else leftSpeed = leftSpeed + (relHeading/TURNACCURACYLIMIT.stuff.toFloat())*5;
 	}
-	else if(fabs(relHeading) < POINTTURNANGLE){ // low speed turn
-		leftSpeed = rightSpeed = POINTTURNSPEED;
-		if(relHeading > 0.0) rightSpeed = rightSpeed - (relHeading/POINTTURNANGLE)*TURNMULTIPLIER;
-		else leftSpeed = leftSpeed + (relHeading/POINTTURNANGLE)*TURNMULTIPLIER;
+	else if(fabs(relHeading) < POINTTURNANGLE.stuff.toFloat()){ // low speed turn
+		leftSpeed = rightSpeed = POINTTURNSPEED.stuff.toFloat();
+		if(relHeading > 0.0) rightSpeed = rightSpeed - (relHeading/POINTTURNANGLE.stuff.toFloat())*TURNMULTIPLIER.stuff.toFloat();
+		else leftSpeed = leftSpeed + (relHeading/POINTTURNANGLE.stuff.toFloat())*TURNMULTIPLIER.stuff.toFloat();
 	}
 	else{	// point turn
-		leftSpeed = rightSpeed = POINTTURNSPEED;
-		if(relHeading > 0.0) rightSpeed = -POINTTURNSPEED;// right turn
-		else leftSpeed = -POINTTURNSPEED;// left turn
+		leftSpeed = rightSpeed = POINTTURNSPEED.stuff.toFloat();
+		if(relHeading > 0.0) rightSpeed = -POINTTURNSPEED.stuff.toFloat();// right turn
+		else leftSpeed = -POINTTURNSPEED.stuff.toFloat();// left turn
 	}	
 	sr2->setRightSpeed(rightSpeed);
 	sr2->setLeftSpeed(leftSpeed);	
@@ -174,7 +137,7 @@ void autoCode::moveToWaypoint()
 	
 	// if the rover is close enought to the waypoint consider it complete
 	// set the waypoint as old and move to the next one
-	if(wpRange < CLOSEENOUGH){ 	
+	if(wpRange < CLOSEENOUGH.stuff.toFloat()){ 	
 		currentWaypoint.state = WPstateOld;
 		WPlist->replace(wpIndex, currentWaypoint);
 		wpIndex++;
@@ -184,7 +147,7 @@ void autoCode::moveToWaypoint()
 			currentWaypoint.state = WPstateCurrent;
 			WPlist->replace(wpIndex, currentWaypoint);
 			// set the expected drive distance to the new waypoint
-			expectedDistance = sr2->odometer + (1.0+PATHEFFICIENCY) * distanceToWaypoint(wpIndex);
+			expectedDistance = sr2->odometer + (1.0+PATHEFFICIENCY.stuff.toFloat()) * distanceToWaypoint(wpIndex);
 			state = RSReachedWaypoint;
 			updateTool();
 			return;
@@ -216,7 +179,7 @@ void autoCode::moveToWaypoint()
 	// drive past obstacle
 	else if(state == RSGoingPastObstacles){
 		// continue driving to the waypoint if past the obstacle
-		if(lastBlockedPosition.distance2(sr2->position) > GOPASTDISTANCE){
+		if(lastBlockedPosition.distance2(sr2->position) > GOPASTDISTANCE.stuff.toFloat()){
 			lastBlockedDirection = 0;
 			state = RSMovingTowardsWaypoint;
 			driveToward(relTargetHeading,wpRange);
@@ -224,8 +187,8 @@ void autoCode::moveToWaypoint()
 		else{
 			// no obstacle in view so drive past it
 			if(state == RSGoingPastObstacles){
-				sr2->setRightSpeed(ROVERCRUISESPEED);
-				sr2->setLeftSpeed(ROVERCRUISESPEED);
+				sr2->setRightSpeed(ROVERCRUISESPEED.stuff.toFloat());
+				sr2->setLeftSpeed(ROVERCRUISESPEED.stuff.toFloat());
 			}
 		}
 	}
@@ -258,26 +221,26 @@ bool autoCode::checkForObstacles(float distTo)
 	blockedDirection = 0;
 	
 	//set to minimum of critDistance and BODYDIST
-	criticalDist = (criticalDist < BODYDIST) ? criticalDist : BODYDIST;
+	criticalDist = (criticalDist < BODYDIST.stuff.toFloat()) ? criticalDist : BODYDIST.stuff.toFloat();
 
 // check rover POSE SLOPE, roll and pitch to so it doesn't flip over	
 	// roll maxed out by itself is an emergency
-	if(fabs(sr2->roll) > MAXROLL){
+	if(fabs(sr2->roll) > MAXROLL.stuff.toFloat()){
 		blockedDirection = (sr2->roll > 0.0) ? 5 /*rolling LEFT*/ : -5 /*rolling RIGHT*/;
 		callForHelp(RERoll);
 		return false; // Roll is maxed out!!!!!!
 	}
-	else if(sr2->pitch > MAXPITCH){
+	else if(sr2->pitch > MAXPITCH.stuff.toFloat()){
 		aheadBlockedLong=1;
 		blockedDirection = (sr2->roll > 0.0) ? 5 /*rolling LEFT*/ : -5 /*rolling RIGHT*/;
 		slopeObstacle = 1;
 	}
 	
 // look for any BODY blocking obstacles directly in front of the rover
-	if(!slopeObstacle || (slopeObstacle && sr2->pitch > PITCHDOWNIGNOREDISTOBSTACLES)){
+	if(!slopeObstacle || (slopeObstacle && sr2->pitch > PITCHDOWNIGNOREDISTOBSTACLES.stuff.toFloat())){
 		for(i=0;i<size;i++){
 			// check for near obstacles
-			if(ranges[i] < BODYTOOCLOSE){
+			if(ranges[i] < BODYTOOCLOSE.stuff.toFloat()){
 				if(instShort) aheadBlockedShort = 1;
 				else instShort = 1;
 				// + is blocked on right, - is blocked on left
@@ -301,9 +264,9 @@ bool autoCode::checkForObstacles(float distTo)
 // look through PANEL laser points in front of right and left wheels for obstacles
 	for(i=1;i<5; i++){	// right wheel
 	//is there a rock or hole?
-		if((fabs(heights[i]) > PANELOBSTACLEMAX) 
-			&& (fabs(heights[i+1]) > PANELOBSTACLEMAX) 
-			&& (fabs(heights[i+2]) > PANELOBSTACLEMAX)){
+		if((fabs(heights[i]) > PANELOBSTACLEMAX.stuff.toFloat()) 
+			&& (fabs(heights[i+1]) > PANELOBSTACLEMAX.stuff.toFloat()) 
+			&& (fabs(heights[i+2]) > PANELOBSTACLEMAX.stuff.toFloat())){
 				if(instShort) aheadBlockedShort = 1;
 				else instShort = 1;
 				// + is blocked on right, - is blocked on left
@@ -312,9 +275,9 @@ bool autoCode::checkForObstacles(float distTo)
 	}
 	for(i=14;i>10; i--){  // left wheel
 //is there a rock or hole?
-		if((fabs(heights[i]) > PANELOBSTACLEMAX) 
-			&& (fabs(heights[i-1]) > PANELOBSTACLEMAX)
-			&& (fabs(heights[i-2]) > PANELOBSTACLEMAX)){
+		if((fabs(heights[i]) > PANELOBSTACLEMAX.stuff.toFloat()) 
+			&& (fabs(heights[i-1]) > PANELOBSTACLEMAX.stuff.toFloat())
+			&& (fabs(heights[i-2]) > PANELOBSTACLEMAX.stuff.toFloat())){
 				if(instShort)aheadBlockedShort=1;
 				else instShort = 1;
 				// + is blocked on right, - is blocked on left
@@ -333,7 +296,7 @@ bool autoCode::checkForObstacles(float distTo)
 	return true;
 }
 
-// checks for obstacles without driving to waypoint, used for debugging
+// Used for debugging, checks for obstacles without driving to waypoint
 void autoCode::quickObstacleCheck()
 {
 	error = RENone;
@@ -348,40 +311,74 @@ void autoCode::quickObstacleCheck()
 /////////////
 void autoCode::avoidingTurn()
 {
-	float closeTurnFactor = (TURNFACTOR > 0.0)? 0.0 : TURNFACTOR;
+	float closeTurnFactor = (TURNFACTOR.stuff.toFloat() > 0.0)? 0.0 : TURNFACTOR.stuff.toFloat();
 
 	// last block was to the left
 	if(lastBlockedDirection < 0){
 			// obstacle to the left or far off to the right
 		if(blockedDirection < 0.0 || (blockedDirection > 0.0 && state == RSAvoidingDistantObstacles)){
-			sr2->setLeftSpeed(ROVERCRUISESPEED);
-			sr2->setRightSpeed(ROVERCRUISESPEED*((state == RSAvoidingNearbyObstacles) ? closeTurnFactor : TURNFACTOR));
+			sr2->setLeftSpeed(ROVERCRUISESPEED.stuff.toFloat());
+			sr2->setRightSpeed(ROVERCRUISESPEED.stuff.toFloat()*((state == RSAvoidingNearbyObstacles) ? closeTurnFactor : TURNFACTOR.stuff.toFloat()));
 			return;
 		}
 			// obstacle close to the right
 		else if(blockedDirection > 0.0){
 			sr2->setLeftSpeed(0);
-			sr2->setRightSpeed(-ROVERCRUISESPEED);
+			sr2->setRightSpeed(-ROVERCRUISESPEED.stuff.toFloat());
 			return;
 		}
 	}
 	else{//last block was on right
 			// obstacle to the right or far off to the left
 		if(blockedDirection > 0.0 || (blockedDirection < 0.0 && state == RSAvoidingDistantObstacles)){
-			sr2->setRightSpeed(ROVERCRUISESPEED);
-			sr2->setLeftSpeed(ROVERCRUISESPEED*((state == RSAvoidingNearbyObstacles) ? closeTurnFactor : TURNFACTOR));
+			sr2->setRightSpeed(ROVERCRUISESPEED.stuff.toFloat());
+			sr2->setLeftSpeed(ROVERCRUISESPEED.stuff.toFloat()*((state == RSAvoidingNearbyObstacles) ? closeTurnFactor : TURNFACTOR.stuff.toFloat()));
 			return;
 		}
 			// obstacle close to the left
 		else if(blockedDirection < 0.0){
 			sr2->setRightSpeed(0);
-			sr2->setLeftSpeed(-ROVERCRUISESPEED);
+			sr2->setLeftSpeed(-ROVERCRUISESPEED.stuff.toFloat());
 			return;
 		}
 	}
 }
 
+void autoCode::goAutonomous()
+{
+	if(WPlist->isEmpty()) return;
+	if(wpIndex > WPlist->size()) wpIndex = WPlist->size()-1;
+	
+	currentWaypoint = WPlist->at(wpIndex);
+	currentWaypoint.state = WPstateCurrent;
+	WPlist->replace(wpIndex, currentWaypoint);	
+	
+	running = true;
+	state = RSMovingTowardsWaypoint; // reset the rover state
+	error = RENone;	// reset the rover error
+	expectedDistance = sr2->odometer + (1+PATHEFFICIENCY.stuff.toFloat()) * distanceToWaypoint(wpIndex); // reset the expected distance
+	lastBlockedDirection = 0;
+	
+	connect(sr2, SIGNAL(updated()),this, SLOT(moveToWaypoint()));
+	updateTool();
+	buttonRunning->setText("Stop Auto");
+}
 
+void autoCode::stopAutonomous(RoverState rs)
+{
+	sr2->stopRobot();
+	running = false;
+	state = rs;	
+	
+	disconnect(sr2, SIGNAL(updated()),this,SLOT(moveToWaypoint()));
+	updateTool();
+	buttonRunning->setText("Go Auto");
+	buttonRunning->setChecked(false);
+}
+
+/////////////////////////////////////////
+// GUI tool access functions
+/////////////
 void autoCode::updateTool()
 {	
 	labelState->setText(RSmap[state]);
@@ -391,7 +388,6 @@ void autoCode::updateTool()
 	if(blockedDirection == 0.0) labelObstDirection->setText("No Obstacles");
 	else labelObstDirection->setText(QString::number(blockedDirection));
 }
-
 void autoCode::on_buttonRunning_clicked(bool checked)
 {
 	if(checked)
@@ -428,3 +424,149 @@ void autoCode::roverErrorKeyMapping()
 	REmap[RERoll] = "Roll Max";
 }
 
+/////////////////////////////////////////
+// Parameter table widget setup
+/////////////
+void autoCode::parameterListInit()
+{
+	 // open a new group in the settings file
+	simSettings.beginGroup(OBSTNAVGROUP);
+	// set the parameter value from the settings file
+	MAXPITCH.stuff.setValue(simSettings.value(MAXPITCH.name,DEGTORAD(15.0)).toFloat());
+	// push the parameter onto the parameter list to be displayed in the table view
+	Plist << &MAXPITCH;
+	
+	MAXROLL.stuff.setValue(simSettings.value(MAXROLL.name,DEGTORAD(20.0)).toFloat());
+	Plist << &MAXROLL;
+	
+	ROVERCRUISESPEED.stuff.setValue(simSettings.value(ROVERCRUISESPEED.name,10.0).toFloat());
+	Plist << &ROVERCRUISESPEED;
+	
+	POINTTURNSPEED.stuff.setValue(simSettings.value(POINTTURNSPEED.name,6.0).toFloat()); 
+	Plist << &POINTTURNSPEED;
+	
+	POINTTURNANGLE.stuff.setValue(simSettings.value(POINTTURNANGLE.name,DEGTORAD(30)).toFloat());
+	Plist << &POINTTURNANGLE;
+	
+	TURNACCURACYLIMIT.stuff.setValue(simSettings.value(TURNACCURACYLIMIT.name,DEGTORAD(4)).toFloat());
+	Plist << &TURNACCURACYLIMIT;
+	
+	TURNMULTIPLIER.stuff.setValue(simSettings.value(TURNMULTIPLIER.name,6.0).toFloat());
+	Plist << &TURNMULTIPLIER;
+	
+	TURNFACTOR.stuff.setValue(simSettings.value(TURNFACTOR.name,0.5).toFloat());
+	Plist << &TURNFACTOR;
+	
+	GOPASTDISTANCE.stuff.setValue(simSettings.value(GOPASTDISTANCE.name,3.0).toFloat());
+	Plist << &GOPASTDISTANCE;
+	
+	CLOSEENOUGH.stuff.setValue(simSettings.value(CLOSEENOUGH.name,1.0).toFloat());
+	Plist << &CLOSEENOUGH;
+	
+	BODYDIST.stuff.setValue(simSettings.value(BODYDIST.name,1.5).toFloat());
+	Plist << &BODYDIST;
+	
+	BODYTOOCLOSE.stuff.setValue(simSettings.value(BODYTOOCLOSE.name,0.5).toFloat());
+	Plist << &BODYTOOCLOSE;
+	
+	PANELOBSTACLEMAX.stuff.setValue(simSettings.value(PANELOBSTACLEMAX.name,0.15).toFloat());
+	Plist << &PANELOBSTACLEMAX;
+	
+	PROFILEOBSTACLEMAX.stuff.setValue(simSettings.value(PROFILEOBSTACLEMAX.name,0.15).toFloat());
+	Plist << &PROFILEOBSTACLEMAX;
+	
+	PITCHDOWNIGNOREDISTOBSTACLES.stuff.setValue(simSettings.value(PITCHDOWNIGNOREDISTOBSTACLES.name,DEGTORAD(10)).toFloat());
+	Plist << &PITCHDOWNIGNOREDISTOBSTACLES;
+	
+	PATHEFFICIENCY.stuff.setValue(simSettings.value(PATHEFFICIENCY.name,0.3).toFloat());
+	Plist << &PATHEFFICIENCY;
+	simSettings.endGroup();
+	
+	qDebug() << simSettings.fileName() << simSettings.status() << simSettings.allKeys();
+}
+void autoCode::tableSetup()
+{
+	paramTableWidget->setColumnCount(2);
+	paramTableWidget->setColumnWidth(0,90);
+	paramTableWidget->setColumnWidth(1,130);
+	paramTableWidget->setRowCount(Plist.size()-1);
+	paramTableWidget->showGrid();
+	paramTableWidget->setAlternatingRowColors(true);
+	paramTableWidget->verticalHeader()->setResizeMode(QHeaderView::Fixed);
+	paramTableWidget->horizontalHeader()->setResizeMode(QHeaderView::Fixed);
+
+	QTableWidgetItem* item = new QTableWidgetItem("Parameter");
+	paramTableWidget->setHorizontalHeaderItem(0,item);
+	item = new QTableWidgetItem("Value");
+	paramTableWidget->setHorizontalHeaderItem(1,item);
+	
+	for(int i = 0; i < Plist.size(); ++i)
+	{
+		navParam* np = Plist[i];
+		item = new QTableWidgetItem((*np).name);
+		QFont ft = item->font();
+		ft.setPointSize(10);
+		item->setFont(ft);
+		item->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+		item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+		paramTableWidget->setItem(i,0,item);
+		QTableWidgetItem* data = new QTableWidgetItem();
+		data->setData(Qt::EditRole,(*np).stuff);
+		data->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+		paramTableWidget->setItem(i,1,data);
+	}
+	connect(paramTableWidget, SIGNAL(cellChanged(int,int)),this,SLOT(tableDataChange(int,int)));
+}
+void autoCode::tableDataChange(int row, int column)
+{
+	QTableWidgetItem* item = paramTableWidget->item(row,column);
+	navParam* np = Plist[row];
+	(*np).stuff = item->data(Qt::EditRole);
+	qDebug() << (*np).name;
+	simSettings.setValue(QString(OBSTNAVGROUP) + "/" + (*np).name,(*np).stuff);
+	simSettings.sync();
+}
+
+void autoCode::initSettings()
+{
+	simSettings.beginGroup(OBSTNAVGROUP); // open a new group in the settings file
+	simSettings.setValue(MAXPITCH.name,15.0);
+	simSettings.setValue(MAXROLL.name,20.0);
+	simSettings.setValue(ROVERCRUISESPEED.name,10);
+	simSettings.setValue(POINTTURNSPEED.name,6.0);
+	simSettings.setValue(POINTTURNANGLE.name,DEGTORAD(30));
+	simSettings.setValue(TURNACCURACYLIMIT.name,DEGTORAD(4));
+	simSettings.setValue(TURNMULTIPLIER.name,6.0);	
+	simSettings.setValue(TURNFACTOR.name,0.5);
+	simSettings.setValue(GOPASTDISTANCE.name,3.0);
+	simSettings.setValue(CLOSEENOUGH.name,1.0);
+	simSettings.setValue(BODYDIST.name,1.5);
+	simSettings.setValue(BODYTOOCLOSE.name,0.5);
+	simSettings.setValue(PANELOBSTACLEMAX.name,0.15);
+	simSettings.setValue(PROFILEOBSTACLEMAX.name,0.15);	
+	simSettings.setValue(PITCHDOWNIGNOREDISTOBSTACLES.name,DEGTORAD(10));
+	simSettings.setValue(PATHEFFICIENCY.name,0.3);
+	simSettings.endGroup();
+	simSettings.sync();
+}
+
+// set the stirng value of the parameters for settings and printing to GUI
+void autoCode::initSettingsNames()
+{
+	MAXPITCH.name = "MAX PITCH";
+	MAXROLL.name = "MAX ROLL";
+	ROVERCRUISESPEED.name = "CRUISE SPEED";
+	POINTTURNSPEED.name = "POINT TURN SPEED";
+	POINTTURNANGLE.name = "POINT TURN ANGLE";
+	TURNACCURACYLIMIT.name = "TURN ACCURACY";
+	TURNMULTIPLIER.name = "TURN MULTIPLIER";
+	TURNFACTOR.name = "TURN FACTOR";
+	GOPASTDISTANCE.name = "GO PAST OBST DISTANCE";
+	CLOSEENOUGH.name = "CLOSE ENOUGH";
+	BODYDIST.name = "BODY DISTANCE";
+	BODYTOOCLOSE.name = "BODY TOO CLOSE";
+	PANELOBSTACLEMAX.name = "PANEL OBST MAX";
+	PROFILEOBSTACLEMAX.name = "PROFILE OBST MAX";
+	PITCHDOWNIGNOREDISTOBSTACLES.name = "PITCH DOWN IGNORE";
+	PATHEFFICIENCY.name = "PATH EFFICIENCY";
+}

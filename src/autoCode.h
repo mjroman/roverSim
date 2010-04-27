@@ -2,10 +2,16 @@
 #define AUTOCODE_H
 
 #include <QtGui>
+#include <QSettings>
 #include "ui_navigationtool.h"
 #include "sr2rover.h"
 #include "laserscanner.h"
 #include "utility/definitions.h"
+
+typedef struct _navParam {
+	QString name;
+	QVariant stuff;
+}navParam;
 
 class autoCode : public QWidget, private Ui::navigationtool
 {
@@ -22,27 +28,29 @@ class autoCode : public QWidget, private Ui::navigationtool
 		void quickObstacleCheck();
 		void on_buttonRunning_clicked(bool checked = false);
 		void updateTool();
+		void tableDataChange(int row, int column);
 			
 	protected:
-		float	POINTTURNSPEED;
-		float	POINTTURNANGLE;
-		float	TURNMULTIPLIER;	
-		float	CLOSEENOUGH;
-		float 	TURNACCURACYLIMIT;
-		int		ROVERCRUISESPEED;
-		float 	BODYDIST;	
-		float	PROFILEOBSTACLEMAX;	
-		float 	MAXPITCH;
-		float   MAXROLL;
-		float   PITCHDOWNIGNOREDISTOBSTACLES;
-		float   BODYTOOCLOSE;
-		float 	PANELOBSTACLEMAX;
-		float   TURNFACTOR;
-		float 	GOPASTDISTANCE;
-		float	PATHEFFICIENCY;
+		navParam 	MAXPITCH;
+		navParam  	MAXROLL;
+		navParam   	ROVERCRUISESPEED;
+		navParam	POINTTURNSPEED;
+		navParam	POINTTURNANGLE;
+		navParam 	TURNACCURACYLIMIT;
+		navParam	TURNMULTIPLIER;	
+		navParam	TURNFACTOR;
+		navParam 	GOPASTDISTANCE;
+		navParam	CLOSEENOUGH;
+		navParam 	BODYDIST;	
+		navParam	BODYTOOCLOSE;
+		navParam 	PANELOBSTACLEMAX;
+		navParam	PROFILEOBSTACLEMAX;	
+		navParam	PITCHDOWNIGNOREDISTOBSTACLES;
+		navParam	PATHEFFICIENCY;
 
 	private:
 		SR2rover 			*sr2;
+		QList<navParam*>	Plist;
 		bool				running;
 		RoverState 			state;
 		RoverError			error;
@@ -54,7 +62,7 @@ class autoCode : public QWidget, private Ui::navigationtool
 		float				blockedDirection;
 		btVector3			lastBlockedPosition;
 		int					lastBlockedDirection;
-		
+		QSettings 			simSettings;
 
 		void callForHelp(RoverError errCode);
 		float compassToCartRadians(float rad);
@@ -72,6 +80,10 @@ class autoCode : public QWidget, private Ui::navigationtool
 
 		void roverStateKeyMapping();
 		void roverErrorKeyMapping();
+		void parameterListInit();
+		void tableSetup();
+		void initSettingsNames();
+		void initSettings();
 };
 
 #endif //AUTOCODE_H

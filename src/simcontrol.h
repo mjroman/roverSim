@@ -76,6 +76,7 @@ class simControl : public QObject
 		void setWaypointGroundHeight();
 		void addWaypointAt(WayPoint wp, int index);
 		void editWaypoint(int index);
+		void resetWaypointStates();
 		
 		void newRover(QWidget* parent);
 		void showNavTool();

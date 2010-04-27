@@ -201,6 +201,7 @@ void simControl::newRover(QWidget* parent)
 	if(!sr2) sr2 = new SR2rover(glView);
 	
 	this->setWaypointGroundHeight();
+	this->resetWaypointStates();
 	
 	sr2->placeRobotAt(btVector3(1,1,ground->terrainHeightAt(btVector3(1,1,0))));
 	autoNav = new autoCode(sr2, &waypointList, parent);
@@ -212,7 +213,7 @@ void simControl::showNavTool()
 }
 
 void simControl::setWaypointGroundHeight()
-{	
+{
 	int i=0;
 	while(i < waypointList.size()){
 		btVector3 position(waypointList[i].position.x,waypointList[i].position.y,0);
@@ -247,4 +248,15 @@ void simControl::addWaypointAt(int uuid, float x,float y, WPstate st, WPscience 
 	wp.science = sc;
 	if(i<0)waypointList << wp;
 	else waypointList.insert(i,wp);
+}
+
+void simControl::resetWaypointStates()
+{
+	WayPoint wp;
+	for(int i = 0; i < waypointList.size(); ++i)
+	{
+		wp = waypointList[i];
+		wp.state = WPstateNew;
+		waypointList.replace(i,wp);
+	}
 }

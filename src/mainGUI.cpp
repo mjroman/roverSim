@@ -18,6 +18,14 @@ m_wTool(this)
     resize(1200,700);
 	setWindowTitle("Rover Simulator");
 	
+	QCoreApplication::setOrganizationName("OUengineering");
+	QCoreApplication::setOrganizationDomain("i-borg.engr.ou.edu");
+	QCoreApplication::setApplicationName("Rover_Sim");
+	//QFile setting("/Users/mattroman/RoverSim.config");
+	//setting.open(QIODevice::ReadWrite);
+	//qDebug() << setting.fileName() << "file error" << setting.error();
+	//setting.close();
+	
     m_oTool.close();
     m_simTool.close();
     m_tTool.close();
@@ -359,26 +367,6 @@ void MainGUI::updateGUI()
         labelLeftEncoder->setText(QString().setNum(sr2->leftEncoder()));
         labelRightEncoder->setText(QString().setNum(sr2->rightEncoder()));
 		labelRoverOdometer->setText(QString("%1m").arg(sr2->odometer,0,'f',2));
-		
-		// autoCode *debugCode;
-		// debugCode = SController->getAutoNav();
-		// labelDebug->setText(QString().setNum(debugCode->getCurrentWaypoint()));
-		
-		textConsole->clear();
-		int size = 0;
-		size = sr2->getLaserScanner(PANELLASER)->getDataSize();
-		float* heights = sr2->getPanelLaserHeights();
-		for(int i = 0; i < size; ++i)
-		{
-			textConsole->insertPlainText(QString("%1 ").arg(heights[i],0,'f',3));
-		}
-		float *ranges = sr2->getLaserScanner(PANELLASER)->getData();
-		size = sr2->getLaserScanner(PANELLASER)->getDataSize();
-		textConsole->append("\n");
-		for(int i = 0; i < size; ++i)
-		{
-			textConsole->insertPlainText(QString("%1 ").arg(ranges[i],0,'f',3));
-		}
     }
 
 // GUI camera properties
