@@ -76,8 +76,16 @@ FORMS += src/mainGUI.ui \
 	src/tools/waypointtool.ui \
 	src/tools/navigationtool.ui
 	
-LIBS += -framework BulletCollision \
-    -framework BulletDynamics \
-    -framework LinearMath
+# Bullet 2.75 frameworks	
+#LIBS += -framework LinearMath \
+#	-framework BulletDynamics \
+#	-framework BulletCollision 
+    
+# Bullet 2.76 frameworks built for i386 and not DOUBLE_PRECISION
+LIBS += -L/usr/local \
+		-lBulletDynamics \
+		-lBulletCollision \
+		-lLinearMath	
+		
 RESOURCES += images.qrc
 RC_FILE = redrobot.icns

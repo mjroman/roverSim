@@ -141,9 +141,6 @@ void laserScanner::configure()
     if(oldVector) delete [] oldVector;
 }
 
-
-// returns the number of data points, points data to the range data array
-
 // calculates the ray intersection of all the laser points
 void laserScanner::update(btTransform botTrans)
 {

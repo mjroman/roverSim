@@ -22,27 +22,31 @@ physicsWorld *physicsWorld::m_pWorld = 0;
 
 physicsWorld::physicsWorld(float x, float y, float z, float boundary)
 :
-m_dynamicsWorld(0)
+m_idle(false),
+m_draw(false),
+m_obstacleType(OBSTACLE_GROUP),
+m_roverType(ROVER_GROUP),
+m_terrainType(TERRAIN_GROUP),
+m_worldSize(x,y,z),
+m_worldBoundary(boundary),
+m_dynamicsWorld(0),
+simTimeStep(0.1),
+simFixedTimeStep(0.001),
+simSubSteps(15)
 {
     qDebug("Physics startup");
-	m_terrainType = TERRAIN_GROUP;
-	m_roverType = ROVER_GROUP;
-	m_obstacleType = OBSTACLE_GROUP;
-	
+
 	//collision configuration contains default setup for memory, collision setup
 	m_collisionConfiguration = new btDefaultCollisionConfiguration();
 	//use the default collision dispatcher. For parallel processing you can use a diffent dispatcher (see Extras/BulletMultiThreaded)
 	m_dispatcher = new btCollisionDispatcher(m_collisionConfiguration);
 	
-        m_worldSize.setValue(x,y,z);
-	m_worldBoundary = boundary;
-	
 	// Build the broadphase
-        //int maxProxies = 5000;
-        btVector3 worldAabbMin(-m_worldBoundary,-m_worldBoundary,0);
-        btVector3 worldAabbMax(m_worldBoundary+m_worldSize.x(),m_worldBoundary+m_worldSize.y(),m_worldSize.z());
-        //m_broadphase = new btAxisSweep3(worldAabbMin,worldAabbMax,maxProxies);
-        m_broadphase = new btDbvtBroadphase();
+    //int maxProxies = 5000;
+    btVector3 worldAabbMin(-m_worldBoundary,-m_worldBoundary,0);
+    btVector3 worldAabbMax(m_worldBoundary+m_worldSize.x(),m_worldBoundary+m_worldSize.y(),m_worldSize.z());
+    //m_broadphase = new btAxisSweep3(worldAabbMin,worldAabbMax,maxProxies);
+    m_broadphase = new btDbvtBroadphase();
 
 	// The actual physics solver
 	m_solver = new btSequentialImpulseConstraintSolver();
@@ -50,13 +54,7 @@ m_dynamicsWorld(0)
 	// The Physics World
 	m_dynamicsWorld = new btDiscreteDynamicsWorld(m_dispatcher,m_broadphase,m_solver,m_collisionConfiguration);
 	
-        m_dynamicsWorld->setGravity(btVector3(0,0,-9.8));
-	
-        simTimeStep = 0.1;
-        simFixedTimeStep = 0.001;
-        simSubSteps = 15;
-
-	m_idle = false;
+    m_dynamicsWorld->setGravity(btVector3(0,0,-9.8));
 }
 
 physicsWorld::~physicsWorld()
@@ -160,12 +158,8 @@ void physicsWorld::setGravity(btVector3 gv)
 
 // toggles on and off the simulation
 void physicsWorld::toggleIdle(){
-	if (m_idle) {
-		m_idle = false;
-	}
-	else {
-		m_idle = true;
-	}
+	if (m_idle) m_idle = false;
+	else m_idle = true;
 }
 
 // Called to simulate a step in the physics world
@@ -249,9 +243,9 @@ btRigidBody* physicsWorld::placeShapeAt(btCollisionShape* bodyShape, btVector3 p
     btTransform startTransform;
     startTransform.setIdentity();
     startTransform.setOrigin(pos);
-    startTransform.setRotation(btQuaternion(yaw*PI/180.,0,0));
+    startTransform.setRotation(btQuaternion(DEGTORAD(yaw),0,0));
 	
-    return createRigidBody(massval,startTransform,bodyShape, groupType);
+    return createRigidBody(massval,startTransform,bodyShape,groupType);
 }
 
 btRigidBody* physicsWorld::placeObstacleShapeAt(btVector3 pos,float yaw, float massval)

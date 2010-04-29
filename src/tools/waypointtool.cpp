@@ -15,6 +15,7 @@ QWidget(parent)
 	
 	connect(lineEditPositionX, SIGNAL(editingFinished()), this, SLOT(edited()));
 	connect(lineEditPositionY, SIGNAL(editingFinished()), this, SLOT(edited()));
+	connect(buttonReset, SIGNAL(clicked()), this, SLOT(resetStates()));
 }
 
 waypointTool::~waypointTool()
@@ -124,6 +125,11 @@ void waypointTool::edited()
 	wp.position.y = lineEditPositionY->text().toFloat();
 	WPlist->replace(cIndex,wp);
 	emit editedWP(cIndex);
+}
+
+void waypointTool::resetStates()
+{
+	emit resetWP();
 }
 
 // void navigationTool::displayCurrentWaypoint()

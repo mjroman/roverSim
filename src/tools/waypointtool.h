@@ -20,10 +20,12 @@ class waypointTool : public QWidget, private Ui::waypointtool
 		void on_comboScience_activated(int index);
 		void raiseWaypointEditor(QList<WayPoint>* list);
 		void edited();
+		void resetStates();
 
 	signals:
 		void addedWP(WayPoint wp,int index);
 		void editedWP(int index);
+		void resetWP();
 
 	private:
 		int					cIndex;

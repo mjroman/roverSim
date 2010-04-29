@@ -52,6 +52,9 @@ public:
     void keyReleaseEvent(QKeyEvent *event);
 
 public slots:
+	void showSimTool();
+	void showTerrainTool();
+	void showObstacleTool();
 	void stepTimevals();
 	void simGravity();
 	void openGround();

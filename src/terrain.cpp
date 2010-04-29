@@ -277,9 +277,13 @@ void terrain::terrainLower(btVector3 dir, float amount, float area)
 
 float terrain::terrainHeightAt(btVector3 pt)
 {
+	float avgHeight;
     int index = pt.x() + pt.y()*m_worldSize.x();
-    float avgHeight;
-
+	if(pt.x() < 0) index = pt.y()*m_worldSize.x() + 1;			// return height of point on left edge of terrain
+	if(pt.x() > m_worldSize.x()) index = pt.y()*m_worldSize.x();// return height of point on right edge of terrain
+	if(pt.y() < 0) index = pt.x();								// return height of point on bottom edge of terrain
+	if(pt.y() > m_worldSize.y()) index = pt.x() + (m_worldSize.y()-1)*m_worldSize.x(); // return height of point on top edge
+    
     avgHeight = m_terrainVerts[index].z;
     avgHeight += m_terrainVerts[index+1].z;
     avgHeight += m_terrainVerts[index+(int)m_worldSize.x()].z;

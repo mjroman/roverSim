@@ -686,6 +686,9 @@
         <height>100</height>
        </size>
       </property>
+      <property name="focusPolicy">
+       <enum>Qt::ClickFocus</enum>
+      </property>
       <property name="tabChangesFocus">
        <bool>false</bool>
       </property>
@@ -888,6 +891,10 @@
    <header>simglview.h</header>
   </customwidget>
  </customwidgets>
+ <tabstops>
+  <tabstop>glView</tabstop>
+  <tabstop>textConsole</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

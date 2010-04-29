@@ -21,6 +21,8 @@ private:
 	
     physicsWorld*   arena;
 
+	void configure();
+
 public:
     float       dTheta;
     float       offsetTheta;
@@ -31,7 +33,6 @@ public:
     laserScanner(btTransform xForm,float th,float delta,float offset);
     ~laserScanner();
 
-    void configure();
 	btVector3 getPosition() { return m_scanTrans.getOrigin(); }
 	float* getData() {return m_rangeData; }
 	int getDataSize() { return m_dataSize; }

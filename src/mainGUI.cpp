@@ -21,10 +21,6 @@ m_wTool(this)
 	QCoreApplication::setOrganizationName("OUengineering");
 	QCoreApplication::setOrganizationDomain("i-borg.engr.ou.edu");
 	QCoreApplication::setApplicationName("Rover_Sim");
-	//QFile setting("/Users/mattroman/RoverSim.config");
-	//setting.open(QIODevice::ReadWrite);
-	//qDebug() << setting.fileName() << "file error" << setting.error();
-	//setting.close();
 	
     m_oTool.close();
     m_simTool.close();
@@ -35,7 +31,7 @@ m_wTool(this)
 	
     // menu bar connections
 // world menu
-    connect(actionSim_Timing, SIGNAL(triggered()), &m_simTool, SLOT(show()));
+    connect(actionSim_Timing, SIGNAL(triggered()), this, SLOT(showSimTool()));
 // rover menu
 	connect(actionNew_Rover, SIGNAL(triggered()), this, SLOT(newRover()));
 	connect(actionShow_Waypoint_Editor, SIGNAL(triggered()), this, SLOT(waypointSetup()));
@@ -51,12 +47,12 @@ m_wTool(this)
 // obstacles menu
     connect(actionRandomize_Obstacles, SIGNAL(triggered()), SController, SLOT(generateObstacles()));
     connect(actionRemove_Obstacles, SIGNAL(triggered()), SController, SLOT(removeObstacles()));
-    connect(actionObstacle_Parameters, SIGNAL(triggered()), &m_oTool, SLOT(show()));
+    connect(actionObstacle_Parameters, SIGNAL(triggered()), this, SLOT(showObstacleTool()));
 // terrain menu
     connect(actionOpen_Terrain, SIGNAL(triggered()), this, SLOT(openGround()));
     connect(actionSave_Terrain, SIGNAL(triggered()), this, SLOT(saveGround()));
     connect(actionFlatten_Terrain, SIGNAL(triggered()), this, SLOT(flattenGround()));
-   	connect(actionTerrain_Parameters, SIGNAL(triggered()), &m_tTool, SLOT(show()));
+   	connect(actionTerrain_Parameters, SIGNAL(triggered()), this, SLOT(showTerrainTool()));
 
     // tool bar Simulation timing
     connect(&m_simTool, SIGNAL(paramUpdate()), this, SLOT(stepTimevals()));
@@ -69,11 +65,12 @@ m_wTool(this)
 	// tool bar add waypoint update
 	connect(&m_wTool, SIGNAL(addedWP(WayPoint,int)), SController, SLOT(addWaypointAt(WayPoint,int)));
 	connect(&m_wTool, SIGNAL(editedWP(int)), SController, SLOT(editWaypoint(int)));
+	connect(&m_wTool, SIGNAL(resetWP()), SController, SLOT(resetWaypointStates()));
 
 // server connections
-	connect(&m_tcpServer, SIGNAL(newConnection()),this, SLOT(serverAcceptConnect()));
+	//connect(&m_tcpServer, SIGNAL(newConnection()),this, SLOT(serverAcceptConnect()));
 	m_tcpSocket = NULL;
-	this->serverStart();
+	//this->serverStart();
 	
     connect(glView, SIGNAL(refreshView()), this, SLOT(updateGUI()));
 	
@@ -81,8 +78,7 @@ m_wTool(this)
     
     m_tTool.setScale(SController->getGround()->terrainScale());
 
-	glView->setFocusPolicy(Qt::ClickFocus);
-	textConsole->setFocusPolicy(Qt::ClickFocus);
+	glView->setFocus(Qt::OtherFocusReason);
 }
 
 MainGUI::~MainGUI()
@@ -96,16 +92,43 @@ void MainGUI::closeEvent(QCloseEvent *event)
     event->accept();
 }
 
+/////////////////////////////////////////
+// GUI tool views
+/////////////
+void MainGUI::showSimTool()
+{
+	m_tTool.close();
+	m_oTool.close();
+	m_simTool.show();
+}
+void MainGUI::showTerrainTool()
+{
+	m_oTool.close();
+	m_simTool.close();
+	m_tTool.show();
+}
+void MainGUI::showObstacleTool()
+{
+	m_simTool.close();
+	m_tTool.close();
+	m_oTool.show();
+}
+
+/////////////////////////////////////////
+// update sim time and gravity
+/////////////
 void MainGUI::stepTimevals()
 {
     SController->stepTimevals(m_simTool.getTimeStep(),m_simTool.getFixedTimeStep(),m_simTool.getSubSteps());
 }
-
 void MainGUI::simGravity()
 {
     SController->setGravity(m_tTool.gravity());
 }
 
+/////////////////////////////////////////
+// Terrain editing functions
+/////////////
 void MainGUI::openGround()
 {
 	// open an Open File dialog to look for a PNG image to represent a height map
@@ -116,7 +139,6 @@ void MainGUI::openGround()
 	m_tTool.setScale(SController->getGround()->terrainScale());
 	menuRoverView->setEnabled(false);
 }
-
 void MainGUI::saveGround()
 {
 	// open a Save File dialog and select location and filename
@@ -126,13 +148,11 @@ void MainGUI::saveGround()
     if(!filename.endsWith(".png")) filename.append(".png");
 	SController->getGround()->saveTerrain(filename);
 }
-
 void MainGUI::flattenGround()
 {
 	SController->flattenGround();
 	menuRoverView->setEnabled(false);
 }
-
 void MainGUI::rescaleGround()
 {
     SController->rescaleGround(m_tTool.scale());
@@ -140,6 +160,9 @@ void MainGUI::rescaleGround()
 	menuRoverView->setEnabled(false);
 }
 
+/////////////////////////////////////////
+// Obstacle generation functions
+/////////////
 void MainGUI::generateObstacles()
 {
 	SController->m_obstType = m_oTool.obstacleType();
@@ -152,18 +175,30 @@ void MainGUI::generateObstacles()
 	SController->m_obstDensity = m_oTool.density();
 	SController->generateObstacles();
 }
-
 void MainGUI::removeAllObstacles()
 {
     m_oTool.setObstacleCount(0);
 	SController->removeObstacles();
 }
 
+/////////////////////////////////////////
+// Rover creation and destruction
+/////////////
 void MainGUI::newRover()
 {
-	SController->newRover(this);
-	menuRoverView->setEnabled(true);
-	actionShow_Rover_Info->setEnabled(true);
+	bool state = (SController->getRover() == 0) ? true : false;
+	
+	if(state){
+		SController->newRover(this);
+		actionNew_Rover->setText("Remove Rover");
+	}
+	else{
+		SController->removeRover();
+		actionNew_Rover->setText("New Rover");
+	}
+		
+	menuRoverView->setEnabled(state);
+	actionShow_Rover_Info->setEnabled(state);
 }
 
 void MainGUI::waypointSetup()
@@ -178,7 +213,7 @@ void MainGUI::cameraRoverView(){glView->getCamera()->cameraRoverView(); glView->
 void MainGUI::cameraRoverPanCam(){glView->getCamera()->cameraRoverPanCam(); glView->setViewAngle(1.0);}
 
 /////////////////////////////////////////
-// user input
+// Keyboard and Mouse user input
 /////////////
 void MainGUI::keyPressEvent(QKeyEvent *event)
 {
@@ -369,6 +404,8 @@ void MainGUI::updateGUI()
 		labelRoverOdometer->setText(QString("%1m").arg(sr2->odometer,0,'f',2));
     }
 
+//	labelDebug->setText(QString("random seed = %1\n").arg(seed));
+	
 // GUI camera properties
     btVector3 cameraParam = glView->getCamera()->cameraPitchYawZoom();
 	labelCameraView->setText(glView->getCamera()->cameraViewName());

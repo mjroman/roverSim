@@ -49,11 +49,11 @@ private:
 
 protected:
     btAlignedObjectArray<btCollisionShape*>     m_obstacleShapes;
-    btBroadphaseInterface*			m_broadphase;
-    btCollisionDispatcher*			m_dispatcher;
+    btBroadphaseInterface*						m_broadphase;
+    btCollisionDispatcher*						m_dispatcher;
     btDynamicsWorld*                            m_dynamicsWorld;
     btConstraintSolver*                         m_solver;
-    btDefaultCollisionConfiguration*		m_collisionConfiguration;
+    btDefaultCollisionConfiguration*			m_collisionConfiguration;
 
     physicsWorld(float x, float y, float z, float boundary);
 

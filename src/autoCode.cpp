@@ -39,6 +39,8 @@ simSettings(QSettings::IniFormat,QSettings::UserScope,"OUengineering","Rover_Sim
 	roverStateKeyMapping();
 	roverErrorKeyMapping();
 	
+	currentWaypoint.uuid = 0;
+	
 	stopAutonomous(RSInTeleopMode);
 	show();
 }
@@ -114,6 +116,7 @@ void autoCode::driveToward(float relHeading,float distTo)
 	}
 	else if(fabs(relHeading) < POINTTURNANGLE.stuff.toFloat()){ // low speed turn
 		leftSpeed = rightSpeed = POINTTURNSPEED.stuff.toFloat();
+		
 		if(relHeading > 0.0) rightSpeed = rightSpeed - (relHeading/POINTTURNANGLE.stuff.toFloat())*TURNMULTIPLIER.stuff.toFloat();
 		else leftSpeed = leftSpeed + (relHeading/POINTTURNANGLE.stuff.toFloat())*TURNMULTIPLIER.stuff.toFloat();
 	}
@@ -216,7 +219,6 @@ bool autoCode::checkForObstacles(float distTo)
 	float* ranges = sr2->getLaserScanner(BODYLASER)->getData();
 	int i,aheadBlockedLong=0, aheadBlockedShort=0, instShort=0,instLong=0;
 	static int prevBlockedShort=0, prevBlockedLong=0;
-	int slopeObstacle = 0;
 	
 	blockedDirection = 0;
 	
@@ -230,14 +232,15 @@ bool autoCode::checkForObstacles(float distTo)
 		callForHelp(RERoll);
 		return false; // Roll is maxed out!!!!!!
 	}
-	else if(sr2->pitch > MAXPITCH.stuff.toFloat()){
+	else if(fabs(sr2->pitch) > MAXPITCH.stuff.toFloat()){
 		aheadBlockedLong=1;
 		blockedDirection = (sr2->roll > 0.0) ? 5 /*rolling LEFT*/ : -5 /*rolling RIGHT*/;
-		slopeObstacle = 1;
+		callForHelp(REPitch);
+		return false; // Pitch is maxed out!!!!!
 	}
 	
 // look for any BODY blocking obstacles directly in front of the rover
-	if(!slopeObstacle || (slopeObstacle && sr2->pitch > PITCHDOWNIGNOREDISTOBSTACLES.stuff.toFloat())){
+	//if(sr2->pitch > PITCHDOWNIGNOREDISTOBSTACLES.stuff.toFloat()){
 		for(i=0;i<size;i++){
 			// check for near obstacles
 			if(ranges[i] < BODYTOOCLOSE.stuff.toFloat()){
@@ -257,7 +260,7 @@ bool autoCode::checkForObstacles(float distTo)
 				blockedDirection = blockedDirection + 1/(i - 7.5);
 			}
 		}
-	}
+//	}
 	//something directly ahead turn right
 	if(blockedDirection == 0.0 && (aheadBlockedShort || aheadBlockedLong)) blockedDirection = -2.0;
 		
@@ -311,7 +314,7 @@ void autoCode::quickObstacleCheck()
 /////////////
 void autoCode::avoidingTurn()
 {
-	float closeTurnFactor = (TURNFACTOR.stuff.toFloat() > 0.0)? 0.0 : TURNFACTOR.stuff.toFloat();
+	float closeTurnFactor = (TURNFACTOR.stuff.toFloat() > 0.0)? -TURNFACTOR.stuff.toFloat() : TURNFACTOR.stuff.toFloat();
 
 	// last block was to the left
 	if(lastBlockedDirection < 0){
@@ -432,11 +435,11 @@ void autoCode::parameterListInit()
 	 // open a new group in the settings file
 	simSettings.beginGroup(OBSTNAVGROUP);
 	// set the parameter value from the settings file
-	MAXPITCH.stuff.setValue(simSettings.value(MAXPITCH.name,DEGTORAD(15.0)).toFloat());
+	MAXPITCH.stuff.setValue(DEGTORAD(simSettings.value(MAXPITCH.name,15.0).toFloat()));
 	// push the parameter onto the parameter list to be displayed in the table view
 	Plist << &MAXPITCH;
 	
-	MAXROLL.stuff.setValue(simSettings.value(MAXROLL.name,DEGTORAD(20.0)).toFloat());
+	MAXROLL.stuff.setValue(DEGTORAD(simSettings.value(MAXROLL.name,20.0).toFloat()));
 	Plist << &MAXROLL;
 	
 	ROVERCRUISESPEED.stuff.setValue(simSettings.value(ROVERCRUISESPEED.name,10.0).toFloat());
@@ -445,10 +448,10 @@ void autoCode::parameterListInit()
 	POINTTURNSPEED.stuff.setValue(simSettings.value(POINTTURNSPEED.name,6.0).toFloat()); 
 	Plist << &POINTTURNSPEED;
 	
-	POINTTURNANGLE.stuff.setValue(simSettings.value(POINTTURNANGLE.name,DEGTORAD(30)).toFloat());
+	POINTTURNANGLE.stuff.setValue(DEGTORAD(simSettings.value(POINTTURNANGLE.name,30).toFloat()));
 	Plist << &POINTTURNANGLE;
 	
-	TURNACCURACYLIMIT.stuff.setValue(simSettings.value(TURNACCURACYLIMIT.name,DEGTORAD(4)).toFloat());
+	TURNACCURACYLIMIT.stuff.setValue(DEGTORAD(simSettings.value(TURNACCURACYLIMIT.name,4).toFloat()));
 	Plist << &TURNACCURACYLIMIT;
 	
 	TURNMULTIPLIER.stuff.setValue(simSettings.value(TURNMULTIPLIER.name,6.0).toFloat());
@@ -475,14 +478,13 @@ void autoCode::parameterListInit()
 	PROFILEOBSTACLEMAX.stuff.setValue(simSettings.value(PROFILEOBSTACLEMAX.name,0.15).toFloat());
 	Plist << &PROFILEOBSTACLEMAX;
 	
-	PITCHDOWNIGNOREDISTOBSTACLES.stuff.setValue(simSettings.value(PITCHDOWNIGNOREDISTOBSTACLES.name,DEGTORAD(10)).toFloat());
+	PITCHDOWNIGNOREDISTOBSTACLES.stuff.setValue(DEGTORAD(simSettings.value(PITCHDOWNIGNOREDISTOBSTACLES.name,10).toFloat()));
 	Plist << &PITCHDOWNIGNOREDISTOBSTACLES;
 	
 	PATHEFFICIENCY.stuff.setValue(simSettings.value(PATHEFFICIENCY.name,0.3).toFloat());
 	Plist << &PATHEFFICIENCY;
 	simSettings.endGroup();
 	
-	qDebug() << simSettings.fileName() << simSettings.status() << simSettings.allKeys();
 }
 void autoCode::tableSetup()
 {
@@ -511,7 +513,10 @@ void autoCode::tableSetup()
 		item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
 		paramTableWidget->setItem(i,0,item);
 		QTableWidgetItem* data = new QTableWidgetItem();
-		data->setData(Qt::EditRole,(*np).stuff);
+		if((*np).name.endsWith("ANGLE"))
+			data->setData(Qt::EditRole,QVariant(RADTODEG((*np).stuff.toFloat())));
+		else
+			data->setData(Qt::EditRole,(*np).stuff);
 		data->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 		paramTableWidget->setItem(i,1,data);
 	}
@@ -521,9 +526,14 @@ void autoCode::tableDataChange(int row, int column)
 {
 	QTableWidgetItem* item = paramTableWidget->item(row,column);
 	navParam* np = Plist[row];
-	(*np).stuff = item->data(Qt::EditRole);
-	qDebug() << (*np).name;
-	simSettings.setValue(QString(OBSTNAVGROUP) + "/" + (*np).name,(*np).stuff);
+
+	if((*np).name.endsWith("ANGLE")){
+		(*np).stuff.setValue(DEGTORAD(item->data(Qt::EditRole).toFloat()));
+	}
+	else
+		(*np).stuff = item->data(Qt::EditRole);
+		
+	simSettings.setValue(QString(OBSTNAVGROUP) + "/" + (*np).name,item->data(Qt::EditRole));
 	simSettings.sync();
 }
 
@@ -534,8 +544,8 @@ void autoCode::initSettings()
 	simSettings.setValue(MAXROLL.name,20.0);
 	simSettings.setValue(ROVERCRUISESPEED.name,10);
 	simSettings.setValue(POINTTURNSPEED.name,6.0);
-	simSettings.setValue(POINTTURNANGLE.name,DEGTORAD(30));
-	simSettings.setValue(TURNACCURACYLIMIT.name,DEGTORAD(4));
+	simSettings.setValue(POINTTURNANGLE.name,30);
+	simSettings.setValue(TURNACCURACYLIMIT.name,4);
 	simSettings.setValue(TURNMULTIPLIER.name,6.0);	
 	simSettings.setValue(TURNFACTOR.name,0.5);
 	simSettings.setValue(GOPASTDISTANCE.name,3.0);
@@ -544,7 +554,7 @@ void autoCode::initSettings()
 	simSettings.setValue(BODYTOOCLOSE.name,0.5);
 	simSettings.setValue(PANELOBSTACLEMAX.name,0.15);
 	simSettings.setValue(PROFILEOBSTACLEMAX.name,0.15);	
-	simSettings.setValue(PITCHDOWNIGNOREDISTOBSTACLES.name,DEGTORAD(10));
+	simSettings.setValue(PITCHDOWNIGNOREDISTOBSTACLES.name,10);
 	simSettings.setValue(PATHEFFICIENCY.name,0.3);
 	simSettings.endGroup();
 	simSettings.sync();
@@ -553,20 +563,20 @@ void autoCode::initSettings()
 // set the stirng value of the parameters for settings and printing to GUI
 void autoCode::initSettingsNames()
 {
-	MAXPITCH.name = "MAX PITCH";
-	MAXROLL.name = "MAX ROLL";
+	MAXPITCH.name = "MAX PITCH ANGLE";				// * ANGLE
+	MAXROLL.name = "MAX ROLL ANGLE";				// * ANGLE
 	ROVERCRUISESPEED.name = "CRUISE SPEED";
 	POINTTURNSPEED.name = "POINT TURN SPEED";
-	POINTTURNANGLE.name = "POINT TURN ANGLE";
-	TURNACCURACYLIMIT.name = "TURN ACCURACY";
-	TURNMULTIPLIER.name = "TURN MULTIPLIER";
-	TURNFACTOR.name = "TURN FACTOR";
+	POINTTURNANGLE.name = "POINT TURN ANGLE";		// * ANGLE
+	TURNACCURACYLIMIT.name = "TURN ACCURACY ANGLE";	// * ANGLE
+	TURNMULTIPLIER.name = "TURN MULTIPLIER";		// affects the turning rate between point turn angle and turn accuracy limit
+	TURNFACTOR.name = "TURN FACTOR";				// affects sharpness of turn near an obstacle, multiplier of cruise speed
 	GOPASTDISTANCE.name = "GO PAST OBST DISTANCE";
-	CLOSEENOUGH.name = "CLOSE ENOUGH";
-	BODYDIST.name = "BODY DISTANCE";
-	BODYTOOCLOSE.name = "BODY TOO CLOSE";
+	CLOSEENOUGH.name = "CLOSE ENOUGH";				// distance close enough to waypoint to count
+	BODYDIST.name = "BODY DISTANCE";				// distant obstacles are avoided less than this distance
+	BODYTOOCLOSE.name = "BODY TOO CLOSE";			// close obstacles are avoided less than this distance
 	PANELOBSTACLEMAX.name = "PANEL OBST MAX";
 	PROFILEOBSTACLEMAX.name = "PROFILE OBST MAX";
-	PITCHDOWNIGNOREDISTOBSTACLES.name = "PITCH DOWN IGNORE";
+	PITCHDOWNIGNOREDISTOBSTACLES.name = "PITCH DOWN IGNORE ANGLE"; // * ANGLE
 	PATHEFFICIENCY.name = "PATH EFFICIENCY";
 }

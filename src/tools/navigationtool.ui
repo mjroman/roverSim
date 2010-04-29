@@ -285,7 +285,11 @@ border-radius:10;
     </spacer>
    </item>
    <item>
-    <widget class="QTableWidget" name="paramTableWidget"/>
+    <widget class="QTableWidget" name="paramTableWidget">
+     <property name="focusPolicy">
+      <enum>Qt::NoFocus</enum>
+     </property>
+    </widget>
    </item>
   </layout>
  </widget>

@@ -32,10 +32,8 @@ m_obstDensity(5)
 	//sky = new skydome(glView);
 	
 	// add a few test waypoints
-	addWaypointAt(657,10.0,10.0);
-	addWaypointAt(658,1.0,4.0);
-	//addWaypointAt(535,25.0,15.0);
-	//addWaypointAt(657,6.0,14.0);
+	addWaypointAt(657,20.0,10.0);
+	addWaypointAt(658,1.0,14.0);
 	
 	glView->setWaypointList(&waypointList);
 	
@@ -55,22 +53,22 @@ simControl::~simControl()
 	qDebug("deleting simControl");
 }
 
+/////////////////////////////////////////
+// Simulation timing and gravity functions
+/////////////
 void simControl::startSimTimer(int msec)
 {
     simTimer->start(msec);
 }
-
 void simControl::stopSimTimer()
 {
     simTimer->stop();
 }
-
 void simControl::stepSim()
 {
     if(sr2) sr2->updateRobot();
     arena->simulatStep();
 }
-
 void simControl::stepTimevals(float tStep,float fixedtStep,int subSteps)
 {
 	//qDebug("tStep=%f fixed=%f sub=%d",tStep,fixedtStep,subSteps);
@@ -78,17 +76,18 @@ void simControl::stepTimevals(float tStep,float fixedtStep,int subSteps)
     arena->simFixedTimeStep = fixedtStep;
     arena->simSubSteps = subSteps;
 }
-
 void simControl::pauseSim()
 {
 	arena->toggleIdle();
 }
-
 void simControl::setGravity(btVector3 g)
 {
 	arena->setGravity(g);
 }
 
+/////////////////////////////////////////
+// Terrain access functions
+/////////////
 void simControl::openNewGround(QString filename)
 {
 	this->removeRover();
@@ -96,9 +95,9 @@ void simControl::openNewGround(QString filename)
 	
 	// generate new obstacles
 	this->generateObstacles();
+	// restore waypoint Z height
 	this->setWaypointGroundHeight();
 }
-
 void simControl::flattenGround()
 {
 	this->removeRover();
@@ -106,9 +105,9 @@ void simControl::flattenGround()
 	
 	// generate new obstacles
 	this->generateObstacles();
+	// restore waypoint Z height
 	this->setWaypointGroundHeight();
 }
-
 void simControl::rescaleGround(btVector3 scale)
 {
 	this->removeRover();
@@ -116,14 +115,13 @@ void simControl::rescaleGround(btVector3 scale)
 	
 	// generate new obstacles
 	this->generateObstacles();
+	// restore waypoint Z height
 	this->setWaypointGroundHeight();
 }
 
-void simControl::removeObstacles()
-{
-	arena->deleteGroup(OBSTACLE_GROUP);
-}
-
+/////////////////////////////////////////
+// Obstacle generation functions
+/////////////
 void simControl::generateObstacles()
 {
     btVector3   tempPlace,tempSize;
@@ -133,14 +131,16 @@ void simControl::generateObstacles()
     arena->deleteGroup(OBSTACLE_GROUP);
 	
     if(m_obstCount == 0) return;
-	qDebug("generating new obstacles %d",m_obstCount);
+	//qDebug("generating new obstacles %d",m_obstCount);
     for(i=0;i<m_obstCount;i++)
     {
         tempPlace.setX(Randomn()*arena->worldSize().x());
         tempPlace.setY(Randomn()*arena->worldSize().y());
+		tempPlace.setZ(0);
 		// keep all obstacles away from rover start position
         if(tempPlace.x() < 5 && tempPlace.y() < 5){ tempPlace.setX(5);} 
-        tempPlace.setZ(ground->maxHeight() + m_dropHeight);
+        //tempPlace.setZ(ground->maxHeight() + m_dropHeight);
+		tempPlace.setZ(ground->terrainHeightAt(tempPlace) + m_dropHeight);
 		
         tempSize.setX(m_minObstSize.x() + Randomn()*(m_maxObstSize.x() - m_minObstSize.x()));
         tempSize.setY(m_minObstSize.y() + Randomn()*(m_maxObstSize.y() - m_minObstSize.y()));
@@ -180,19 +180,14 @@ void simControl::generateObstacles()
         arena->placeObstacleShapeAt(tempPlace,alphaYaw,mass);
     }
 }
-
-bool simControl::removeRover()
+void simControl::removeObstacles()
 {
-    if(sr2){
-		delete autoNav;
-        delete sr2;
-		autoNav = 0;
-        sr2 = 0;
-        return true;
-    }
-    return false;
+	arena->deleteGroup(OBSTACLE_GROUP);
 }
 
+/////////////////////////////////////////
+// Rover generation functions
+/////////////
 void simControl::newRover(QWidget* parent)
 {
 	if(autoNav) delete autoNav;
@@ -205,13 +200,28 @@ void simControl::newRover(QWidget* parent)
 	
 	sr2->placeRobotAt(btVector3(1,1,ground->terrainHeightAt(btVector3(1,1,0))));
 	autoNav = new autoCode(sr2, &waypointList, parent);
+	glView->setFocus(Qt::OtherFocusReason);
 }
-
+bool simControl::removeRover()
+{
+    if(sr2){
+		delete autoNav;
+        delete sr2;
+		autoNav = 0;
+        sr2 = 0;
+        return true;
+    }
+    return false;
+}
 void simControl::showNavTool()
 {
 	if(autoNav) autoNav->show();
 }
 
+/////////////////////////////////////////
+// Waypoint editing functions
+/////////////
+// sets the waypoint Z height based on height of terrain at wp location
 void simControl::setWaypointGroundHeight()
 {
 	int i=0;
@@ -222,21 +232,19 @@ void simControl::setWaypointGroundHeight()
 		i++;
 	}
 }
-
-void simControl::addWaypointAt(WayPoint wp, int index)
-{
-	wp.position.z = ground->terrainHeightAt(btVector3(wp.position.x,wp.position.y,0));
-	if(index<0)waypointList << wp;
-	else waypointList.insert(index,wp);
-}
-
+// if a waypoint is move recalculate its Z position
 void simControl::editWaypoint(int index)
 {
 	WayPoint wp = waypointList[index];
 	wp.position.z = ground->terrainHeightAt(btVector3(wp.position.x,wp.position.y,0));
 	waypointList.replace(index,wp);
 }
-
+void simControl::addWaypointAt(WayPoint wp, int index)
+{
+	wp.position.z = ground->terrainHeightAt(btVector3(wp.position.x,wp.position.y,0));
+	if(index<0)waypointList << wp;
+	else waypointList.insert(index,wp);
+}
 void simControl::addWaypointAt(int uuid, float x,float y, WPstate st, WPscience sc,int i)
 {
 	WayPoint wp;
@@ -249,7 +257,7 @@ void simControl::addWaypointAt(int uuid, float x,float y, WPstate st, WPscience 
 	if(i<0)waypointList << wp;
 	else waypointList.insert(i,wp);
 }
-
+// reset all the waypoint states to NEW
 void simControl::resetWaypointStates()
 {
 	WayPoint wp;

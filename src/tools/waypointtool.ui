@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>271</width>
-    <height>136</height>
+    <height>166</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -19,13 +19,13 @@
   <property name="minimumSize">
    <size>
     <width>271</width>
-    <height>136</height>
+    <height>166</height>
    </size>
   </property>
   <property name="maximumSize">
    <size>
     <width>271</width>
-    <height>136</height>
+    <height>166</height>
    </size>
   </property>
   <property name="cursor">
@@ -357,6 +357,49 @@ border-color:white;
         <size>
          <width>20</width>
          <height>40</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
+     <item>
+      <widget class="QPushButton" name="buttonReset">
+       <property name="minimumSize">
+        <size>
+         <width>90</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">QPushButton{
+background:blue;
+border: 2px solid lightblue;
+border-radius:6px;
+color:white;}
+
+QPushButton:pressed{
+background:white;
+border-color: yellow;
+}
+</string>
+       </property>
+       <property name="text">
+        <string>Reset States</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
         </size>
        </property>
       </spacer>

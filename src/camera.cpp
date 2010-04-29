@@ -11,9 +11,9 @@ camera::camera(const btVector3& pos,const btVector3& dir)
     yaw[FreeView] = 45.;
     zoom[FreeView] = 25.0;
 
-    pitch[RoverCenter] = 75.;
+    pitch[RoverCenter] = 65.;
     yaw[RoverCenter] = 45.;
-    zoom[RoverCenter] = 5.0;
+    zoom[RoverCenter] = 25.0;
 
     pitch[RoverFollow] = 75.;
     yaw[RoverFollow] = 0;
