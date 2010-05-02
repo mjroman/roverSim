@@ -97,20 +97,20 @@ void MainGUI::closeEvent(QCloseEvent *event)
 /////////////
 void MainGUI::showSimTool()
 {
-	m_tTool.close();
-	m_oTool.close();
+	m_tTool.hide();
+	m_oTool.hide();
 	m_simTool.show();
 }
 void MainGUI::showTerrainTool()
 {
-	m_oTool.close();
-	m_simTool.close();
+	m_oTool.hide();
+	m_simTool.hide();
 	m_tTool.show();
 }
 void MainGUI::showObstacleTool()
 {
-	m_simTool.close();
-	m_tTool.close();
+	m_simTool.hide();
+	m_tTool.hide();
 	m_oTool.show();
 }
 
@@ -226,14 +226,20 @@ void MainGUI::keyPressEvent(QKeyEvent *event)
         }
 		case 'P':
 		{
-			qDebug("stop drawing");
+			textConsole->append("stop drawing");
 			glView->stopDrawing();
 			return;
 		}
 		case 'O':
 		{
-			qDebug("start drawing");
+			textConsole->append("start drawing");
 			glView->startDrawing();
+			return;
+		}
+		case 'S':
+		{
+			//textConsole->insertPlainText("C-Space created\n");
+			SController->generateCSpace();
 			return;
 		}
         case 'V':
@@ -405,6 +411,7 @@ void MainGUI::updateGUI()
     }
 
 //	labelDebug->setText(QString("random seed = %1\n").arg(seed));
+	labelDebug->setText(QString::number(glView->debugVal));
 	
 // GUI camera properties
     btVector3 cameraParam = glView->getCamera()->cameraPitchYawZoom();

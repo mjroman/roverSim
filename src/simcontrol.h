@@ -67,8 +67,9 @@ class simControl : public QObject
 		
 	public slots:
 	// obstacle control functions
-		void removeObstacles();
 		void generateObstacles();
+		void removeObstacles();
+		void generateCSpace();
 		void stepSim();
 		
 		void openNewGround(QString filename);

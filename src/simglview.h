@@ -38,8 +38,10 @@ protected:
     void drawPlane(btScalar constant,const btVector3 normal);
     void drawWorld();
 	void drawWaypoints();
+	void drawFrame(btTransform &tr);
 
 public:
+	int debugVal;
     simGLView(QWidget *parent = 0);
     ~simGLView();
 

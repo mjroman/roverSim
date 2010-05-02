@@ -23,7 +23,8 @@
 enum physicsGroupType {
     TERRAIN_GROUP,
     ROVER_GROUP,
-    OBSTACLE_GROUP
+    OBSTACLE_GROUP,
+	GHOST_GROUP
 };
 
 class	btBroadphaseInterface;
@@ -39,6 +40,7 @@ class physicsWorld : public QObject
 private:
     bool                m_idle;
     bool                m_draw;
+	int					m_ghostType;
     int                 m_obstacleType;
     int                 m_roverType;
     int                 m_terrainType;
@@ -49,6 +51,7 @@ private:
 
 protected:
     btAlignedObjectArray<btCollisionShape*>     m_obstacleShapes;
+	btAlignedObjectArray<btCollisionShape*>		m_ghostShapes;
     btBroadphaseInterface*						m_broadphase;
     btCollisionDispatcher*						m_dispatcher;
     btDynamicsWorld*                            m_dynamicsWorld;
@@ -99,7 +102,8 @@ public:
 
     btRigidBody* createRigidBody(float mass, btTransform trans, btCollisionShape* cShape, physicsGroupType groupType);
     btRigidBody* placeShapeAt(btCollisionShape* bodyShape, btVector3 pos, float yaw, float massval, physicsGroupType groupType);
-    btRigidBody* placeObstacleShapeAt(btVector3 pos,float yaw, float massval);
+    void placeObstacleShapeAt(btVector3 pos,float yaw, float massval);
+	void createGhostShape(btRigidBody* bodyObj);
 };
 
 #endif // PHYSICSWORLD_H

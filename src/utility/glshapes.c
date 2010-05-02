@@ -125,6 +125,50 @@ void box(float length,float width,float height)
     glEnd();
 }
 
+void wireBox(float length,float width,float height)
+{
+    int i;
+    Vertex extents = {length,width,height};
+    int indices[24] = {
+        0,1,
+		2,3,
+        4,5,
+        6,7,
+        0,2,
+        1,3,
+        4,6,
+        5,7,
+        0,4,
+        1,5,
+        2,6,
+        3,7};
+
+    static Vertex vertices[8]={
+        {1,1,1},
+        {-1,1,1},
+        {1,-1,1},
+        {-1,-1,1},
+        {1,1,-1},
+        {-1,1,-1},
+        {1,-1,-1},
+        {-1,-1,-1}};
+
+    glBegin (GL_LINES);
+    for (i=0;i<24;i+=2)
+    {
+        Vertex v1 = mult(vertices[indices[i]],extents);
+        Vertex v2 = mult(vertices[indices[i+1]],extents);
+
+        //Vertex normal = normalCross(diff(v2,v1),diff(v3,v1));//(v2-v1).cross(v3-v1);
+
+        if(i%2) glNormal3f(v1.x,v1.y,v1.z);
+		else glNormal3f(v2.x,v2.y,v2.z);
+        glVertex3f (v1.x, v1.y, v1.z);
+        glVertex3f (v2.x, v2.y, v2.z);
+    }
+    glEnd();
+}
+
 void cylinder(float rad, float length, int res)
 {
     int i;

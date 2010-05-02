@@ -10,10 +10,11 @@
 // Use if Bullet Frameworks are added
 #include <BulletCollision/BroadphaseCollision/btBroadphaseProxy.h>
 #include <BulletDynamics/Dynamics/btRigidBody.h>
+#include <BulletDynamics/Dynamics/btDynamicsWorld.h>
 
 simControl::simControl(simGLView* vw)
 	:	ground(NULL),sky(NULL),sr2(NULL),autoNav(NULL),glView(vw),
-m_obstType(),
+m_obstType(0),
 m_obstCount(50),
 m_dropHeight(5),
 m_minObstYaw(0),
@@ -128,6 +129,7 @@ void simControl::generateObstacles()
     float   alphaYaw,volume;
     int i;
 	
+	arena->deleteGroup(GHOST_GROUP);
     arena->deleteGroup(OBSTACLE_GROUP);
 	
     if(m_obstCount == 0) return;
@@ -171,6 +173,7 @@ void simControl::generateObstacles()
                 volume = PI * tempSize.y() * tempSize.y() *tempSize.x();
                 break;
             default:
+				qDebug("default obstacle");
                 arena->createObstacleShape(BOX_SHAPE_PROXYTYPE,tempSize);
                 volume = tempSize.x() * tempSize.y() * tempSize.z();
                 break;
@@ -182,9 +185,32 @@ void simControl::generateObstacles()
 }
 void simControl::removeObstacles()
 {
+	arena->deleteGroup(GHOST_GROUP);
 	arena->deleteGroup(OBSTACLE_GROUP);
 }
+void simControl::generateCSpace()
+{
+	btDynamicsWorld *pWorld = arena->getDynamicsWorld();
+	int	numObjects = pWorld->getNumCollisionObjects();
+	int i,group;
 
+	arena->deleteGroup(GHOST_GROUP);
+	// loop through all rigid bodies
+	for(i=0;i<numObjects;i++){
+		btCollisionObject*	colisObject = pWorld->getCollisionObjectArray()[i];
+
+	// test colisobject if rigid body and obstacle
+		group = *(int*)colisObject->getUserPointer();
+		if(colisObject->getInternalType() == btCollisionObject::CO_RIGID_BODY && group == OBSTACLE_GROUP)
+		{
+		// create CSpace
+			btRigidBody* body = btRigidBody::upcast(colisObject);
+			// check if object is in-active
+			if(body->isActive()) continue;
+			arena->createGhostShape(body);
+		}
+	}
+}
 /////////////////////////////////////////
 // Rover generation functions
 /////////////

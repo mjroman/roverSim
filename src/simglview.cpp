@@ -174,6 +174,7 @@ void simGLView::overlayGL()
     glColor3f(0, 1, 0);
 
     glDisable(GL_LIGHTING);
+	glLineWidth(1.0);
     glBegin(GL_LINES);
     glVertex2f(width/2-5,height/2);
     glVertex2f(width/2+5,height/2);
@@ -253,9 +254,10 @@ void simGLView::drawWorld()
 {
     btScalar	glm[16];
     btDynamicsWorld *pWorld = arena->getDynamicsWorld();
-    const int	numObjects = pWorld->getNumCollisionObjects();
+    int	numObjects = pWorld->getNumCollisionObjects();
+	int group;
+	debugVal = numObjects;
 	
-	glColor3f(1,0,0);
     //glColor3f(0.02f,0.52f,0.51f);	// tron blue
 	//glColor3f(0.1f,0.0f,0.5f); // dark blue
 	//glColor3f(0.7,0.0,0.7);	// dark purple
@@ -263,20 +265,31 @@ void simGLView::drawWorld()
     //glMaterialfv(GL_FRONT, GL_EMISSION, obstacleEmission);
     for(int i=0;i<numObjects;i++){
         btCollisionObject*	colisObject = pWorld->getCollisionObjectArray()[i];
-        btRigidBody*		body = btRigidBody::upcast(colisObject);
+        
+		group = *(int*)colisObject->getUserPointer();
+        if(group == ROVER_GROUP) continue;
+        if(group == TERRAIN_GROUP) continue;
 		
-        if(body && body->getMotionState())
-        {
-            btDefaultMotionState* objMotionState = (btDefaultMotionState*)body->getMotionState();
-            objMotionState->m_graphicsWorldTrans.getOpenGLMatrix(glm);
-        }
-        else
-        {
-            colisObject->getWorldTransform().getOpenGLMatrix(glm);
-        }
+		glColor3f(1.0f,0.0f,0.0f);
+		if(group == GHOST_GROUP){
+			glColor3f(0.99f,0.82f,0.1f); // golden C-Space
+			glLineWidth(1.5);
+			colisObject->getWorldTransform().getOpenGLMatrix(glm);
+		}
+		else{
+			// test colisobject if rigid body
+			if(colisObject->getInternalType() == btCollisionObject::CO_RIGID_BODY){
+				btRigidBody*		body = btRigidBody::upcast(colisObject);
 
-        if(*(int*)body->getUserPointer() == ROVER_GROUP) continue;
-        if(*(int*)body->getUserPointer() == TERRAIN_GROUP) continue;
+				if(body && body->getMotionState())
+				{
+					btDefaultMotionState* objMotionState = (btDefaultMotionState*)body->getMotionState();
+					objMotionState->m_graphicsWorldTrans.getOpenGLMatrix(glm);
+				}
+				else
+					colisObject->getWorldTransform().getOpenGLMatrix(glm);
+			}
+		}
 
         btCollisionShape* colisShape = colisObject->getCollisionShape();
 		
@@ -287,8 +300,9 @@ void simGLView::drawWorld()
 			case BOX_SHAPE_PROXYTYPE: {
 				const btBoxShape* boxShape = static_cast<const btBoxShape*>(colisShape);
 				btVector3 halfDims = boxShape->getHalfExtentsWithMargin();
-
-                                box(halfDims.x(),halfDims.y(),halfDims.z());
+                               	if(group == OBSTACLE_GROUP) box(halfDims.x(),halfDims.y(),halfDims.z());
+								else
+									wireBox(halfDims.x(),halfDims.y(),halfDims.z());
 				break;
 			}
 			case SPHERE_SHAPE_PROXYTYPE:
@@ -360,4 +374,37 @@ void simGLView::drawWaypoints()
 		box(0.1,0.1,1);
 		glPopMatrix();
 	}
+}
+
+void simGLView::drawFrame(btTransform &tr)
+{
+        float fSize = 1;
+        glLineWidth(2.0);
+        glBegin(GL_LINES);
+
+        // x red
+        glColor3f(255.f,0,0);
+		glVertex3d(0,0,0);
+		glVertex3d(fSize,0,0);
+        //btVector3 vX = tr*btVector3(fSize,0,0);	
+        //glVertex3d(tr.getOrigin().getX(), tr.getOrigin().getY(), tr.getOrigin().getZ());
+        //glVertex3d(vX.getX(), vX.getY(), vX.getZ());
+
+        // y green
+        glColor3f(0,255.f,0);
+		glVertex3d(0,0,0);
+		glVertex3d(0,fSize,0);
+        // btVector3 vY = tr*btVector3(0,fSize,0);
+        // glVertex3d(tr.getOrigin().getX(), tr.getOrigin().getY(), tr.getOrigin().getZ());
+        // glVertex3d(vY.getX(), vY.getY(), vY.getZ());
+        
+        // z blue
+        glColor3f(0,0,255.f);
+		glVertex3d(0,0,0);
+        glVertex3d(0,0,2*fSize);
+		// btVector3 vZ = tr*btVector3(0,0,fSize);
+        // glVertex3d(tr.getOrigin().getX(), tr.getOrigin().getY(), tr.getOrigin().getZ());
+        // glVertex3d(vZ.getX(), vZ.getY(), vZ.getZ());
+
+        glEnd();
 }

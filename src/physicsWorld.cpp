@@ -11,12 +11,14 @@
 
 // Use with Bullet Frameworks
 #include <BulletCollision/btBulletCollisionCommon.h>
+#include <BulletCollision/CollisionDispatch/btGhostObject.h>
 #include <BulletDynamics/Dynamics/btRigidBody.h>
 #include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
 #include <BulletDynamics/ConstraintSolver/btConstraintSolver.h>
 #include <BulletDynamics/ConstraintSolver/btSequentialImpulseConstraintSolver.h>
 #include <LinearMath/btDefaultMotionState.h>
 
+#define SPACEMARGIN	0.5
 
 physicsWorld *physicsWorld::m_pWorld = 0;
 
@@ -24,6 +26,7 @@ physicsWorld::physicsWorld(float x, float y, float z, float boundary)
 :
 m_idle(false),
 m_draw(false),
+m_ghostType(GHOST_GROUP),
 m_obstacleType(OBSTACLE_GROUP),
 m_roverType(ROVER_GROUP),
 m_terrainType(TERRAIN_GROUP),
@@ -62,6 +65,7 @@ physicsWorld::~physicsWorld()
     qDebug("deleting physics");
 	
     //remove the rigidbodies from the dynamics world and delete them
+	deleteGroup(GHOST_GROUP);
     deleteGroup(OBSTACLE_GROUP);
 	
     delete m_dynamicsWorld;
@@ -81,9 +85,10 @@ void physicsWorld::deleteGroup(physicsGroupType groupType)
     while(i < m_dynamicsWorld->getNumCollisionObjects())
     {
         btCollisionObject* obj = m_dynamicsWorld->getCollisionObjectArray()[i];
-        btRigidBody* body = btRigidBody::upcast(obj);
-        if(body && *(int *)body->getUserPointer() == groupType){
-            if(body->getMotionState())
+       
+        if(obj && *(int *)obj->getUserPointer() == groupType){
+	 		btRigidBody* body = btRigidBody::upcast(obj);
+            if(body && body->getMotionState())
                 delete body->getMotionState();
             m_dynamicsWorld->removeCollisionObject(obj);
             delete obj;
@@ -100,6 +105,9 @@ void physicsWorld::deleteGroup(physicsGroupType groupType)
             break;
         case OBSTACLE_GROUP:
             m_obstacleShapes.clear();
+			break;
+		case GHOST_GROUP:
+			m_ghostShapes.clear();
             break;
     }
 	
@@ -122,6 +130,7 @@ void physicsWorld::resetBroadphaseSolver()
 void physicsWorld::resetWorld()
 {
     //remove the rigidbodies from the dynamics world and delete them
+	deleteGroup(GHOST_GROUP);
     deleteGroup(OBSTACLE_GROUP);
     deleteGroup(TERRAIN_GROUP);
 	
@@ -173,16 +182,18 @@ void physicsWorld::simulatStep(){
 
 int *physicsWorld::objectGroup(physicsGroupType type)
 {
-    switch (type){
-      case TERRAIN_GROUP:
-        return &m_terrainType;
-      case ROVER_GROUP:
-        return &m_roverType;
-      case OBSTACLE_GROUP:
-        return &m_obstacleType;
-      default:
-        return NULL;
-    }
+	switch (type){
+		case TERRAIN_GROUP:
+		return &m_terrainType;
+		case ROVER_GROUP:
+		return &m_roverType;
+		case OBSTACLE_GROUP:
+		return &m_obstacleType;
+		case GHOST_GROUP:
+		return &m_ghostType;
+		default:
+		return NULL;
+	}
 }
 
 // creates a new physics collision shape, this has to be called
@@ -248,12 +259,83 @@ btRigidBody* physicsWorld::placeShapeAt(btCollisionShape* bodyShape, btVector3 p
     return createRigidBody(massval,startTransform,bodyShape,groupType);
 }
 
-btRigidBody* physicsWorld::placeObstacleShapeAt(btVector3 pos,float yaw, float massval)
+void physicsWorld::placeObstacleShapeAt(btVector3 pos,float yaw, float massval)
 {
     // get the last collision shape that has been added to the shape array
-    return placeShapeAt(m_obstacleShapes[m_obstacleShapes.size()-1],pos,yaw,massval,OBSTACLE_GROUP);
+    placeShapeAt(m_obstacleShapes[m_obstacleShapes.size()-1],pos,yaw,massval,OBSTACLE_GROUP);
 }
 
+void physicsWorld::createGhostShape(btRigidBody* bodyObj)
+{
+	// check what axis is up
+	btTransform wt = bodyObj->getWorldTransform();
+	btVector3 bodyOrigin = wt.getOrigin();
+	btVector3 notUpVector;
+	btTransform bodyTrans;
+	bodyTrans.setIdentity();
+	
+	// if Z axis is up if the cosine is greater than 45deg
+	if(fabs((wt(btVector3(0,0,1)) - bodyOrigin).dot(btVector3(0,0,1))) > 0.707)
+		notUpVector.setValue(1,1,0);
+	else if(fabs((wt(btVector3(0,1,0)) - bodyOrigin).dot(btVector3(0,0,1))) > 0.707)// if y axis is up
+		notUpVector.setValue(1,0,1);
+	else
+		notUpVector.setValue(0,1,1);
+	
+	btCollisionShape* colisShape = bodyObj->getCollisionShape();
+	btVector3 halfDims;
+	
+	switch(colisShape->getShapeType()){
+		case BOX_SHAPE_PROXYTYPE: {
+			const btBoxShape* boxShape = static_cast<const btBoxShape*>(colisShape);
+			halfDims = boxShape->getHalfExtentsWithMargin();
+			bodyTrans = bodyObj->getWorldTransform();
+			break;
+		}
+		case SPHERE_SHAPE_PROXYTYPE: {
+			const btSphereShape* sphereShape = static_cast<const btSphereShape*>(colisShape);
+			float radius = sphereShape->getMargin();
+			halfDims.setValue(radius,radius,radius);
+			// use origin but set Z vector up so ghost obj's are level
+			bodyTrans.setOrigin(bodyObj->getWorldTransform().getOrigin());	
+			notUpVector.setValue(1,1,0);// also set the notUpVector to (1,1,0);
+			break;
+		}
+		case CONE_SHAPE_PROXYTYPE: {
+			const btConeShape* coneShape = static_cast<const btConeShape*>(colisShape);
+			float radius = coneShape->getRadius();
+			float height = coneShape->getHeight();
+			halfDims.setValue(radius,height,radius);
+			bodyTrans.setOrigin(bodyObj->getWorldTransform().getOrigin());	// use origin but set Z vector up so ghost obj's are level
+			notUpVector.setValue(1,0,1);// also set the notUpVector to (1,1,0);
+			break;
+		}
+		case CYLINDER_SHAPE_PROXYTYPE: {
+			const btCylinderShape* cylShape = static_cast<const btCylinderShape*>(colisShape);
+			halfDims = cylShape->getHalfExtentsWithMargin();
+			bodyTrans.setOrigin(bodyObj->getWorldTransform().getOrigin()); 	// use origin but set Z vector up so ghost obj's are level
+			notUpVector.setValue(1,1,0);// also set the notUpVector to (1,1,0);
+			break;
+		}
+		default:
+		halfDims = btVector3(1,1,1);
+		bodyTrans = bodyObj->getWorldTransform();
+		break;
+	}
+	
+	// create c-space object
+	btGhostObject* ghostObj = new btGhostObject();
+	ghostObj->setWorldTransform(bodyTrans);
+	btVector3 lwh = halfDims + notUpVector * SPACEMARGIN;
+	btCollisionShape* cshape = createShape(BOX_SHAPE_PROXYTYPE, lwh);
+	m_ghostShapes.push_back(cshape);
+	ghostObj->setCollisionShape(cshape);
+	ghostObj->setCollisionFlags(btCollisionObject::CF_NO_CONTACT_RESPONSE);
+	
+	// add the object to the world
+	ghostObj->setUserPointer(objectGroup(GHOST_GROUP));
+	m_dynamicsWorld->addCollisionObject(ghostObj,btBroadphaseProxy::SensorTrigger,btBroadphaseProxy::KinematicFilter);
+}
 
 
 
