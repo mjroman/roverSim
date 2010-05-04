@@ -37,7 +37,6 @@ protected:
     void drawTest();
     void drawPlane(btScalar constant,const btVector3 normal);
     void drawObstacles();
-	void drawGhosts();
 	void drawWaypoints();
 	void drawFrame();
 

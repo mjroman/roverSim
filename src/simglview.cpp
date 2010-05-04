@@ -152,7 +152,6 @@ void simGLView::paintGL()
         glLightfv(GL_LIGHT1, GL_POSITION, lightOnePos);
 
         drawObstacles();
-		drawGhosts();
 		drawWaypoints();
 		
         for(int i=0;i<renderList.size();i++)
@@ -332,30 +331,6 @@ void simGLView::drawObstacles()
         glPopMatrix();
     }
 	
-}
-
-// draws the golden outline for the c-space ghost objects
-void simGLView::drawGhosts()
-{
-	btScalar	glm[16];
-	btAlignedObjectArray<btCollisionObject*> *ghostArray;
-	ghostArray = arena->getGhostObjectArray();
-	
-	glColor3f(0.99f,0.82f,0.1f); // golden C-Space
-	glLineWidth(1.5);
-	
-	for(int i = 0; i < ghostArray->size(); ++i)
-	{
-		ghostArray->at(i)->getWorldTransform().getOpenGLMatrix(glm);
-		btCollisionShape* ghostShape = ghostArray->at(i)->getCollisionShape();
-		const btBoxShape* boxShape = static_cast<const btBoxShape*>(ghostShape);
-		btVector3 halfDims = boxShape->getHalfExtentsWithMargin();
-		
-		glPushMatrix();
-        glMultMatrixf(glm);
-			wireBox(halfDims.x(),halfDims.y(),halfDims.z());
-		glPopMatrix();	
-	}
 }
 
 void simGLView::drawWaypoints()

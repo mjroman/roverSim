@@ -239,7 +239,7 @@ void MainGUI::keyPressEvent(QKeyEvent *event)
 		case 'S':
 		{
 			//textConsole->insertPlainText("C-Space created\n");
-			SController->generateCSpace();
+			SController->generatePath();
 			return;
 		}
         case 'V':

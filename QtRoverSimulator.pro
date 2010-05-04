@@ -46,7 +46,8 @@ SOURCES += main.cpp \
     src/tools/obstacletool.cpp \
 	src/tools/waypointtool.cpp \
     src/skydome.cpp \
-	src/autoCode.cpp 
+	src/autoCode.cpp \
+	src/pathPlan.cpp
 	
 HEADERS += src/mainGUI.h \
 	src/simcontrol.h \
@@ -68,7 +69,8 @@ HEADERS += src/mainGUI.h \
     src/tools/obstacletool.h \
 	src/tools/waypointtool.h \
     src/skydome.h \
-	src/autoCode.h 
+	src/autoCode.h \
+	src/pathPlan.h
 	
 FORMS += src/mainGUI.ui \
     src/tools/terraintool.ui \

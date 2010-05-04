@@ -193,8 +193,7 @@ void SR2rover::constructRover(const btVector3& positionOffset)
 
 // construct main body
     m_bodyAttachPoints[partIndex] = vRoot;
-    m_bodyParts[partIndex] = arena->createRigidBody(1,offset*transform,bodyShape); // create a box rigid body for the rover
-	m_robotObjects.push_back(m_bodyParts[partIndex]);
+    m_robotObjects.push_back(arena->createRigidBody(1,offset*transform,bodyShape)); // create a box rigid body for the rover
 	partIndex++;
 
 // construct suspension parts
@@ -202,15 +201,13 @@ void SR2rover::constructRover(const btVector3& positionOffset)
     m_bodyAttachPoints[partIndex].setValue(BODYWIDTH+0.03,0,fHeight-0.06); // coordinates in world at startup
     transform.setIdentity();
     transform.setOrigin(m_bodyAttachPoints[partIndex]);
-    m_bodyParts[partIndex] = arena->createRigidBody(0.5,offset*transform,susShape); // create a cylinder body for suspension
-    m_robotObjects.push_back(m_bodyParts[partIndex]);
+    m_robotObjects.push_back(arena->createRigidBody(0.5,offset*transform,susShape)); // create a cylinder body for suspension
 	partIndex++;
     // left suspension
     m_bodyAttachPoints[partIndex].setValue(-BODYWIDTH-0.03,0,fHeight-0.06);
     transform.setIdentity();
     transform.setOrigin(m_bodyAttachPoints[partIndex]);
-    m_bodyParts[partIndex] = arena->createRigidBody(0.5,offset*transform,susShape); // create a cylinder body for suspension
-    m_robotObjects.push_back(m_bodyParts[partIndex]);
+    m_robotObjects.push_back(arena->createRigidBody(0.5,offset*transform,susShape)); // create a cylinder body for suspension
 	partIndex++;
 
 // construct wheel parts
@@ -218,37 +215,33 @@ void SR2rover::constructRover(const btVector3& positionOffset)
     m_bodyAttachPoints[partIndex].setValue(WHEELTRAC/2,WHEELBASE/2,fHeight-.25);
     transform.setIdentity();
     transform.setOrigin(m_bodyAttachPoints[partIndex]);
-    m_bodyParts[partIndex] = arena->createRigidBody(0.25,offset*transform,wheelShape);
-    m_robotObjects.push_back(m_bodyParts[partIndex]);
+    m_robotObjects.push_back(arena->createRigidBody(0.25,offset*transform,wheelShape));
 	partIndex++;
     // rear right wheel
     m_bodyAttachPoints[partIndex].setValue(WHEELTRAC/2,-WHEELBASE/2,fHeight-0.25);
     transform.setIdentity();
     transform.setOrigin(m_bodyAttachPoints[partIndex]);
-    m_bodyParts[partIndex] = arena->createRigidBody(0.25,offset*transform,wheelShape);
-    m_robotObjects.push_back(m_bodyParts[partIndex]);
+    m_robotObjects.push_back(arena->createRigidBody(0.25,offset*transform,wheelShape));
 	partIndex++;
     // front left wheel
     m_bodyAttachPoints[partIndex].setValue(-WHEELTRAC/2,WHEELBASE/2,fHeight-0.25);
     transform.setIdentity();
     transform.setOrigin(m_bodyAttachPoints[partIndex]);
-    m_bodyParts[partIndex] = arena->createRigidBody(0.25,offset*transform,wheelShape);
-    m_robotObjects.push_back(m_bodyParts[partIndex]);
+    m_robotObjects.push_back(arena->createRigidBody(0.25,offset*transform,wheelShape));
 	partIndex++;
     // rear left wheel
     m_bodyAttachPoints[partIndex].setValue(-WHEELTRAC/2,-WHEELBASE/2,fHeight-0.25);
     transform.setIdentity();
     transform.setOrigin(m_bodyAttachPoints[partIndex]);
-    m_bodyParts[partIndex] = arena->createRigidBody(0.25,offset*transform,wheelShape);
-    m_robotObjects.push_back(m_bodyParts[partIndex]);	
+    m_robotObjects.push_back(arena->createRigidBody(0.25,offset*transform,wheelShape));
 	partIndex++;
 
 // set rigid body damping and friction parameters
-    for(int i=0;i<m_partCount.bodyParts+m_partCount.wheels;i++){
-        //m_bodyParts[i]->setActivationState(DISABLE_DEACTIVATION);
-        m_bodyParts[i]->setDamping(0.05, 0.85);
-        m_bodyParts[i]->setSleepingThresholds(0.025f, 0.5f);
-        if(i>=m_partCount.bodyParts) m_bodyParts[i]->setAnisotropicFriction(m_wheelFriction);
+    for(int i=0;i < m_robotObjects.size();i++){
+        //m_robotObjects[i]->setActivationState(DISABLE_DEACTIVATION);
+        m_robotObjects[i]->setDamping(0.05, 0.85);
+        m_robotObjects[i]->setSleepingThresholds(0.025f, 0.5f);
+        if(i>=m_partCount.bodyParts) m_robotObjects[i]->setAnisotropicFriction(m_wheelFriction);
     }
 
 
@@ -263,8 +256,8 @@ void SR2rover::constructRover(const btVector3& positionOffset)
     frameB.setIdentity();
     frameA.getBasis().setEulerZYX(0,PI/2,0);
     frameA.setOrigin(btVector3(BODYWIDTH,0,-0.06)); // the location of the joint
-    frameB = m_bodyParts[1]->getWorldTransform().inverse() * m_bodyParts[0]->getWorldTransform() * frameA;
-    joint = new btHingeConstraint(*m_bodyParts[0],*m_bodyParts[1], frameA, frameB);
+    frameB = m_robotObjects[1]->getWorldTransform().inverse() * m_robotObjects[0]->getWorldTransform() * frameA;
+    joint = new btHingeConstraint(*m_robotObjects[0],*m_robotObjects[1], frameA, frameB);
     joint->setLimit(-DEGTORAD(75),DEGTORAD(75),0.5,0.5,0.5);
     m_passiveJoints[RSUSPEN] = joint;
     arena->getDynamicsWorld()->addConstraint(joint,true);
@@ -278,9 +271,9 @@ void SR2rover::constructRover(const btVector3& positionOffset)
     frameC.setIdentity();
     frameA.getBasis().setEulerZYX(0,PI/2,0);
     frameA.setOrigin(btVector3(WHEELTRAC/2,WHEELBASE/2,-0.25)); // the location of the joint
-    frameB = m_bodyParts[1]->getWorldTransform().inverse() * m_bodyParts[0]->getWorldTransform() * frameA;
-    frameC = m_bodyParts[3]->getWorldTransform().inverse() * m_bodyParts[0]->getWorldTransform() * frameA;
-    joint = new btHingeConstraint(*m_bodyParts[1],*m_bodyParts[3], frameB, frameC);
+    frameB = m_robotObjects[1]->getWorldTransform().inverse() * m_robotObjects[0]->getWorldTransform() * frameA;
+    frameC = m_robotObjects[3]->getWorldTransform().inverse() * m_robotObjects[0]->getWorldTransform() * frameA;
+    joint = new btHingeConstraint(*m_robotObjects[1],*m_robotObjects[3], frameB, frameC);
     m_motorJoints[RFWHEEL] = joint;
     arena->getDynamicsWorld()->addConstraint(joint,true);
 
@@ -290,9 +283,9 @@ void SR2rover::constructRover(const btVector3& positionOffset)
     frameC.setIdentity();
     frameA.getBasis().setEulerZYX(0,PI/2,0);
     frameA.setOrigin(btVector3(WHEELTRAC/2,-WHEELBASE/2,-0.25)); // the location of the joint
-    frameB = m_bodyParts[1]->getWorldTransform().inverse() * m_bodyParts[0]->getWorldTransform() * frameA;
-    frameC = m_bodyParts[4]->getWorldTransform().inverse() * m_bodyParts[0]->getWorldTransform() * frameA;
-    joint = new btHingeConstraint(*m_bodyParts[1],*m_bodyParts[4], frameB, frameC);
+    frameB = m_robotObjects[1]->getWorldTransform().inverse() * m_robotObjects[0]->getWorldTransform() * frameA;
+    frameC = m_robotObjects[4]->getWorldTransform().inverse() * m_robotObjects[0]->getWorldTransform() * frameA;
+    joint = new btHingeConstraint(*m_robotObjects[1],*m_robotObjects[4], frameB, frameC);
     m_motorJoints[RRWHEEL] = joint;
     arena->getDynamicsWorld()->addConstraint(joint,true);
 
@@ -301,8 +294,8 @@ void SR2rover::constructRover(const btVector3& positionOffset)
     frameB.setIdentity();
     frameA.getBasis().setEulerZYX(0,PI/2,0);
     frameA.setOrigin(btVector3(-BODYWIDTH,0,-0.06)); // the location of the joint
-    frameB = m_bodyParts[2]->getWorldTransform().inverse() * m_bodyParts[0]->getWorldTransform() * frameA;
-    joint = new btHingeConstraint(*m_bodyParts[0],*m_bodyParts[2], frameA, frameB);
+    frameB = m_robotObjects[2]->getWorldTransform().inverse() * m_robotObjects[0]->getWorldTransform() * frameA;
+    joint = new btHingeConstraint(*m_robotObjects[0],*m_robotObjects[2], frameA, frameB);
     joint->setLimit(-DEGTORAD(75),DEGTORAD(75),0.5,0.5,0.5);
     m_passiveJoints[LSUSPEN] = joint;
     arena->getDynamicsWorld()->addConstraint(joint,true);
@@ -313,9 +306,9 @@ void SR2rover::constructRover(const btVector3& positionOffset)
     frameC.setIdentity();
     frameA.getBasis().setEulerZYX(0,PI/2,0);
     frameA.setOrigin(btVector3(-WHEELTRAC/2,WHEELBASE/2,-0.25)); // the location of the joint
-    frameB = m_bodyParts[2]->getWorldTransform().inverse() * m_bodyParts[0]->getWorldTransform() * frameA;
-    frameC = m_bodyParts[5]->getWorldTransform().inverse() * m_bodyParts[0]->getWorldTransform() * frameA;
-    joint = new btHingeConstraint(*m_bodyParts[2],*m_bodyParts[5], frameB, frameC);
+    frameB = m_robotObjects[2]->getWorldTransform().inverse() * m_robotObjects[0]->getWorldTransform() * frameA;
+    frameC = m_robotObjects[5]->getWorldTransform().inverse() * m_robotObjects[0]->getWorldTransform() * frameA;
+    joint = new btHingeConstraint(*m_robotObjects[2],*m_robotObjects[5], frameB, frameC);
     m_motorJoints[LFWHEEL] = joint;
     arena->getDynamicsWorld()->addConstraint(joint,true);
 
@@ -325,9 +318,9 @@ void SR2rover::constructRover(const btVector3& positionOffset)
     frameC.setIdentity();
     frameA.getBasis().setEulerZYX(0,PI/2,0);
     frameA.setOrigin(btVector3(-WHEELTRAC/2,-WHEELBASE/2,-0.25)); // the location of the joint
-    frameB = m_bodyParts[2]->getWorldTransform().inverse() * m_bodyParts[0]->getWorldTransform() * frameA;
-    frameC = m_bodyParts[6]->getWorldTransform().inverse() * m_bodyParts[0]->getWorldTransform() * frameA;
-    joint = new btHingeConstraint(*m_bodyParts[2],*m_bodyParts[6], frameB, frameC);
+    frameB = m_robotObjects[2]->getWorldTransform().inverse() * m_robotObjects[0]->getWorldTransform() * frameA;
+    frameC = m_robotObjects[6]->getWorldTransform().inverse() * m_robotObjects[0]->getWorldTransform() * frameA;
+    joint = new btHingeConstraint(*m_robotObjects[2],*m_robotObjects[6], frameB, frameC);
     m_motorJoints[LRWHEEL] = joint;
     arena->getDynamicsWorld()->addConstraint(joint,true);
 
@@ -460,17 +453,17 @@ void SR2rover::updateRobot()
     // activate all rigid bodies only if a motor is in motion to reduce errors
    	if(leftSpeed || rightSpeed)
 	{
-        for(int i=0;i<m_partCount.wheels+m_partCount.bodyParts;i++)
-            m_bodyParts[i]->activate(true);
+        for(int i=0;i<m_robotObjects.size();i++)
+            m_robotObjects[i]->activate(true);
 	}
 
     // update rover sensors
 	for(int i = 0; i < m_laserList.size(); ++i)
 	{
-		m_laserList[i]->update(m_bodyParts[0]->getWorldTransform());
+		m_laserList[i]->update(m_robotObjects[0]->getWorldTransform());
 	}
 	
-	//btTransform wheelTF = m_bodyParts[1]->getCenterOfMassTransform();
+	//btTransform wheelTF = m_robotObjects[1]->getCenterOfMassTransform();
 	//btVector3 mudPos = wheelTF(btVector3(0.05,-0.35,-0.3));
 	//mudParticle->setPosition(mudPos.x(),mudPos.y(),mudPos.z());
 	emit updated();
@@ -547,7 +540,7 @@ void SR2rover::renderGLObject()
     // draw suspension
     glColor3f(0.8f,0.8f,0.8f);
     for(i=1;i<3;i++){
-        btDefaultMotionState* objMotionState = (btDefaultMotionState*)m_bodyParts[i]->getMotionState();
+        btDefaultMotionState* objMotionState = (btDefaultMotionState*)m_robotObjects[i]->getMotionState();
         objMotionState->m_graphicsWorldTrans.getOpenGLMatrix(glm);
         glPushMatrix();
         glMultMatrixf(glm);
@@ -557,7 +550,7 @@ void SR2rover::renderGLObject()
 
     // draw body
     {
-        btDefaultMotionState* objMotionState = (btDefaultMotionState*)m_bodyParts[0]->getMotionState();
+        btDefaultMotionState* objMotionState = (btDefaultMotionState*)m_robotObjects[0]->getMotionState();
         objMotionState->m_graphicsWorldTrans.getOpenGLMatrix(glm);
         glPushMatrix();
         glMultMatrixf(glm);
@@ -598,8 +591,8 @@ void SR2rover::renderGLObject()
     }
 
     // draw wheels
-    for(i=m_partCount.bodyParts;i<m_partCount.wheels+m_partCount.bodyParts;i++){
-            btDefaultMotionState* objMotionState = (btDefaultMotionState*)m_bodyParts[i]->getMotionState();
+    for(i=m_partCount.bodyParts;i<m_robotObjects.size();i++){
+            btDefaultMotionState* objMotionState = (btDefaultMotionState*)m_robotObjects[i]->getMotionState();
             objMotionState->m_graphicsWorldTrans.getOpenGLMatrix(glm);
 
             glPushMatrix();
@@ -611,7 +604,7 @@ void SR2rover::renderGLObject()
     // draw body scanner
 	for(i = 0; i < m_laserList.size(); ++i)
 	{
-		m_laserList[i]->drawLaser(m_bodyParts[0]->getWorldTransform());
+		m_laserList[i]->drawLaser(m_robotObjects[0]->getWorldTransform());
 	}
 }
 

@@ -47,9 +47,9 @@ public:
     btTypedConstraint                           **m_motorJoints;
     btTypedConstraint                           **m_passiveJoints;
     btVector3                                   *m_bodyAttachPoints;
-    btRigidBody                                 **m_bodyParts;
+
     btAlignedObjectArray<btCollisionShape*>     m_robotShapes;
-	btAlignedObjectArray<btCollisionObject*>	m_robotObjects;
+	btAlignedObjectArray<btRigidBody*>			m_robotObjects;
 
 	float       		pitch,roll,heading;
 	btVector3   		position;

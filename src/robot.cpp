@@ -44,7 +44,6 @@ void robot::initalloc(robotParts pn)
 	m_motorJoints = new btTypedConstraint *[m_partCount.motors];     	// allocate memory for motor joint pointers
     m_passiveJoints = new btTypedConstraint *[m_partCount.passiveJoints];  	// allocate memory for passive joint pointers	
 	m_bodyAttachPoints = new btVector3 [m_partCount.bodyParts + m_partCount.wheels];    // create an array for all the body parts attachment points
-	m_bodyParts = new btRigidBody *[m_partCount.bodyParts + m_partCount.wheels];        // allocate memory for rigid bodies that make up the rover
 }
 
 robot::~robot()
@@ -69,7 +68,6 @@ robot::~robot()
 	delete [] m_motorJoints;
     delete [] m_passiveJoints;
     delete [] m_bodyAttachPoints;
- 	delete [] m_bodyParts;
 }
 
 void robot::deleteRobotGroup()
@@ -79,7 +77,7 @@ void robot::deleteRobotGroup()
  	arena->idle();// pause simulation
 	
 	while(i>0){
-		btCollisionObject* obj = m_robotObjects[i-1];
+		btRigidBody* obj = m_robotObjects[i-1];
 		arena->getDynamicsWorld()->removeCollisionObject(obj);
 		m_robotObjects.pop_back();
 		i = m_robotObjects.size();
@@ -93,7 +91,7 @@ void robot::deleteRobotGroup()
 
 btTransform robot::getRobotTransform()
 {
-	return m_bodyParts[0]->getCenterOfMassTransform();
+	return m_robotObjects[0]->getCenterOfMassTransform();
 }
 
 // sets the rover speeds to zero
@@ -108,8 +106,8 @@ void robot::placeRobotAt(btVector3 here)
     trans.setIdentity();
     trans.setOrigin(here);
 
-    for(i=0;i < m_partCount.bodyParts + m_partCount.wheels;i++){
-        btRigidBody* body = m_bodyParts[i];
+    for(i=0;i < m_robotObjects.size();i++){
+        btRigidBody* body = m_robotObjects[i];
         if(body && body->getMotionState()){
             btDefaultMotionState* bodyMotionState = (btDefaultMotionState*)body->getMotionState();
             btTransform bodyTrans;
@@ -123,6 +121,7 @@ void robot::placeRobotAt(btVector3 here)
             body->setInterpolationWorldTransform( bodyMotionState->m_startWorldTrans );
             body->setAngularVelocity(btVector3(0,0,0));
             body->setLinearVelocity(btVector3(0,0,0));
+			body->activate(true);
         }
     }
     arena->resetBroadphaseSolver();
@@ -133,17 +132,17 @@ void robot::placeRobotAt(btVector3 here)
 
 void robot::resetRobot()
 {
-    btVector3 place = m_bodyParts[0]->getCenterOfMassPosition();
+    btVector3 place = m_robotObjects[0]->getCenterOfMassPosition();
     placeRobotAt(place);
 }
 
 void robot::updateRobot()
 {
 	// update rover position
-    position = m_bodyParts[0]->getCenterOfMassPosition();
+    position = m_robotObjects[0]->getCenterOfMassPosition();
 
     // update rover heading, pitch, and roll
-    btTransform roverTrans = m_bodyParts[0]->getCenterOfMassTransform();
+    btTransform roverTrans = m_robotObjects[0]->getCenterOfMassTransform();
     btVector3 column = roverTrans.getBasis().getColumn(0);
     btVector3 row = roverTrans.getBasis().getRow(2);
     heading = atan2(-column.y(),column.x());

@@ -40,8 +40,6 @@ private:
 protected:
     btAlignedObjectArray<btCollisionShape*>     m_obstacleShapes;
 	btAlignedObjectArray<btCollisionObject*>	m_obstacleObjects;
-	btAlignedObjectArray<btCollisionShape*>		m_ghostShapes;
-	btAlignedObjectArray<btCollisionObject*>	m_ghostObjects;
 
     btBroadphaseInterface*						m_broadphase;
     btCollisionDispatcher*						m_dispatcher;
@@ -59,7 +57,6 @@ public:
     int     simSubSteps;
 
 	btAlignedObjectArray<btCollisionObject*>* getObstacleObjectArray() { return &m_obstacleObjects; }
-	btAlignedObjectArray<btCollisionObject*>* getGhostObjectArray() { return &m_ghostObjects; }
 
     static physicsWorld *initialize(float x, float y, float z, float boundary) {
         if(!m_pWorld){
@@ -89,7 +86,6 @@ public:
     float worldBoundary() { return m_worldBoundary; }
 
 	void deleteObstacleGroup();
-	void deleteGhostGroup();
     void resetBroadphaseSolver();
     void setGravity(btVector3 gv);
     
@@ -102,7 +98,6 @@ public:
     btRigidBody* createRigidBody(float mass, btTransform trans, btCollisionShape* cShape);
     btRigidBody* placeShapeAt(btCollisionShape* bodyShape, btVector3 pos, float yaw, float massval);
     void placeObstacleShapeAt(btVector3 pos,float yaw, float massval);
-	void createGhostShape(btCollisionObject* bodyObj);
 };
 
 #endif // PHYSICSWORLD_H

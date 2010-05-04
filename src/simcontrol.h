@@ -9,6 +9,7 @@ class SR2rover;
 class skydome;
 class simGLView;
 class autoCode;
+class pathPlan;
 
 class simControl : public QObject
 {
@@ -19,6 +20,7 @@ class simControl : public QObject
 		skydome         *sky;
 		SR2rover		*sr2;
 		autoCode		*autoNav;
+		pathPlan		*path;
 		QTimer          *simTimer;
 	    double          delTime;
 		simGLView		*glView;
@@ -69,7 +71,6 @@ class simControl : public QObject
 	// obstacle control functions
 		void generateObstacles();
 		void removeObstacles();
-		void generateCSpace();
 		void stepSim();
 		
 		void openNewGround(QString filename);
@@ -78,6 +79,7 @@ class simControl : public QObject
 		void addWaypointAt(WayPoint wp, int index);
 		void editWaypoint(int index);
 		void resetWaypointStates();
+		void generatePath();
 		
 		void newRover(QWidget* parent);
 		void showNavTool();

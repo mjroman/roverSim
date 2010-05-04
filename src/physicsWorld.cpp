@@ -11,14 +11,11 @@
 
 // Use with Bullet Frameworks
 #include <BulletCollision/btBulletCollisionCommon.h>
-#include <BulletCollision/CollisionDispatch/btGhostObject.h>
 #include <BulletDynamics/Dynamics/btRigidBody.h>
 #include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
 #include <BulletDynamics/ConstraintSolver/btConstraintSolver.h>
 #include <BulletDynamics/ConstraintSolver/btSequentialImpulseConstraintSolver.h>
 #include <LinearMath/btDefaultMotionState.h>
-
-#define SPACEMARGIN	0.5
 
 physicsWorld *physicsWorld::m_pWorld = 0;
 
@@ -61,7 +58,6 @@ physicsWorld::~physicsWorld()
     qDebug("deleting physics");
 	
     //remove the rigidbodies from the dynamics world and delete them
-	deleteGhostGroup();
 	deleteObstacleGroup();
 	
     delete m_dynamicsWorld;
@@ -90,25 +86,6 @@ void physicsWorld::deleteObstacleGroup()
     m_draw = true; // draw obstacles
 }
 
-void physicsWorld::deleteGhostGroup()
-{
-	int i = m_ghostObjects.size();
-	m_draw = false; // do not draw
-    m_idle = true; // pause simulation
-	
-	while(i>0){
-		btCollisionObject* obj = m_ghostObjects[i-1];
-		m_dynamicsWorld->removeCollisionObject(obj);
-		m_ghostObjects.pop_back();
-		i = m_ghostObjects.size();
-	}
-
-	m_ghostShapes.clear();
-	resetBroadphaseSolver();
-	m_idle = false; // unpause simulation
-    m_draw = true; // draw obstacles
-}
-
 void physicsWorld::resetBroadphaseSolver()
 {
     // reset the broadphase
@@ -122,7 +99,6 @@ void physicsWorld::resetBroadphaseSolver()
 void physicsWorld::resetWorld()
 {
     //remove the rigidbodies from the dynamics world and delete them
-	deleteGhostGroup();
 	deleteObstacleGroup();
 	
     // Rebuild the broadphase volume
@@ -239,89 +215,6 @@ void physicsWorld::placeObstacleShapeAt(btVector3 pos,float yaw, float massval)
 {
     // get the last collision shape that has been added to the shape array
     m_obstacleObjects.push_back(placeShapeAt(m_obstacleShapes[m_obstacleShapes.size()-1],pos,yaw,massval));
-}
-
-/////////////////////////////////////////
-// C-Space ghost object creation
-/////////////
-void physicsWorld::createGhostShape(btCollisionObject* bodyObj)
-{
-	// check what axis is up
-	btTransform wt = bodyObj->getWorldTransform();
-	btVector3 bodyOrigin = wt.getOrigin();
-	btVector3 notUpVector;
-	btTransform bodyTrans;
-	bodyTrans.setIdentity();
-	
-	// if Z axis is up if the cosine is greater than 45deg
-	if(fabs((wt(btVector3(0,0,1)) - bodyOrigin).dot(btVector3(0,0,1))) > 0.707)
-		notUpVector.setValue(1,1,0);
-	else if(fabs((wt(btVector3(0,1,0)) - bodyOrigin).dot(btVector3(0,0,1))) > 0.707)// if y axis is up
-		notUpVector.setValue(1,0,1);
-	else
-		notUpVector.setValue(0,1,1);
-	
-	// get the shape of the object to draw a C-Space box around it
-	btCollisionShape* colisShape = bodyObj->getCollisionShape();
-	btVector3 halfDims;
-	switch(colisShape->getShapeType()){
-		case BOX_SHAPE_PROXYTYPE: {
-			const btBoxShape* boxShape = static_cast<const btBoxShape*>(colisShape);
-			halfDims = boxShape->getHalfExtentsWithMargin();
-			bodyTrans = wt;
-			break;
-		}
-		case SPHERE_SHAPE_PROXYTYPE: {
-			const btSphereShape* sphereShape = static_cast<const btSphereShape*>(colisShape);
-			float radius = sphereShape->getMargin();
-			halfDims.setValue(radius,radius,radius);
-			// use origin but set Z vector up so ghost obj's are level
-			bodyTrans.setOrigin(wt.getOrigin());	
-			notUpVector.setValue(1,1,0);// also set the notUpVector to (1,1,0);
-			break;
-		}
-		case CONE_SHAPE_PROXYTYPE: {
-			const btConeShape* coneShape = static_cast<const btConeShape*>(colisShape);
-			float radius = coneShape->getRadius();
-			float height = coneShape->getHeight();
-			halfDims.setValue(radius,radius,height/2);
-			bodyTrans.setOrigin(wt.getOrigin());	// use origin but set Z vector up so ghost obj's are level
-			notUpVector.setValue(1,1,0);// also set the notUpVector to (1,1,0);
-			break;
-		}
-		case CYLINDER_SHAPE_PROXYTYPE: {
-			const btCylinderShape* cylShape = static_cast<const btCylinderShape*>(colisShape);
-			if(notUpVector.z()) {
-				float radius = cylShape->getRadius();
-				float height = cylShape->getHalfExtentsWithMargin().y();
-				halfDims.setValue(radius,radius,height/2);
-			}
-			else halfDims = cylShape->getHalfExtentsWithMargin();
-			bodyTrans.setOrigin(wt.getOrigin()); 	// use origin but set Z vector up so ghost obj's are level
-			notUpVector.setValue(1,1,0);// also set the notUpVector to (1,1,0);
-			break;
-		}
-		default:
-		halfDims = btVector3(1,1,1);
-		bodyTrans = wt;
-		break;
-	}
-	
-	// create c-space object
-	btGhostObject* ghostObj = new btGhostObject();
-	// place it over the object
-	ghostObj->setWorldTransform(bodyTrans);
-	// grow the object and set the shape
-	btVector3 lwh = halfDims + notUpVector * SPACEMARGIN;
-	btCollisionShape* cshape = createShape(BOX_SHAPE_PROXYTYPE, lwh);
-	ghostObj->setCollisionShape(cshape);
-	ghostObj->setCollisionFlags(btCollisionObject::CF_NO_CONTACT_RESPONSE);
-	
-	m_ghostShapes.push_back(cshape);
-	m_ghostObjects.push_back(ghostObj);
-	
-	// add the object to the world
-	m_dynamicsWorld->addCollisionObject(ghostObj,btBroadphaseProxy::SensorTrigger,btBroadphaseProxy::KinematicFilter);
 }
 
 

@@ -3,6 +3,7 @@
 #include "terrain.h"
 #include "sr2rover.h"
 #include "autoCode.h"
+#include "pathPlan.h"
 #include "simGLView.h"
 #include "utility/rngs.h"
 
@@ -14,7 +15,7 @@
 #include <LinearMath/btAlignedObjectArray.h>
 
 simControl::simControl(simGLView* vw)
-	:	ground(NULL),sky(NULL),sr2(NULL),autoNav(NULL),glView(vw),
+	:	ground(NULL),sky(NULL),sr2(NULL),autoNav(NULL),path(NULL),glView(vw),
 m_obstType(0),
 m_obstCount(50),
 m_dropHeight(5),
@@ -48,6 +49,7 @@ simControl::~simControl()
 {
 	simTimer->stop();
 	delete simTimer;
+	if(path) delete path;
 	if(autoNav) delete autoNav;
 	if(sr2) delete sr2;
 	if(sky) delete sky;
@@ -93,6 +95,8 @@ void simControl::setGravity(btVector3 g)
 void simControl::openNewGround(QString filename)
 {
 	this->removeRover();
+	if(path) delete path;
+	path = 0;
 	ground->openTerrain(filename);
 	
 	// generate new obstacles
@@ -130,7 +134,8 @@ void simControl::generateObstacles()
     float   alphaYaw,volume;
     int i;
 	
-	arena->deleteGhostGroup();
+	if(path) delete path;
+	path = 0;
     arena->deleteObstacleGroup();
 	
     if(m_obstCount == 0) return;
@@ -186,29 +191,20 @@ void simControl::generateObstacles()
 }
 void simControl::removeObstacles()
 {
-	arena->deleteGhostGroup();
+	if(path) delete path;
+	path = 0;
 	arena->deleteObstacleGroup();
 }
-void simControl::generateCSpace()
-{
-	int i;
-	btAlignedObjectArray<btCollisionObject*>* obstArray = arena->getObstacleObjectArray();
-	
-	arena->deleteGhostGroup();
-	// loop through all obstacle rigid bodies
-	for(i=0;i<obstArray->size();i++){
-		btCollisionObject*	colisObject = obstArray->at(i);
 
-	// test colisobject if rigid body
-		if(colisObject->getInternalType() == btCollisionObject::CO_RIGID_BODY)
-		{
-			// create CSpace
-			// check if object is in-active
-			if(colisObject->isActive()) continue;
-			arena->createGhostShape(colisObject);
-		}
-	}
+/////////////////////////////////////////
+// Path plan generation functions
+/////////////
+void simControl::generatePath()
+{
+	if(path) delete path;
+	path = new pathPlan(glView);
 }
+
 /////////////////////////////////////////
 // Rover generation functions
 /////////////
