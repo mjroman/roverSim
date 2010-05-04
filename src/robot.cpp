@@ -59,9 +59,7 @@ robot::~robot()
     }
 	
     //remove the rigidbodies from the dynamics world and delete them
-    arena->deleteGroup(ROVER_GROUP);
-	
-    m_robotShapes.clear();
+	deleteRobotGroup();
 	
 	delete [] m_motorAngle;
 	delete [] m_motorVelocity;
@@ -72,6 +70,25 @@ robot::~robot()
     delete [] m_passiveJoints;
     delete [] m_bodyAttachPoints;
  	delete [] m_bodyParts;
+}
+
+void robot::deleteRobotGroup()
+{
+	int i = m_robotObjects.size();
+	arena->setDraw(false); // do not draw
+ 	arena->idle();// pause simulation
+	
+	while(i>0){
+		btCollisionObject* obj = m_robotObjects[i-1];
+		arena->getDynamicsWorld()->removeCollisionObject(obj);
+		m_robotObjects.pop_back();
+		i = m_robotObjects.size();
+	}
+
+	m_robotShapes.clear();
+	arena->resetBroadphaseSolver();
+ 	arena->toggleIdle(); // unpause simulation
+	arena->setDraw(true); // draw obstacles
 }
 
 btTransform robot::getRobotTransform()

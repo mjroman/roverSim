@@ -20,14 +20,8 @@
 
 #define BT_EULER_DEFAULT_ZYX   // yaw, pitch, roll about Z, Y, X axis
 
-enum physicsGroupType {
-    TERRAIN_GROUP,
-    ROVER_GROUP,
-    OBSTACLE_GROUP,
-	GHOST_GROUP
-};
-
 class	btBroadphaseInterface;
+class	btCollisionObject;
 class	btCollisionShape;
 class	btCollisionDispatcher;
 class	btConstraintSolver;
@@ -40,18 +34,15 @@ class physicsWorld : public QObject
 private:
     bool                m_idle;
     bool                m_draw;
-	int					m_ghostType;
-    int                 m_obstacleType;
-    int                 m_roverType;
-    int                 m_terrainType;
     btVector3           m_worldSize;
     float               m_worldBoundary;
 
-    int *objectGroup(physicsGroupType type);
-
 protected:
     btAlignedObjectArray<btCollisionShape*>     m_obstacleShapes;
+	btAlignedObjectArray<btCollisionObject*>	m_obstacleObjects;
 	btAlignedObjectArray<btCollisionShape*>		m_ghostShapes;
+	btAlignedObjectArray<btCollisionObject*>	m_ghostObjects;
+
     btBroadphaseInterface*						m_broadphase;
     btCollisionDispatcher*						m_dispatcher;
     btDynamicsWorld*                            m_dynamicsWorld;
@@ -66,6 +57,9 @@ public:
     float   simTimeStep;
     float   simFixedTimeStep;
     int     simSubSteps;
+
+	btAlignedObjectArray<btCollisionObject*>* getObstacleObjectArray() { return &m_obstacleObjects; }
+	btAlignedObjectArray<btCollisionObject*>* getGhostObjectArray() { return &m_ghostObjects; }
 
     static physicsWorld *initialize(float x, float y, float z, float boundary) {
         if(!m_pWorld){
@@ -85,25 +79,30 @@ public:
 
     btDynamicsWorld* getDynamicsWorld() { return m_dynamicsWorld; }
     bool isIdle() const { return m_idle; }
+	void toggleIdle();
+	void idle() { m_idle = true; }
+	
     bool canDraw() const { return m_draw; }
+	void setDraw(bool d) { m_draw = d; }
     void setWorldSize(btVector3 xyz);
     btVector3 worldSize() { return m_worldSize; }
     float worldBoundary() { return m_worldBoundary; }
 
-    void deleteGroup(physicsGroupType groupType);
+	void deleteObstacleGroup();
+	void deleteGhostGroup();
     void resetBroadphaseSolver();
     void setGravity(btVector3 gv);
-    void toggleIdle();
+    
     void simulatStep();
     void resetWorld();
 
     btCollisionShape* createShape(int shapeTyp, btVector3 lwh);
     void createObstacleShape(int shapeTyp, btVector3 lwh);
 
-    btRigidBody* createRigidBody(float mass, btTransform trans, btCollisionShape* cShape, physicsGroupType groupType);
-    btRigidBody* placeShapeAt(btCollisionShape* bodyShape, btVector3 pos, float yaw, float massval, physicsGroupType groupType);
+    btRigidBody* createRigidBody(float mass, btTransform trans, btCollisionShape* cShape);
+    btRigidBody* placeShapeAt(btCollisionShape* bodyShape, btVector3 pos, float yaw, float massval);
     void placeObstacleShapeAt(btVector3 pos,float yaw, float massval);
-	void createGhostShape(btRigidBody* bodyObj);
+	void createGhostShape(btCollisionObject* bodyObj);
 };
 
 #endif // PHYSICSWORLD_H

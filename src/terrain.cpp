@@ -42,9 +42,19 @@ terrain::~terrain()
 // be sure to stop drawing and simulation calculations when doing this
 void terrain::terrainClear()
 {
-    arena->deleteGroup(TERRAIN_GROUP);
+    int i = m_terrainObjects.size();
+	arena->setDraw(false); // do not draw
+ 	arena->idle();// pause simulation
+	
+	while(i>0){
+		btCollisionObject* obj = m_terrainObjects[i-1];
+		arena->getDynamicsWorld()->removeCollisionObject(obj);
+		m_terrainObjects.pop_back();
+		i = m_terrainObjects.size();
+	}
 
-    m_terrainShapes.clear();
+   	m_terrainShapes.clear();
+	arena->resetBroadphaseSolver();
 
     if(m_terrainVerts) { delete m_terrainVerts; }
     m_terrainVerts = 0;
@@ -54,6 +64,9 @@ void terrain::terrainClear()
     m_terrainNormals = 0;
     if(m_terrainTriangles) { delete m_terrainTriangles; }
     m_terrainTriangles = 0;
+	
+	arena->toggleIdle(); // unpause simulation
+	arena->setDraw(true); // draw obstacles
 }
 
 // loads a BMP file as the height map for the terrain. If the data
@@ -356,7 +369,8 @@ void terrain::createPlane(btVector3 norm, float cons, btVector3 orig)
     groundTransform.setOrigin(orig);
 
     // create a static plane and add it to the world
-    m_planeBody = arena->createRigidBody(0,groundTransform,planeShape,TERRAIN_GROUP);
+    m_planeBody = arena->createRigidBody(0,groundTransform,planeShape);
+	m_terrainObjects.push_back(m_planeBody);
 }
 
 void terrain::drawPlane(float x, float y)
@@ -384,6 +398,7 @@ void terrain::drawPlane(float x, float y)
 
 void terrain::generateGround()
 {
+	
     m_worldSize.setValue(m_pixelx,m_pixely,m_terrainMaxHeight);
     m_worldSize *= m_terrainScale;
     arena->setWorldSize(m_worldSize);
@@ -406,7 +421,8 @@ void terrain::generateGround()
     terrainTransform.setOrigin(btVector3(0,0,0));
 
     // create the terrain rigid body and add it to the world
-    m_meshBody = arena->createRigidBody(0,terrainTransform,m_triMesh,TERRAIN_GROUP);
+    m_meshBody = arena->createRigidBody(0,terrainTransform,m_triMesh);
+	m_terrainObjects.push_back(m_meshBody);
     // set the collision flags
     m_meshBody->setCollisionFlags(m_meshBody->getCollisionFlags() | btCollisionObject::CF_STATIC_OBJECT);
 }

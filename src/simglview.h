@@ -36,9 +36,10 @@ protected:
 
     void drawTest();
     void drawPlane(btScalar constant,const btVector3 normal);
-    void drawWorld();
+    void drawObstacles();
+	void drawGhosts();
 	void drawWaypoints();
-	void drawFrame(btTransform &tr);
+	void drawFrame();
 
 public:
 	int debugVal;

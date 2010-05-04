@@ -193,48 +193,55 @@ void SR2rover::constructRover(const btVector3& positionOffset)
 
 // construct main body
     m_bodyAttachPoints[partIndex] = vRoot;
-    m_bodyParts[partIndex] = arena->createRigidBody(1,offset*transform,bodyShape,ROVER_GROUP); // create a box rigid body for the rover
-    partIndex++;
+    m_bodyParts[partIndex] = arena->createRigidBody(1,offset*transform,bodyShape); // create a box rigid body for the rover
+	m_robotObjects.push_back(m_bodyParts[partIndex]);
+	partIndex++;
 
 // construct suspension parts
     // right suspension
     m_bodyAttachPoints[partIndex].setValue(BODYWIDTH+0.03,0,fHeight-0.06); // coordinates in world at startup
     transform.setIdentity();
     transform.setOrigin(m_bodyAttachPoints[partIndex]);
-    m_bodyParts[partIndex] = arena->createRigidBody(0.5,offset*transform,susShape,ROVER_GROUP); // create a cylinder body for suspension
-    partIndex++;
+    m_bodyParts[partIndex] = arena->createRigidBody(0.5,offset*transform,susShape); // create a cylinder body for suspension
+    m_robotObjects.push_back(m_bodyParts[partIndex]);
+	partIndex++;
     // left suspension
     m_bodyAttachPoints[partIndex].setValue(-BODYWIDTH-0.03,0,fHeight-0.06);
     transform.setIdentity();
     transform.setOrigin(m_bodyAttachPoints[partIndex]);
-    m_bodyParts[partIndex] = arena->createRigidBody(0.5,offset*transform,susShape,ROVER_GROUP); // create a cylinder body for suspension
-    partIndex++;
+    m_bodyParts[partIndex] = arena->createRigidBody(0.5,offset*transform,susShape); // create a cylinder body for suspension
+    m_robotObjects.push_back(m_bodyParts[partIndex]);
+	partIndex++;
 
 // construct wheel parts
     // front right wheel
     m_bodyAttachPoints[partIndex].setValue(WHEELTRAC/2,WHEELBASE/2,fHeight-.25);
     transform.setIdentity();
     transform.setOrigin(m_bodyAttachPoints[partIndex]);
-    m_bodyParts[partIndex] = arena->createRigidBody(0.25,offset*transform,wheelShape,ROVER_GROUP);
-    partIndex++;
+    m_bodyParts[partIndex] = arena->createRigidBody(0.25,offset*transform,wheelShape);
+    m_robotObjects.push_back(m_bodyParts[partIndex]);
+	partIndex++;
     // rear right wheel
     m_bodyAttachPoints[partIndex].setValue(WHEELTRAC/2,-WHEELBASE/2,fHeight-0.25);
     transform.setIdentity();
     transform.setOrigin(m_bodyAttachPoints[partIndex]);
-    m_bodyParts[partIndex] = arena->createRigidBody(0.25,offset*transform,wheelShape,ROVER_GROUP);
-    partIndex++;
+    m_bodyParts[partIndex] = arena->createRigidBody(0.25,offset*transform,wheelShape);
+    m_robotObjects.push_back(m_bodyParts[partIndex]);
+	partIndex++;
     // front left wheel
     m_bodyAttachPoints[partIndex].setValue(-WHEELTRAC/2,WHEELBASE/2,fHeight-0.25);
     transform.setIdentity();
     transform.setOrigin(m_bodyAttachPoints[partIndex]);
-    m_bodyParts[partIndex] = arena->createRigidBody(0.25,offset*transform,wheelShape,ROVER_GROUP);
-    partIndex++;
+    m_bodyParts[partIndex] = arena->createRigidBody(0.25,offset*transform,wheelShape);
+    m_robotObjects.push_back(m_bodyParts[partIndex]);
+	partIndex++;
     // rear left wheel
     m_bodyAttachPoints[partIndex].setValue(-WHEELTRAC/2,-WHEELBASE/2,fHeight-0.25);
     transform.setIdentity();
     transform.setOrigin(m_bodyAttachPoints[partIndex]);
-    m_bodyParts[partIndex] = arena->createRigidBody(0.25,offset*transform,wheelShape,ROVER_GROUP);
-    partIndex++;
+    m_bodyParts[partIndex] = arena->createRigidBody(0.25,offset*transform,wheelShape);
+    m_robotObjects.push_back(m_bodyParts[partIndex]);	
+	partIndex++;
 
 // set rigid body damping and friction parameters
     for(int i=0;i<m_partCount.bodyParts+m_partCount.wheels;i++){
@@ -544,7 +551,6 @@ void SR2rover::renderGLObject()
         objMotionState->m_graphicsWorldTrans.getOpenGLMatrix(glm);
         glPushMatrix();
         glMultMatrixf(glm);
-
         glCallList(m_aSuspension);
         glPopMatrix();
     }

@@ -17,6 +17,7 @@
 #include <BulletDynamics/Dynamics/btRigidBody.h>
 #include <BulletDynamics/Dynamics/btDynamicsWorld.h>
 #include <LinearMath/btDefaultMotionState.h>
+#include <LinearMath/btAlignedObjectArray.h>
 
 GLfloat lightAmbient[]={0.2f,0.2f,0.2f,1.0f};
 GLfloat lightZeroPos[]={50.0f,0.0f,200.0f,1.0f};
@@ -150,8 +151,10 @@ void simGLView::paintGL()
         glLightfv(GL_LIGHT1, GL_DIFFUSE, lightOne);
         glLightfv(GL_LIGHT1, GL_POSITION, lightOnePos);
 
-        drawWorld();
-
+        drawObstacles();
+		drawGhosts();
+		drawWaypoints();
+		
         for(int i=0;i<renderList.size();i++)
             renderList[i]->renderGLObject();
 
@@ -250,45 +253,33 @@ void simGLView::drawPlane(btScalar constant,const btVector3 normal)
     glEnd();
 }
 
-void simGLView::drawWorld()
+// draws all the obstacles in the world in Red
+void simGLView::drawObstacles()
 {
     btScalar	glm[16];
-    btDynamicsWorld *pWorld = arena->getDynamicsWorld();
-    int	numObjects = pWorld->getNumCollisionObjects();
-	int group;
-	debugVal = numObjects;
+	btAlignedObjectArray<btCollisionObject*> *obstacleArray;
+	obstacleArray = arena->getObstacleObjectArray();
 	
+	glColor3f(1.0f,0.0f,0.0f);
     //glColor3f(0.02f,0.52f,0.51f);	// tron blue
 	//glColor3f(0.1f,0.0f,0.5f); // dark blue
 	//glColor3f(0.7,0.0,0.7);	// dark purple
     //glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
     //glMaterialfv(GL_FRONT, GL_EMISSION, obstacleEmission);
-    for(int i=0;i<numObjects;i++){
-        btCollisionObject*	colisObject = pWorld->getCollisionObjectArray()[i];
-        
-		group = *(int*)colisObject->getUserPointer();
-        if(group == ROVER_GROUP) continue;
-        if(group == TERRAIN_GROUP) continue;
+    for(int i=0; i < obstacleArray->size(); i++){
+        btCollisionObject*	colisObject = obstacleArray->at(i);
 		
-		glColor3f(1.0f,0.0f,0.0f);
-		if(group == GHOST_GROUP){
-			glColor3f(0.99f,0.82f,0.1f); // golden C-Space
-			glLineWidth(1.5);
-			colisObject->getWorldTransform().getOpenGLMatrix(glm);
-		}
-		else{
-			// test colisobject if rigid body
-			if(colisObject->getInternalType() == btCollisionObject::CO_RIGID_BODY){
-				btRigidBody*		body = btRigidBody::upcast(colisObject);
+		// test colisobject if rigid body
+		if(colisObject->getInternalType() == btCollisionObject::CO_RIGID_BODY){
+			btRigidBody* body = btRigidBody::upcast(colisObject);
 
-				if(body && body->getMotionState())
-				{
-					btDefaultMotionState* objMotionState = (btDefaultMotionState*)body->getMotionState();
-					objMotionState->m_graphicsWorldTrans.getOpenGLMatrix(glm);
-				}
-				else
-					colisObject->getWorldTransform().getOpenGLMatrix(glm);
+			if(body && body->getMotionState())
+			{
+				btDefaultMotionState* objMotionState = (btDefaultMotionState*)body->getMotionState();
+				objMotionState->m_graphicsWorldTrans.getOpenGLMatrix(glm);
 			}
+			else
+				colisObject->getWorldTransform().getOpenGLMatrix(glm);
 		}
 
         btCollisionShape* colisShape = colisObject->getCollisionShape();
@@ -300,9 +291,7 @@ void simGLView::drawWorld()
 			case BOX_SHAPE_PROXYTYPE: {
 				const btBoxShape* boxShape = static_cast<const btBoxShape*>(colisShape);
 				btVector3 halfDims = boxShape->getHalfExtentsWithMargin();
-                               	if(group == OBSTACLE_GROUP) box(halfDims.x(),halfDims.y(),halfDims.z());
-								else
-									wireBox(halfDims.x(),halfDims.y(),halfDims.z());
+                               	box(halfDims.x(),halfDims.y(),halfDims.z());
 				break;
 			}
 			case SPHERE_SHAPE_PROXYTYPE:
@@ -342,7 +331,31 @@ void simGLView::drawWorld()
 		
         glPopMatrix();
     }
-	drawWaypoints();
+	
+}
+
+// draws the golden outline for the c-space ghost objects
+void simGLView::drawGhosts()
+{
+	btScalar	glm[16];
+	btAlignedObjectArray<btCollisionObject*> *ghostArray;
+	ghostArray = arena->getGhostObjectArray();
+	
+	glColor3f(0.99f,0.82f,0.1f); // golden C-Space
+	glLineWidth(1.5);
+	
+	for(int i = 0; i < ghostArray->size(); ++i)
+	{
+		ghostArray->at(i)->getWorldTransform().getOpenGLMatrix(glm);
+		btCollisionShape* ghostShape = ghostArray->at(i)->getCollisionShape();
+		const btBoxShape* boxShape = static_cast<const btBoxShape*>(ghostShape);
+		btVector3 halfDims = boxShape->getHalfExtentsWithMargin();
+		
+		glPushMatrix();
+        glMultMatrixf(glm);
+			wireBox(halfDims.x(),halfDims.y(),halfDims.z());
+		glPopMatrix();	
+	}
 }
 
 void simGLView::drawWaypoints()
@@ -376,7 +389,7 @@ void simGLView::drawWaypoints()
 	}
 }
 
-void simGLView::drawFrame(btTransform &tr)
+void simGLView::drawFrame()
 {
         float fSize = 1;
         glLineWidth(2.0);

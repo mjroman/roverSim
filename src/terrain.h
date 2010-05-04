@@ -42,6 +42,7 @@ private:
 
 protected:
     btAlignedObjectArray<btCollisionShape*>     m_terrainShapes;
+	btAlignedObjectArray<btCollisionObject*>	m_terrainObjects;
 
 public:
     terrain(QString filename, simGLView* glView = NULL);

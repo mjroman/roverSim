@@ -49,6 +49,7 @@ public:
     btVector3                                   *m_bodyAttachPoints;
     btRigidBody                                 **m_bodyParts;
     btAlignedObjectArray<btCollisionShape*>     m_robotShapes;
+	btAlignedObjectArray<btCollisionObject*>	m_robotObjects;
 
 	float       		pitch,roll,heading;
 	btVector3   		position;
@@ -61,6 +62,7 @@ public:
 	robot(simGLView* glView);
 	void initalloc(robotParts pn);
     virtual ~robot();
+	void deleteRobotGroup();
 	
     btTransform getRobotTransform();
     void placeRobotAt(btVector3 here);

@@ -11,6 +11,7 @@
 #include <BulletCollision/BroadphaseCollision/btBroadphaseProxy.h>
 #include <BulletDynamics/Dynamics/btRigidBody.h>
 #include <BulletDynamics/Dynamics/btDynamicsWorld.h>
+#include <LinearMath/btAlignedObjectArray.h>
 
 simControl::simControl(simGLView* vw)
 	:	ground(NULL),sky(NULL),sr2(NULL),autoNav(NULL),glView(vw),
@@ -33,7 +34,7 @@ m_obstDensity(5)
 	//sky = new skydome(glView);
 	
 	// add a few test waypoints
-	addWaypointAt(657,20.0,10.0);
+	addWaypointAt(657,30.0,30.0);
 	addWaypointAt(658,1.0,14.0);
 	
 	glView->setWaypointList(&waypointList);
@@ -129,8 +130,8 @@ void simControl::generateObstacles()
     float   alphaYaw,volume;
     int i;
 	
-	arena->deleteGroup(GHOST_GROUP);
-    arena->deleteGroup(OBSTACLE_GROUP);
+	arena->deleteGhostGroup();
+    arena->deleteObstacleGroup();
 	
     if(m_obstCount == 0) return;
 	//qDebug("generating new obstacles %d",m_obstCount);
@@ -185,29 +186,26 @@ void simControl::generateObstacles()
 }
 void simControl::removeObstacles()
 {
-	arena->deleteGroup(GHOST_GROUP);
-	arena->deleteGroup(OBSTACLE_GROUP);
+	arena->deleteGhostGroup();
+	arena->deleteObstacleGroup();
 }
 void simControl::generateCSpace()
 {
-	btDynamicsWorld *pWorld = arena->getDynamicsWorld();
-	int	numObjects = pWorld->getNumCollisionObjects();
-	int i,group;
+	int i;
+	btAlignedObjectArray<btCollisionObject*>* obstArray = arena->getObstacleObjectArray();
+	
+	arena->deleteGhostGroup();
+	// loop through all obstacle rigid bodies
+	for(i=0;i<obstArray->size();i++){
+		btCollisionObject*	colisObject = obstArray->at(i);
 
-	arena->deleteGroup(GHOST_GROUP);
-	// loop through all rigid bodies
-	for(i=0;i<numObjects;i++){
-		btCollisionObject*	colisObject = pWorld->getCollisionObjectArray()[i];
-
-	// test colisobject if rigid body and obstacle
-		group = *(int*)colisObject->getUserPointer();
-		if(colisObject->getInternalType() == btCollisionObject::CO_RIGID_BODY && group == OBSTACLE_GROUP)
+	// test colisobject if rigid body
+		if(colisObject->getInternalType() == btCollisionObject::CO_RIGID_BODY)
 		{
-		// create CSpace
-			btRigidBody* body = btRigidBody::upcast(colisObject);
+			// create CSpace
 			// check if object is in-active
-			if(body->isActive()) continue;
-			arena->createGhostShape(body);
+			if(colisObject->isActive()) continue;
+			arena->createGhostShape(colisObject);
 		}
 	}
 }
@@ -258,7 +256,7 @@ void simControl::setWaypointGroundHeight()
 		i++;
 	}
 }
-// if a waypoint is move recalculate its Z position
+// if a waypoint is moved recalculate its Z position
 void simControl::editWaypoint(int index)
 {
 	WayPoint wp = waypointList[index];
