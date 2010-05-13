@@ -40,6 +40,7 @@ simSettings(QSettings::IniFormat,QSettings::UserScope,"OUengineering","Rover_Sim
 	roverErrorKeyMapping();
 	
 	currentWaypoint.uuid = 0;
+	currentWaypoint = WPlist->first();
 	
 	stopAutonomous(RSInTeleopMode);
 	show();
@@ -75,8 +76,8 @@ float autoCode::avgAngle(float rad1, float rad2)
 // Returns the heading angle to the waypoint in compass RADIANS
 float autoCode::compassWaypointHeading()
 {
-	float xDiff = currentWaypoint.position.x - sr2->position.x();
-	float yDiff = currentWaypoint.position.y - sr2->position.y();
+	float xDiff = currentWaypoint.position.x() - sr2->position.x();
+	float yDiff = currentWaypoint.position.y() - sr2->position.y();
 	if(xDiff == 0 && yDiff == 0) return sr2->heading;	// if the rover is on the waypoint return rovers current heading
 	return compassToCartRadians(atan2(yDiff,xDiff));
 }
@@ -92,11 +93,7 @@ float autoCode::roverWaypointHeading()
 // Returns the distacne from the rover position to i'th waypoint in list
 float autoCode::distanceToWaypoint(int i)
 {
-	Vertex rover;
-	rover.x = sr2->position.x();
-	rover.y = sr2->position.y();
-	rover.z = sr2->position.z();
-	return distBtwVerts(WPlist->at(i).position,rover);
+	return WPlist->at(i).position.distance(sr2->position);
 }
 
 /////////////////////////////////////////

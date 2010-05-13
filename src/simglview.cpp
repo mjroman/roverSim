@@ -358,7 +358,7 @@ void simGLView::drawWaypoints()
 		}
 		
 		glPushMatrix();
-		glTranslatef(wp.position.x,wp.position.y,wp.position.z);
+		glTranslatef(wp.position.x(),wp.position.y(),wp.position.z());
 		box(0.1,0.1,1);
 		glPopMatrix();
 	}

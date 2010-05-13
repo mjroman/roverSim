@@ -3,7 +3,7 @@
 
 #include <QtGui>
 #include "ui_waypointtool.h"
-#include "../utility/definitions.h"
+#include "../utility/structures.h"
 
 class waypointTool : public QWidget, private Ui::waypointtool 
 {

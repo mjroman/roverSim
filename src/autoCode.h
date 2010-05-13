@@ -6,7 +6,7 @@
 #include "ui_navigationtool.h"
 #include "sr2rover.h"
 #include "laserscanner.h"
-#include "utility/definitions.h"
+#include "utility/structures.h"
 
 typedef struct _navParam {
 	QString name;
@@ -19,7 +19,7 @@ class autoCode : public QWidget, private Ui::navigationtool
 	public:
 		autoCode(SR2rover *bot,QList<WayPoint> *list, QWidget* parent = 0);
 		~autoCode();
-		int getCurrentWaypoint() { return wpIndex; }
+		WayPoint getCurrentWaypoint() { return currentWaypoint; }
 		
 	public slots:
 		void goAutonomous();

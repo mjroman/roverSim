@@ -12,6 +12,7 @@
 
 #include <QObject>
 #include "utility/definitions.h"
+#include "utility/structures.h"
 
 #include <LinearMath/btVector3.h>
 #include <LinearMath/btAlignedObjectArray.h>

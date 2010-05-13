@@ -29,13 +29,14 @@ m_obstDensity(5)
 	m_minObstSize = btVector3(0.1,0.1,0.25);
 	m_maxObstSize = btVector3(1,1,0.5);
 	
-	ground = new terrain(QString(":/textures/src/textures/defaultTerrain.png"), glView);
+	//ground = new terrain(QString(":/textures/src/textures/defaultTerrain.png"), glView);
+	ground = new terrain(NULL, glView);
 	this->generateObstacles();
 	
 	//sky = new skydome(glView);
 	
 	// add a few test waypoints
-	addWaypointAt(657,30.0,30.0);
+	addWaypointAt(657,50.0,50.0);
 	addWaypointAt(658,1.0,14.0);
 	
 	glView->setWaypointList(&waypointList);
@@ -142,8 +143,8 @@ void simControl::generateObstacles()
 	//qDebug("generating new obstacles %d",m_obstCount);
     for(i=0;i<m_obstCount;i++)
     {
-        tempPlace.setX(Randomn()*arena->worldSize().x());
-        tempPlace.setY(Randomn()*arena->worldSize().y());
+		tempPlace.setX(Randomn()*50);//arena->worldSize().x());
+		tempPlace.setY(Randomn()*50);//arena->worldSize().y());
 		tempPlace.setZ(0);
 		// keep all obstacles away from rover start position
         if(tempPlace.x() < 5 && tempPlace.y() < 5){ tempPlace.setX(5);} 
@@ -201,8 +202,22 @@ void simControl::removeObstacles()
 /////////////
 void simControl::generatePath()
 {
+	btVector3 start,end;
 	if(path) delete path;
-	path = new pathPlan(glView);
+	if(sr2 && waypointList.size() > 0){
+		start = sr2->position;
+		//start.setZ(ground->terrainHeightAt(sr2->position)); // can not set to ground level, path will go under obstacles
+		end = autoNav->getCurrentWaypoint().position;
+		end += btVector3(0,0,0.2);
+		path = new pathPlan(start, end, glView);
+	}
+	else{
+		start.setValue(1,1,0);
+		end.setValue(40,40,0);
+		start.setZ(ground->terrainHeightAt(start));
+		end.setZ(ground->terrainHeightAt(end));
+		path = new pathPlan(start, end, glView);
+	}
 }
 
 /////////////////////////////////////////
@@ -246,9 +261,8 @@ void simControl::setWaypointGroundHeight()
 {
 	int i=0;
 	while(i < waypointList.size()){
-		btVector3 position(waypointList[i].position.x,waypointList[i].position.y,0);
 		// set the z position of the waypoint for visability
-		waypointList[i].position.z = ground->terrainHeightAt(position);
+		waypointList[i].position.setZ(ground->terrainHeightAt(waypointList[i].position));
 		i++;
 	}
 }
@@ -256,22 +270,22 @@ void simControl::setWaypointGroundHeight()
 void simControl::editWaypoint(int index)
 {
 	WayPoint wp = waypointList[index];
-	wp.position.z = ground->terrainHeightAt(btVector3(wp.position.x,wp.position.y,0));
+	wp.position.setZ(ground->terrainHeightAt(wp.position));
 	waypointList.replace(index,wp);
 }
 void simControl::addWaypointAt(WayPoint wp, int index)
 {
-	wp.position.z = ground->terrainHeightAt(btVector3(wp.position.x,wp.position.y,0));
-	if(index<0)waypointList << wp;
+	wp.position.setZ(ground->terrainHeightAt(wp.position));
+	if(index<0) waypointList << wp;
 	else waypointList.insert(index,wp);
 }
 void simControl::addWaypointAt(int uuid, float x,float y, WPstate st, WPscience sc,int i)
 {
 	WayPoint wp;
 	wp.uuid = uuid;
-	wp.position.x = x;
-	wp.position.y = y;
-	wp.position.z = ground->terrainHeightAt(btVector3(x,y,0));
+	wp.position.setX(x);
+	wp.position.setY(y);
+	wp.position.setZ(ground->terrainHeightAt(wp.position));
 	wp.state = st;
 	wp.science = sc;
 	if(i<0)waypointList << wp;

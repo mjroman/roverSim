@@ -7,9 +7,9 @@
 camera::camera(const btVector3& pos,const btVector3& dir)
 {
     cameraView = FreeView;
-    pitch[FreeView] = 65.;
-    yaw[FreeView] = 45.;
-    zoom[FreeView] = 25.0;
+    pitch[FreeView] = 0.;
+    yaw[FreeView] = 110.;
+    zoom[FreeView] = 40.0;
 
     pitch[RoverCenter] = 65.;
     yaw[RoverCenter] = 45.;

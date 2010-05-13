@@ -79,22 +79,22 @@ void waypointTool::on_comboWpSelect_activated(int index)
 	cIndex = index;
 	WayPoint wp = WPlist->at(index);
 	lineEditUuid->setText(QString::number(wp.uuid));
-	lineEditPositionX->setText(QString::number(wp.position.x,'f',3));
-	lineEditPositionY->setText(QString::number(wp.position.y,'f',3));
+	lineEditPositionX->setText(QString::number(wp.position.x(),'f',3));
+	lineEditPositionY->setText(QString::number(wp.position.y(),'f',3));
 	comboScience->setCurrentIndex(wp.science);
 }
 
 void waypointTool::on_buttonAdd_clicked()
-{	
+{
 	if(WPlist->isEmpty()) buttonDelete->setEnabled(true);
 		
 	cIndex = comboWpSelect->currentIndex();
 	WayPoint wp;
 	
 	wp.uuid = lineEditUuid->text().toInt();	
-	wp.position.x = lineEditPositionX->text().toFloat();
-	wp.position.y = lineEditPositionY->text().toFloat();
-	wp.position.z = 0;
+	wp.position.setX(lineEditPositionX->text().toFloat());
+	wp.position.setY(lineEditPositionY->text().toFloat());
+	wp.position.setZ(0);
 	wp.state = WPstateNew;
 	wp.science = WPscienceNone;
 	
@@ -121,8 +121,8 @@ void waypointTool::edited()
 	if(WPlist->isEmpty()) return;
 	WayPoint wp = WPlist->at(cIndex);
 	wp.science = (WPscience)comboScience->currentIndex();
-	wp.position.x = lineEditPositionX->text().toFloat();
-	wp.position.y = lineEditPositionY->text().toFloat();
+	wp.position.setX(lineEditPositionX->text().toFloat());
+	wp.position.setY(lineEditPositionY->text().toFloat());
 	WPlist->replace(cIndex,wp);
 	emit editedWP(cIndex);
 }

@@ -7,6 +7,7 @@
 #include "physicsWorld.h"
 #include "simglobject.h"
 #include "utility/definitions.h"
+#include "utility/structures.h"
 #include "utility/glshapes.h"
 
 typedef struct _robotView {

@@ -57,6 +57,7 @@ HEADERS += src/mainGUI.h \
     src/utility/rvgs.h \
     src/utility/rngs.h \
     src/utility/definitions.h \
+	src/utility/structures.h \
     src/terrain.h \
 	src/robot.h \
     src/sr2rover.h \

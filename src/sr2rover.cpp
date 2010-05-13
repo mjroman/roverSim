@@ -107,7 +107,7 @@ tiltAngle(-15)
 
     if(m_view) {
         m_view->getCamera()->cameraSetRoverPointer(this);
-        m_view->getCamera()->cameraView = RoverFollow;
+       // m_view->getCamera()->cameraView = RoverFollow;
     }
 
     // add laser scanner sensors

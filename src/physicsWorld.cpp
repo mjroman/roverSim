@@ -198,7 +198,7 @@ btRigidBody* physicsWorld::placeShapeAt(btCollisionShape* bodyShape, btVector3 p
     btTransform startTransform;
     startTransform.setIdentity();
     startTransform.setOrigin(pos);
-    startTransform.setRotation(btQuaternion(DEGTORAD(yaw),0,0));
+    startTransform.setRotation(btQuaternion(0,0,DEGTORAD(yaw)));
 	
     return createRigidBody(massval,startTransform,bodyShape);
 }
@@ -214,7 +214,9 @@ void physicsWorld::createObstacleShape(int shapeTyp, btVector3 lwh)
 void physicsWorld::placeObstacleShapeAt(btVector3 pos,float yaw, float massval)
 {
     // get the last collision shape that has been added to the shape array
-    m_obstacleObjects.push_back(placeShapeAt(m_obstacleShapes[m_obstacleShapes.size()-1],pos,yaw,massval));
+	btRigidBody* body = placeShapeAt(m_obstacleShapes[m_obstacleShapes.size()-1],pos,yaw,massval);
+	body->setDamping(0.5,0.75);
+    m_obstacleObjects.push_back(body);
 }
 
 

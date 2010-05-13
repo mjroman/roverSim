@@ -78,7 +78,8 @@ m_wTool(this)
     
     m_tTool.setScale(SController->getGround()->terrainScale());
 
-	glView->setFocus(Qt::OtherFocusReason);
+	//glView->setFocus(Qt::OtherFocusReason);
+	glView->setFocusPolicy(Qt::StrongFocus);
 }
 
 MainGUI::~MainGUI()
@@ -399,7 +400,7 @@ void MainGUI::updateGUI()
 	sr2 = SController->getRover();
 	// GUI SR2 properties
     if(sr2){
-        labelRoverPosition->setText(QString("(%1 ,%2)").arg(sr2->position.x(),0,'f',2).arg(sr2->position.y(),0,'f',2));
+        labelRoverPosition->setText(QString("(%1 ,%2 ,%3)").arg(sr2->position.x(),0,'f',2).arg(sr2->position.y(),0,'f',2).arg(sr2->position.z(),0,'f',2));
         labelRoverSpeed->setText(QString("(%1 ,%2)").arg(sr2->leftSpeed,0,'f',2).arg(sr2->rightSpeed,0,'f',2));
 		labelDiffAngle->setText(QString().setNum(RADTODEG(sr2->differentialAngle),'f',1));
 		labelRoverHeading->setText(QString().setNum(RADTODEG(sr2->heading),'f',2));
