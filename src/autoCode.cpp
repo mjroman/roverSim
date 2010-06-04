@@ -32,6 +32,7 @@ simSettings(QSettings::IniFormat,QSettings::UserScope,"OUengineering","Rover_Sim
 	initSettingsNames();
 	
 	if(!QFile::exists(simSettings.fileName())) initSettings();
+	else if(!simSettings.childGroups().contains(OBSTNAVGROUP)) initSettings();
 	
 	parameterListInit();
 	tableSetup();

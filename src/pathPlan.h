@@ -54,6 +54,8 @@ private:
 	QList<rankPoint> rangeBasedRank(QList<rankPoint> list, rankPoint pivotPoint);
 	QList<rankPoint> quickSortRankLessthan(QList<rankPoint> list);
 	QList<rankPoint> getVisablePointsFrom(rankPoint here);
+	QList<rankPoint> prunePointsFrom(QList<rankPoint> list);
+	QList<rankPoint> smoothPath();
 	bool isNewPoint(rankPoint pt);
 	bool isNewLink(rankLink link);
 	
@@ -63,7 +65,7 @@ public:
 	
 	void deleteGhostGroup();
 	void generateCSpace();
-	void findPathA();
+	bool findPathA();
 	void constructRoadMap();
 	void renderGLObject();
 	

@@ -44,8 +44,8 @@ m_doneBuilding(false)
 	m_goalDistance = start.distance(end);
 	
 	generateCSpace();
-	//findPathA();
-	constructRoadMap();
+	findPathA();
+	//constructRoadMap();
 	qDebug("Maping Complete");
 	m_doneBuilding = true;
 }
@@ -137,51 +137,52 @@ void pathPlan::constructRoadMap()
 /////////////////////////////////////////
 // first road map algorithm
 /////////////
-void pathPlan::findPathA()
+bool pathPlan::findPathA()
 {
 	btCollisionObject *objBlock = this->clearToGoal(m_midPoint);
 	if(objBlock == NULL){
 		m_pointPath << m_goalPoint;
-		return;// no intersection all done
+		return true;// no intersection all done
 	}
 	
+	// incase of endless loop
+	if(m_linkCount > 100) {
+		qDebug("looping");
+		return false;
+	}
+	m_linkCount++;
+	
+	// testing 
 	//this->getExtremes(objBlock,m_midPoint,&leftMost,&rightMost);
 	//m_midPoint = leftMost;
 	//testPoint = m_midPoint.point;
 	
 	QList<rankPoint>	prospectPoints = getVisablePointsFrom(m_midPoint);
 
-
+// remove points that are already in the point path
+	prospectPoints = this->prunePointsFrom(prospectPoints);
+	if(prospectPoints.size() < 1) return false;
 // compute the ranks of the remaining points based on angle to goal from midPoint
 	prospectPoints = this->angleBasedRank(prospectPoints, m_midPoint);
 // sort the list with the smallest angle to the goal
 	prospectPoints = this->quickSortRankLessthan(prospectPoints);
-// change the midPoint to the lowest rank point
-	m_midPoint = prospectPoints.first();
-// add the potential point to the global list
-	m_pointPath << m_midPoint;
-	
-// after the point is added check if you can see back to any other points
-	// if(m_pointPath.size() > 2)
-	// {
-	// 	for(i = 0; i < m_pointPath.size()-2; ++i)
-	// 	{
-	// 		if(this->isRayBlocked(m_pointPath[i],m_midPoint) == NULL){
-	// 			m_pointPath.swap(i+1,m_pointPath.size()-1);
-	// 			while(m_pointPath.size() > i+2){m_pointPath.removeLast();}
-	// 		}
-	// 	}
-	// }
-	
-	// incase of endless loop
-	if(m_linkCount > 100) {
-		qDebug("looping");
-		return;
+
+	int i=0;
+	while(i < prospectPoints.size())
+	{
+		// change the midPoint to the lowest rank point
+		m_midPoint = prospectPoints[i];
+		// add the potential point to the global list
+		m_pointPath << m_midPoint;
+		
+		if(this->findPathA()){
+			prospectPoints.clear();
+			return true;
+		}
+		else m_pointPath.removeLast();
+		i++;
 	}
-	m_linkCount++;
-	
-	this->findPathA();
-	prospectPoints.clear();
+	return false;
 }
 
 
@@ -310,7 +311,7 @@ QList<rankPoint> pathPlan::rangeBasedRank(QList<rankPoint> list, rankPoint pivot
 	return list;
 }
 
-// does a quick sort on the list, orders from lowes to highest rank
+// does a quick sort on the list, orders from lowest to highest rank
 QList<rankPoint> pathPlan::quickSortRankLessthan(QList<rankPoint> list)
 {
 	QList<rankPoint> less;
@@ -364,6 +365,27 @@ QList<rankPoint> pathPlan::getVisablePointsFrom(rankPoint here)
 	}
 	
 	i=0;
+
+	return list;
+}
+
+// removes visible points not wanted
+QList<rankPoint> pathPlan::prunePointsFrom(QList<rankPoint> list)
+{
+	// check each point if it is already on the path
+	for(int j = 0; j < m_pointPath.size(); ++j)
+	{
+		// check all points in the visible list
+		for(int i = 0; i < list.size(); ++i)
+		{
+			if(list[i].object == m_pointPath[j].object && list[i].corner == m_pointPath[j].corner)
+			{
+				list.removeAt(i);
+				break;
+			}
+		}
+	}
+	
 	// remove all points that are farther from the goal
 	// float sqGoalDist = here.point.distance2(m_goalPoint.point);
 	// 	while(i < list.size()){
@@ -372,6 +394,22 @@ QList<rankPoint> pathPlan::getVisablePointsFrom(rankPoint here)
 	// 		else i++;
 	// 	}
 	return list;
+}
+
+// smooth the path by checking visibility back to start
+QList<rankPoint> pathPlan::smoothPath()
+{
+	// after the point is added check if you can see back to any other points
+		// if(m_pointPath.size() > 2)
+		// {
+		// 	for(i = 0; i < m_pointPath.size()-2; ++i)
+		// 	{
+		// 		if(this->isRayBlocked(m_pointPath[i],m_midPoint) == NULL){
+		// 			m_pointPath.swap(i+1,m_pointPath.size()-1);
+		// 			while(m_pointPath.size() > i+2){m_pointPath.removeLast();}
+		// 		}
+		// 	}
+		// }
 }
 
 // returns true if the link is NEW and not in the global link list yet
@@ -538,7 +576,7 @@ void pathPlan::renderGLObject()
 	}
 	
 // draws the roadmap construction
-	if(true){
+	if(false){
 		if(m_doneBuilding) glColor3f(1,0.6,0);
 		else glColor3f(0.1,0.6,0.2);
 		//float color;
@@ -557,7 +595,7 @@ void pathPlan::renderGLObject()
 	}
 	
 // draws the path
-	if(false){
+	if(true){
 		glColor4f(0,1,0,0.5);
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
