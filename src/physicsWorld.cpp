@@ -80,6 +80,12 @@ void physicsWorld::deleteObstacleGroup()
 		i = m_obstacleObjects.size();
 	}
 
+	for(i=0;i<m_obstacleCaches.size();i++)
+	{
+		m_obstacleCaches[i]->~ShapeCache();
+		btAlignedFree(m_obstacleCaches[i]);
+	}
+	m_obstacleCaches.clear();
 	m_obstacleShapes.clear();
 	resetBroadphaseSolver();
 	m_idle = false; // unpause simulation
@@ -147,6 +153,48 @@ void physicsWorld::simulatStep(){
     }
 }
 
+// used by convex shapes to create indices of triangles that openGL can use to draw the hull
+void physicsWorld::hullCache(btConvexShape* shape, btAlignedObjectArray<ShapeCache*>* cacheArray)
+{
+	ShapeCache*	sc = new(btAlignedAlloc(sizeof(ShapeCache),16)) ShapeCache(shape);
+	
+	sc->m_shapehull.buildHull(shape->getMargin());
+	cacheArray->push_back(sc);
+	shape->setUserPointer(sc);
+		
+	/* Build edges	*/ 
+	const int			ni = sc->m_shapehull.numIndices();
+	const int			nv = sc->m_shapehull.numVertices();
+	const unsigned int*	pi = sc->m_shapehull.getIndexPointer();
+	const btVector3*	pv = sc->m_shapehull.getVertexPointer();
+	
+	btAlignedObjectArray<ShapeCache::Edge*>	edges;
+	sc->m_edges.reserve(ni);
+	edges.resize(nv*nv,0);
+	for(int i=0;i<ni;i+=3)
+	{
+		const unsigned int* ti=pi+i;
+		const btVector3		nrm=btCross(pv[ti[1]]-pv[ti[0]],pv[ti[2]]-pv[ti[0]]).normalized();
+		for(int j=2,k=0;k<3;j=k++)
+		{
+			const unsigned int	a=ti[j];
+			const unsigned int	b=ti[k];
+			ShapeCache::Edge*&	e=edges[btMin(a,b)*nv+btMax(a,b)];
+			if(!e)
+			{
+				sc->m_edges.push_back(ShapeCache::Edge());
+				e=&sc->m_edges[sc->m_edges.size()-1];
+				e->n[0]=nrm;e->n[1]=-nrm;
+				e->v[0]=a;e->v[1]=b;
+			}
+			else
+			{
+				e->n[1]=nrm;
+			}
+		}
+	}
+}
+
 // creates a new physics collision shape, this has to be called
 // when a new shape is needed or a different size of the previous shape.
 // It only needs to be called once if a bunch of identical shapes are needed.
@@ -177,7 +225,7 @@ btRigidBody* physicsWorld::createRigidBody(float mass, btTransform trans, btColl
 	btScalar massval(mass);
 	bool isDynamic = (massval != 0.f);
 	
-	// set inertia of box and calculate the CG
+	// set inertia of body and calculate the CG
 	btVector3 bodyInertia(0,0,0);
 	if(isDynamic) cShape->calculateLocalInertia(massval,bodyInertia);
 	
@@ -186,7 +234,7 @@ btRigidBody* physicsWorld::createRigidBody(float mass, btTransform trans, btColl
 	btRigidBody::btRigidBodyConstructionInfo rbInfo(mass,bodyMotionState,cShape,bodyInertia);
 	btRigidBody* body = new btRigidBody(rbInfo);
 		
-	// add the box to the world
+	// add the body to the world
 	m_dynamicsWorld->addRigidBody(body);
 	return body;
 }
@@ -210,6 +258,13 @@ void physicsWorld::createObstacleShape(int shapeTyp, btVector3 lwh)
 {
     // adds the new shape to the obstacle array
     m_obstacleShapes.push_back(createShape(shapeTyp,lwh));
+}
+void physicsWorld::createHullObstacleShape(btVector3* pts, int numPoints)
+{
+	btConvexHullShape* shape = new btConvexHullShape((btScalar*)pts,numPoints);
+	hullCache((btConvexShape*) shape, &m_obstacleCaches);
+	// adds the new shape to the obstacle array
+	m_obstacleShapes.push_back((btCollisionShape*) shape);
 }
 void physicsWorld::placeObstacleShapeAt(btVector3 pos,float yaw, float massval)
 {

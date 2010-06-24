@@ -9,6 +9,7 @@
 // Use if Bullet frameworks are used
 #include <BulletCollision/CollisionDispatch/btCollisionObject.h>
 #include <BulletCollision/CollisionShapes/btCollisionShape.h>
+#include <BulletCollision/CollisionShapes/btShapeHull.h>
 #include <BulletCollision/CollisionShapes/btBoxShape.h>
 #include <BulletCollision/CollisionShapes/btSphereShape.h>
 #include <BulletCollision/CollisionShapes/btConeShape.h>
@@ -113,6 +114,16 @@ void simGLView::initializeGL()
     glEnable(GL_COLOR_MATERIAL);
     //glEnable(GL_NORMALIZE);
     //glEnable(GL_CULL_FACE);
+
+	// fog
+	//glEnable(GL_FOG); // DON'T FORGET TO SET THE CLEAR COLOR
+	GLfloat fogColor[4] = {0.5, 0.5, 0.5, 1.0};
+	glFogi (GL_FOG_MODE, GL_LINEAR);
+	glFogfv (GL_FOG_COLOR, fogColor);
+	glFogf (GL_FOG_DENSITY, 0.05);
+	glHint (GL_FOG_HINT, GL_DONT_CARE);
+	glFogf (GL_FOG_START, 10);	// ONLY USED FOR LINEAR FOG EQUATION
+	glFogf (GL_FOG_END, 50);	// ONLY USED FOR LINEAR FOG EQUATION
 }
 
 void simGLView::resizeGL(int width, int height)
@@ -139,6 +150,7 @@ void simGLView::paintGL()
 {
     if(arena->canDraw()){
         glClearColor(0.07,0.07,0.07,0);
+		//glClearColor(0.5,0.5,0.5,0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glLoadIdentity();
 
@@ -325,6 +337,51 @@ void simGLView::drawObstacles()
 				break;
 			}
 			default:
+			
+				if (colisShape->isConvex())
+				{
+					ShapeCache* sc = (ShapeCache*)colisShape->getUserPointer();
+					if(!sc) break;
+					btShapeHull* hull = &sc->m_shapehull;
+					
+					if (hull->numTriangles() > 0)
+					{
+						int index = 0;
+						const unsigned int* idx = hull->getIndexPointer();
+						const btVector3* vtx = hull->getVertexPointer();
+
+						glBegin (GL_TRIANGLES);
+
+						for (int i = 0; i < hull->numTriangles (); i++)
+						{
+							int i1 = index++;
+							int i2 = index++;
+							int i3 = index++;
+							btAssert(i1 < hull->numIndices () &&
+								i2 < hull->numIndices () &&
+								i3 < hull->numIndices ());
+
+							int index1 = idx[i1];
+							int index2 = idx[i2];
+							int index3 = idx[i3];
+							btAssert(index1 < hull->numVertices () &&
+								index2 < hull->numVertices () &&
+								index3 < hull->numVertices ());
+
+							btVector3 v1 = vtx[index1];
+							btVector3 v2 = vtx[index2];
+							btVector3 v3 = vtx[index3];
+							btVector3 normal = (v2-v1).cross(v3-v1);
+							normal.normalize ();
+							glNormal3f(normal.getX(),normal.getY(),normal.getZ());
+							glVertex3f (v1.x(), v1.y(), v1.z());
+							glVertex3f (v2.x(), v2.y(), v2.z());
+							glVertex3f (v3.x(), v3.y(), v3.z());
+
+						}
+						glEnd ();
+					}
+				}
 				break;
         }
 		

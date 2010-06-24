@@ -9,6 +9,7 @@
 
 
 // Use if Bullet Frameworks are added
+#include <BulletCollision/btBulletCollisionCommon.h>
 #include <BulletCollision/BroadphaseCollision/btBroadphaseProxy.h>
 #include <BulletDynamics/Dynamics/btRigidBody.h>
 #include <BulletDynamics/Dynamics/btDynamicsWorld.h>
@@ -189,7 +190,27 @@ void simControl::generateObstacles()
 		
         arena->placeObstacleShapeAt(tempPlace,alphaYaw,mass);
     }
+	//this->hullShapeTest();
 }
+void simControl::hullShapeTest()
+{
+	btVector3 position(2,2,0);
+	position.setZ(ground->terrainHeightAt(position) + m_dropHeight);
+	btVector3 pts[10];
+	pts[0]=btVector3(0.5,0.25,1);
+	pts[1]=btVector3(0.25,0.5,1);
+	pts[2]=btVector3(-0.5,0.5,1);
+	pts[3]=btVector3(-0.5,-0.5,1);
+	pts[4]=btVector3(0.5,-0.5,1);
+	pts[5]=btVector3(0.5,0.25,0);
+	pts[6]=btVector3(0.25,0.5,0);
+	pts[7]=btVector3(-0.5,0.5,0);
+	pts[8]=btVector3(-0.5,-0.5,0);
+	pts[9]=btVector3(0.5,-0.5,0);
+	arena->createHullObstacleShape(pts,10);
+	arena->placeObstacleShapeAt(position,0,5);
+}
+
 void simControl::removeObstacles()
 {
 	if(path) delete path;

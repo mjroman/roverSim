@@ -255,3 +255,34 @@ void sphere(float rad, int lats, int longs)
         glEnd();
     }
 }
+
+void wireSymHull(Vertex* pts,int num)
+{
+	int i;
+	int halfNum = num/2;
+	glBegin(GL_LINE_LOOP);
+	Vertex normal = normalCross(diff(pts[1],pts[0]),diff(pts[2],pts[0]));
+	glNormal3f(normal.x,normal.y,normal.z);
+	for(i = 0; i < halfNum; ++i)
+	{
+		glVertex3f(pts[i].x,pts[i].y,pts[i].z);
+	}
+	glEnd();
+	
+	glBegin(GL_LINE_LOOP);
+	glNormal3f(-normal.x,-normal.y,-normal.z);
+	for(i = halfNum; i < num; ++i)
+	{
+		glVertex3f(pts[i].x,pts[i].y,pts[i].z);
+	}
+	glEnd();
+	
+	glBegin(GL_LINES);
+	glNormal3f(normal.x,normal.y,normal.z);
+	for(i=0;i<halfNum;i++)
+	{
+		glVertex3f(pts[i].x,pts[i].y,pts[i].z);
+		glVertex3f(pts[i+halfNum].x,pts[i+halfNum].y,pts[i+halfNum].z);
+	}
+	glEnd();
+}

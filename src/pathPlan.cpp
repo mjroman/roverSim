@@ -1,5 +1,6 @@
 #include "pathPlan.h"
 #include "utility/glshapes.h"
+#include "utility/definitions.h"
 #include <BulletCollision/CollisionDispatch/btCollisionObject.h>
 #include <BulletCollision/CollisionDispatch/btGhostObject.h>
 #include <BulletCollision/CollisionShapes/btCollisionShape.h>
@@ -7,6 +8,7 @@
 #include <BulletCollision/CollisionShapes/btSphereShape.h>
 #include <BulletCollision/CollisionShapes/btConeShape.h>
 #include <BulletCollision/CollisionShapes/btCylinderShape.h>
+#include <BulletCollision/CollisionShapes/btConvexHullShape.h>
 #include <BulletDynamics/Dynamics/btDynamicsWorld.h>
 #include <LinearMath/btAlignedObjectArray.h>
 
@@ -55,6 +57,8 @@ pathPlan::~pathPlan()
 	deleteGhostGroup();
 	m_pointPath.clear();
 	m_linkList.clear();
+	contactPointsA.clear();
+	contactPointsB.clear();
 }
 
 void pathPlan::deleteGhostGroup()
@@ -71,6 +75,22 @@ void pathPlan::deleteGhostGroup()
 	}
 
 	m_ghostShapes.clear();
+	arena->resetBroadphaseSolver();
+	arena->toggleIdle(); // unpause simulation
+	arena->setDraw(true); // draw obstacles
+}
+
+void pathPlan::deleteGhostObject(btCollisionObject* obj)
+{
+	arena->setDraw(false); // do not draw
+ 	arena->idle();// pause simulation
+
+	arena->getDynamicsWorld()->removeCollisionObject(obj);
+	
+	btCollisionShape* shape = obj->getCollisionShape();
+	m_ghostShapes.remove(shape);
+	m_ghostObjects.remove(obj);
+	
 	arena->resetBroadphaseSolver();
 	arena->toggleIdle(); // unpause simulation
 	arena->setDraw(true); // draw obstacles
@@ -441,6 +461,8 @@ bool pathPlan::isNewLink(rankLink link)
 	}
 	return true;
 }
+
+
 /////////////////////////////////////////
 // C-Space ghost object creation
 /////////////
@@ -457,7 +479,7 @@ void pathPlan::generateCSpace()
 	// test colisobject if rigid body
 		if(colisObject->getInternalType() == btCollisionObject::CO_RIGID_BODY)
 		{
-			// create CSpace
+		// create CSpace
 			// check if object is in-active
 			if(colisObject->isActive()) continue;
 			// check if the obstacle is on the terrain
@@ -465,6 +487,115 @@ void pathPlan::generateCSpace()
 			createGhostShape(colisObject);
 		}
 	}
+	
+	arena->simulatStep();
+	int totalManifolds = arena->getDynamicsWorld()->getDispatcher()->getNumManifolds();
+	
+	// btTransform tfA;
+	// tfA.setIdentity();
+	// tfA.setOrigin(btVector3(3,3,3));
+	// QList<btVector3> partA;
+	// partA << btVector3(1,.75,1);
+	// partA << btVector3(.75,1,1);
+	// partA << btVector3(-1,1,1);
+	// partA << btVector3(-1,-.75,1);
+	// partA << btVector3(-.75,-1,1);
+	// partA << btVector3(1,-1,1);
+	// btCollisionObject* objA = createGhostHull(tfA,partA);
+	// partA = getTopShapePoints(m_ghostObjects[m_ghostObjects.size()-1]);
+	// qDebug("start partA");
+	// for(i=0;i<partA.size();i++) qDebug("x=%f,y=%f,z=%f",partA[i].x(),partA[i].y(),partA[i].z());
+	// 
+	// btTransform tfB;
+	// tfB.setIdentity();
+	// tfB.setOrigin(btVector3(4,2,3));
+	// QList<btVector3> partB;
+	// partB << btVector3(1,1,1);
+	// partB << btVector3(-1,1,1);
+	// partB << btVector3(-1,-1,1);
+	// partB << btVector3(1,-1,1);
+	// btCollisionObject* objB = createGhostHull(tfB,partB);
+	// partB = getTopShapePoints(m_ghostObjects[m_ghostObjects.size()-1]);
+	// qDebug("start partB");
+	// for(i=0;i<partB.size();i++) qDebug("x=%f,y=%f,z=%f",partB[i].x(),partB[i].y(),partB[i].z());
+	// 
+	// 	//tfB = tfB.inverseTimes(tfA);
+	// int ballz;
+	// QList<btVector3> partAn = clipAfromB(partA,partB,tfA.inverseTimes(tfB),&ballz);
+	// if(ballz){
+	// 	createGhostHull(tfA,partAn);
+	// 	deleteGhostObject(objA);
+	// }
+	// 
+	// qDebug("new partA");
+	// for(i=0;i<partA.size();i++) qDebug("x=%f,y=%f,z=%f",partA[i].x(),partA[i].y(),partA[i].z());
+	// qDebug("-------------");
+	// partB = clipAfromB(partB,partA,tfB.inverseTimes(tfA),&ballz);
+	// qDebug("new partB");
+	// for(i=0;i<partB.size();i++) qDebug("x=%f,y=%f,z=%f",partB[i].x(),partB[i].y(),partB[i].z());
+	// if(ballz){
+	// 	createGhostHull(tfB,partB);
+	// 	deleteGhostObject(objB);
+	// }
+	
+	int shapeChanged;
+	btCollisionObject* objA;
+	btCollisionObject* objB;
+	QList<btCollisionObject*> oldObjectList;
+	QList<btVector3> objListA;
+	QList<btVector3> objListB;
+	btTransform	transA;
+	btTransform	transB;
+	//int j=0;
+	
+	for(i=0;i<totalManifolds;i++){
+		btPersistentManifold* contactManifold =  arena->getDynamicsWorld()->getDispatcher()->getManifoldByIndexInternal(i);
+		btCollisionObject* baseobjA = static_cast<btCollisionObject*>(contactManifold->getBody0());
+		btCollisionObject* baseobjB = static_cast<btCollisionObject*>(contactManifold->getBody1());
+		
+		if(baseobjA->getInternalType() == btCollisionObject::CO_GHOST_OBJECT &&
+		   baseobjB->getInternalType() == btCollisionObject::CO_GHOST_OBJECT &&
+		   contactManifold->getNumContacts() > 0){
+		//	if(j!=6) {j++;continue;}
+			transA = baseobjA->getWorldTransform();
+			transB = baseobjB->getWorldTransform();
+			
+			objA = (btCollisionObject*)baseobjA->getUserPointer();
+			if(!objA) objA = baseobjA;
+			
+			objB = (btCollisionObject*)baseobjB->getUserPointer();
+			if(!objB) objB = baseobjB;
+			//qDebug("A %f,%f",transA.getOrigin().x(),transA.getOrigin().y());
+			//qDebug("B %f,%f",transB.getOrigin().x(),transB.getOrigin().y());
+			
+			objListA.clear();
+			objListB.clear();
+
+			objListA = getTopShapePoints(objA);
+			objListB = getTopShapePoints(objB);
+
+			// get a new point list for polygon A clipped from B
+			QList<btVector3> newListA = clipAfromB(objListA,objListB, transA.inverseTimes(transB) ,&shapeChanged);		
+			if(shapeChanged) {
+				btCollisionObject* modobjA = createGhostHull(transA, newListA);// create a new hull shape add it to the world
+				baseobjA->setUserPointer(modobjA);
+				if(!oldObjectList.contains(objA)) oldObjectList << objA; // add old object to delete list
+			}
+
+			// get a new point list for polygon B clipped from A
+			QList<btVector3> newListB = clipAfromB(objListB,objListA, transB.inverseTimes(transA) ,&shapeChanged);
+			if(shapeChanged) {
+				btCollisionObject* modobjB = createGhostHull(transB, newListB);	// create a new hull shape add it to the world
+				baseobjB->setUserPointer(modobjB);
+				if(!oldObjectList.contains(objB)) oldObjectList << objB; // add old object to delete list
+			}
+			//break;
+		}
+	}
+	
+	// delete old ghost object that have been reshaped
+	for(i=0;i<oldObjectList.size();i++) deleteGhostObject(oldObjectList[i]);
+	oldObjectList.clear();
 }
 void pathPlan::createGhostShape(btCollisionObject* bodyObj)
 {
@@ -528,9 +659,16 @@ void pathPlan::createGhostShape(btCollisionObject* bodyObj)
 			notUpVector.setValue(1,1,0);// also set the notUpVector to (1,1,0);
 			break;
 		}
+		case CONVEX_HULL_SHAPE_PROXYTYPE: {
+			halfDims = btVector3(1,1,1);
+			bodyTrans.setOrigin(wt.getOrigin());
+			float yaw = atan2(wt.getBasis().getColumn(0).y(),wt.getBasis().getColumn(0).x());
+			bodyTrans.setRotation(btQuaternion(0,0,yaw));
+			break;
+		}
 		default:
-		halfDims = btVector3(1,1,1);
-		bodyTrans = wt;
+			halfDims = btVector3(1,1,1);
+			bodyTrans = wt;
 		break;
 	}
 	
@@ -551,28 +689,308 @@ void pathPlan::createGhostShape(btCollisionObject* bodyObj)
 	arena->getDynamicsWorld()->addCollisionObject(ghostObj,btBroadphaseProxy::SensorTrigger,btBroadphaseProxy::SensorTrigger);
 }
 
+// creates a new ghost object from a list of points
+btCollisionObject* pathPlan::createGhostHull(btTransform bodyTrans, QList<btVector3> list)
+{
+	int i;
+	
+	if(list.isEmpty()) return NULL;
+	
+	btConvexHullShape* cshape = new btConvexHullShape();
+	for(i=0;i<list.size();i++) cshape->addPoint(list[i]);
+	// the list only contains the top half of the hull
+	// it is duplicated in the negative z direction
+	for(i=0;i<list.size();i++){
+		list[i].setZ(-list[i].z());
+		cshape->addPoint(list[i]);
+	}
+	// create a new c-space object
+	btGhostObject* ghostObj = new btGhostObject();
+	// place it over the object
+	ghostObj->setWorldTransform(bodyTrans);
+	// link the shape to the c-space object
+	ghostObj->setCollisionShape(cshape);
+	ghostObj->setCollisionFlags(btCollisionObject::CF_CUSTOM_MATERIAL_CALLBACK);
+	
+	m_ghostShapes.push_back(cshape);
+	m_ghostObjects.push_back(ghostObj);
+	
+	// add the object to the world
+	arena->getDynamicsWorld()->addCollisionObject(ghostObj,btBroadphaseProxy::SensorTrigger,btBroadphaseProxy::SensorTrigger);
+	return (btCollisionObject*)ghostObj;
+}
+
+// takes and object and returns a list of points that represent the top of its geometric shape, assumes symetric
+QList<btVector3> pathPlan::getTopShapePoints(btCollisionObject* obj)
+{
+	QList<btVector3> list;
+	
+	btCollisionShape* colisShape = obj->getCollisionShape();
+	switch(colisShape->getShapeType()){ 
+		case BOX_SHAPE_PROXYTYPE: {
+			const btBoxShape* boxShape = static_cast<const btBoxShape*>(colisShape);
+			btVector3 halfDims = boxShape->getHalfExtentsWithMargin();
+			list << halfDims * btVector3(1,1,1);
+			list << halfDims * btVector3(-1,1,1);
+			list << halfDims * btVector3(-1,-1,1);
+			list << halfDims * btVector3(1,-1,1);
+			break;
+		}
+		case CONVEX_HULL_SHAPE_PROXYTYPE: {
+			const btConvexHullShape* hullShape = static_cast<const btConvexHullShape*>(colisShape);
+			const btVector3* ptlist = hullShape->getUnscaledPoints();
+			int numPts = hullShape->getNumPoints()/2;
+			for(int i = 0; i < numPts; ++i)
+			{
+				list << ptlist[i];
+			}
+			break;
+		}
+	}
+	return list;
+}
+
+// returns an empty list if lista polygon is inside listb polygon, mod is 0 if lista polygon is unchanged else 1
+QList<btVector3> pathPlan::clipAfromB(QList<btVector3> lista, QList<btVector3> listb, btTransform transab, int* mod)
+{
+	int i,nexti;
+	bool side;		// holds wether the current index point is inside of polygon in listb
+	int j,nextj;
+	btVector3 xpoint;
+	btVector3 startPoint;
+	*mod = 0;
+	
+	// convert all the points in listb to lista reference frame
+	for(i=0;i<listb.size();i++) listb[i] = transab(listb[i]);
+	
+	//for(i=0;i<lista.size();i++) qDebug("ptA%d %f,%f",i,lista[i].x(),lista[i].y());
+	//for(i=0;i<listb.size();i++) qDebug("ptB%d %f,%f",i,listb[i].x(),listb[i].y());
+	
+	i=0;
+	// look for a point on lista outside of polygon listb
+	while(isPointInsidePoly(lista[i],listb) && i<lista.size()) i++;
+	if(i == lista.size()){ // polygon from lista is inside of polygon listb
+		lista.clear();
+		return lista;
+	}
+	startPoint = lista[i];
+	//qDebug("start %f,%f",startPoint.x(),startPoint.y());
+	side = false;	// start on the outside of polygon listb
+	
+	do{
+		if(i == lista.size()-1) nexti = 0;
+		else nexti = i+1;
+		
+		if(isPointInsidePoly(lista[nexti],listb) != side) // only add or replace points if there is a change of side
+		{
+			*mod = 1;
+			// find the intersection point
+			for(j=0;j<listb.size();j++){	// loop through all sides of polygon listb
+				if(j == listb.size()-1) nextj = 0;
+				else nextj = j+1;
+				
+				//qDebug("A p%d %f,%f p%d %f,%f",i,lista[i].x(),lista[i].y(),nexti,lista[nexti].x(),lista[nexti].y());
+				//qDebug("B p%d %f,%f p%d %f,%f",j,listb[j].x(),listb[j].y(),nextj,listb[nextj].x(),listb[nextj].y());
+				if(segmentIntersection(lista[i],lista[nexti],listb[j],listb[nextj],&xpoint) != 0) break;
+			}
+			
+			if(side){	// if current index is inside (side=TRUE) of polygon b
+				//qDebug("replaced pnt%d with intersection",i);
+				lista.replace(i,xpoint);	// replace the point with the intersection point
+				i++;
+			}
+			else {		// if the current index is outside (side=FALSE) polygon b
+				//qDebug("inserted intersection before %d",nexti);
+				if(nexti == 0) lista.append(xpoint);
+				else lista.insert(nexti,xpoint);	// add the intersection point to the list
+				i+=2;
+			}
+			
+			side = !side;
+		}
+		else if(side){	// if there is no change of side and the current index is still insde polygon b
+			lista.removeAt(i);	// remove the current index and move to the next
+		}
+		else i++;
+		
+		if(i == lista.size()) i=0;
+	}while(startPoint != lista[i]);
+	
+	return lista;
+}
+
+bool pathPlan::isPointInsidePoly(btVector3 pt,QList<btVector3> ls)
+{
+	int i,iplus;
+	double z;
+	btVector3 p1, p2;
+	
+	// traveling around the polygon point list in a CCW (right hand rule) fasion 
+	// if z is negative for all sides, pt is inside of convex polygon ls
+	for(i=0; i<ls.size(); i++)
+	{
+		if(i == ls.size()-1) iplus = 0;
+		else iplus = i+1;
+		
+		p1 = ls[i];
+		p2 = ls[iplus];
+		
+		// pt is on the right side z is positive, left is negative
+		z = (pt.x() - p1.x())*(p2.y() - p1.y()) - (pt.y() - p1.y())*(p2.x() - p1.x());
+		
+		if(z >= 0) return false; // if the point is to the right of any side pt is outside the polygon
+	}
+ 	return true;
+}
+
+int pathPlan::segmentIntersection(btVector3 p1,btVector3 p2,btVector3 p3,btVector3 p4,btVector3* intsect)
+{
+	double z1,z2;
+	float m1,m2,b1,b2;
+	float num,dnm;
+	int s1,s2;
+	
+	//qDebug("p1 %f,%f p2 %f,%f",p1.x(),p1.y(),p2.x(),p2.y());
+	//qDebug("p3 %f,%f p4 %f,%f",p3.x(),p3.y(),p4.x(),p4.y());
+	/////////////////////////////////////////////
+	// Quick bounding box rejection check
+	if(!(MAXIMUM(p1.x(), p2.x()) > MINIMUM(p3.x(), p4.x()) && 
+		 MAXIMUM(p3.x(), p4.x()) > MINIMUM(p1.x(), p2.x()) &&
+		 MAXIMUM(p1.y(), p2.y()) > MINIMUM(p3.y(), p4.y()) &&
+		 MAXIMUM(p3.y(), p4.y()) > MINIMUM(p1.y(), p2.y())))
+	{
+		//qDebug("bounding rejection");
+		intsect = NULL;
+		return 0;
+	}
+	
+	
+	/////////////////////////////////////////////
+	// if any of the segment end points are the same return 0
+	// don't want to deal with vertices that the robot can already reach
+	//if((p3 == p1) || (p3 == p2) || (p4 == p1) || (p4 == p2)) return 0;
+	/////////////////////////////////////////////
+	// do they straddle each other?
+	if((z1 = ((p3.x() - p1.x())*(p2.y() - p1.y())) - ((p3.y() - p1.y())*(p2.x() - p1.x()))) < 0)
+		s1 = -1;
+	else if(z1 > 0)
+		s1 = 1;
+	else
+	{
+		intsect->setValue(p3.x(),p3.y(),p1.z()); // return the point is on the line
+		return -1;
+	}
+	
+	if((z2 = ((p4.x() - p1.x())*(p2.y() - p1.y())) - ((p4.y() - p1.y())*(p2.x() - p1.x()))) < 0)
+		s2 = -1;
+	else if(z2 > 0)
+		s2 = 1;
+	else
+	{
+		intsect->setValue(p4.x(),p4.y(),p1.z()); // return the point is on the line
+		return -1;
+	}
+	
+	if(s1 != s2) // if side 1 and side 2 are different the lines straddle
+	{
+		num = p2.y() - p1.y();
+		dnm = p2.x() - p1.x();
+		if(num == 0){
+			 m1 = 0;		// horizontal line
+			intsect->setY(p1.y());
+		}
+		else if(dnm == 0){
+			 m1 = 1;		// vertical line
+			intsect->setX(p1.x());
+		}
+		else m1 = num/dnm;
+		b1 = p1.y() - m1*p1.x();
+		
+		num = p4.y() - p3.y();
+		dnm = p4.x() - p3.x();
+		if(num == 0){
+			m2 = 0;			// horizontal line
+			intsect->setY(p3.y());
+		}
+		else if(dnm == 0){
+			m2 = 1;			// vertical line
+			intsect->setX(p3.x());
+		}
+		else m2 = num/dnm;
+		b2 = p3.y() - m2*p3.x();
+		
+		//qDebug("m1%f b1%f m2%f b2%f",m1,b1,m2,b2);
+		if(m1 != 1 && m2 != 1) intsect->setX((b2-b1)/(m1-m2));
+		if(m1 != 0 && m2 != 0) 
+		{	
+			if(m1 != 1) intsect->setY(m1*intsect->x() + b1);
+			else intsect->setY(m2*intsect->x() + b2);
+		}
+		
+		intsect->setZ(p2.z());
+		//qDebug("intersection %f,%f,%f",intsect->x(),intsect->y(),intsect->z());
+		
+		if(intsect->x() >= MINIMUM(p1.x(), p2.x()) && intsect->x() <= MAXIMUM(p1.x(), p2.x()) &&
+		intsect->y() >= MINIMUM(p1.y(), p2.y()) && intsect->y() <= MAXIMUM(p1.y(),p2.y())) return 1;
+		//qDebug("not really");
+	}
+	
+	intsect = NULL;
+	return 0;
+}
+
 /////////////////////////////////////////
 // Draw the C-space objects and the path's
 /////////////
 void pathPlan::renderGLObject()
 {
 	int i;
-	// draws the golden outline for the c-space ghost objects
+// draws the golden outline for the c-space ghost objects
 	btScalar	glm[16];
 
-	glColor3f(0.99f,0.82f,0.1f); // golden C-Space
+
 	glLineWidth(1.5);
 
 	for(i = 0; i < m_ghostObjects.size(); ++i)
 	{
 		m_ghostObjects[i]->getWorldTransform().getOpenGLMatrix(glm);
-		const btBoxShape* boxShape = static_cast<const btBoxShape*>(m_ghostObjects[i]->getCollisionShape());
-		btVector3 halfDims = boxShape->getHalfExtentsWithMargin();
+		btCollisionShape* colisShape = m_ghostObjects[i]->getCollisionShape();
+		
+			switch(colisShape->getShapeType()){ 
+			case BOX_SHAPE_PROXYTYPE: {
+				glColor3f(0.99f,0.82f,0.1f); // golden C-Space
+				const btBoxShape* boxShape = static_cast<const btBoxShape*>(colisShape);
+				btVector3 halfDims = boxShape->getHalfExtentsWithMargin();
 
-		glPushMatrix();
-		glMultMatrixf(glm);
-			wireBox(halfDims.x(),halfDims.y(),halfDims.z());
-		glPopMatrix();	
+				glPushMatrix();
+				glMultMatrixf(glm);
+				wireBox(halfDims.x(),halfDims.y(),halfDims.z());
+				glPopMatrix();	
+				break;
+			}
+			case CONVEX_HULL_SHAPE_PROXYTYPE: {
+				glColor3f(0.99f,0.7f,0.5f);
+				const btConvexHullShape* hullShape = static_cast<const btConvexHullShape*>(colisShape);
+				const btVector3* ptlist = hullShape->getUnscaledPoints();
+				int numPts = hullShape->getNumPoints();
+				
+				Vertex verts[numPts];
+				for(int j=0;j<numPts;j++)
+				{
+					verts[j].x = ptlist[j].x();
+					verts[j].y = ptlist[j].y();
+					verts[j].z = ptlist[j].z();
+				}
+				
+				glPushMatrix();
+				glMultMatrixf(glm);
+				wireSymHull(verts,numPts);
+				glPopMatrix();
+				break;
+			}
+			default:
+			break;
+		}
 	}
 	
 // draws the roadmap construction
@@ -631,11 +1049,22 @@ void pathPlan::renderGLObject()
 	glEnd();
 
 // draws test points and lines	
-	// glPointSize(8.0);
-	// glBegin(GL_POINTS);
-	// glNormal3f(0,0,1);
-	// glColor3f(0,0,1);
-	// glEnd();
+	glPointSize(8.0);
+		glBegin(GL_POINTS);
+		glNormal3f(0,0,1);
+		glColor3f(0,0,1);
+		for(i = 0; i < contactPointsA.size(); ++i)
+		{
+			btVector3 p = contactPointsA[i];
+			glVertex3f(p.x(),p.y(),p.z());
+		}
+		glColor3f(0,1,1);
+		for(i = 0; i < contactPointsB.size(); ++i)
+		{
+			btVector3 p = contactPointsB[i];
+			glVertex3f(p.x(),p.y(),p.z());
+		}
+		glEnd();
 	// 
 	// glBegin(GL_LINES);
 	// glColor3f(1,1,0);

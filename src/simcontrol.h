@@ -50,6 +50,7 @@ class simControl : public QObject
 	
 		// obstacles setting functions
 		//void setObstacleData(int param, char *data);
+		void hullShapeTest();
 	
 		// terrain control functions
 		terrain* getGround() { return ground; }

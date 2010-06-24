@@ -44,8 +44,10 @@ private:
 	bool										m_doneBuilding;
 	//btVector3	leftP,rightP;
 	//btVector3 	testPoint;
+	QList<btVector3>	contactPointsA;
+	QList<btVector3>	contactPointsB;
 	
-	void createGhostShape(btCollisionObject* bodyObj);
+	void deleteGhostObject(btCollisionObject* obj);
 	btCollisionObject* isRayBlocked(rankPoint from,rankPoint to);
 	btCollisionObject* clearToGoal(rankPoint node);
 	void getExtremes(btCollisionObject* obj, rankPoint pivotPoint, rankPoint* left, rankPoint* right);
@@ -58,6 +60,13 @@ private:
 	QList<rankPoint> smoothPath();
 	bool isNewPoint(rankPoint pt);
 	bool isNewLink(rankLink link);
+	
+	void createGhostShape(btCollisionObject* bodyObj);
+	btCollisionObject* createGhostHull(btTransform bodyTrans, QList<btVector3> list);
+	QList<btVector3> getTopShapePoints(btCollisionObject* obj);
+	QList<btVector3> clipAfromB(QList<btVector3> lista, QList<btVector3> listb, btTransform transab, int* mod=NULL);
+	bool isPointInsidePoly(btVector3 pt,QList<btVector3> ls);
+	int segmentIntersection(btVector3 p1,btVector3 p2,btVector3 p3,btVector3 p4,btVector3* intsec);
 	
 public:
 	pathPlan(btVector3 start, btVector3 end, simGLView* glView = NULL);

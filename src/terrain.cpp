@@ -17,7 +17,7 @@ GLfloat GroundColor[4] = { 0.95f, 0.95f, 0.95f, 1.0f };
 // that might fall out of the broadphase limits, which could cause problems.
 terrain::terrain(QString filename,simGLView* glView)
 :
-simGLObject(glView),
+simGLObject(NULL),
 m_terrainVerts(0),
 m_terrainColors(0),
 m_terrainNormals(0),

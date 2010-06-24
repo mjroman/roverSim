@@ -6,7 +6,6 @@
 #include "physicsWorld.h"
 #include "utility/definitions.h"
 
-
 class simGLObject;
 
 class simGLView : public QGLWidget
