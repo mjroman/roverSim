@@ -54,7 +54,7 @@ public:
     void registerGLObject(simGLObject *obj);
     void unregisterGLObject(simGLObject *obj);
 	void setWaypointList(QList<WayPoint> *list) { WPlist = list; };
-
+	void toggleFog();
 signals:
     void refreshView();
 };

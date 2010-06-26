@@ -607,6 +607,3 @@ void SR2rover::renderGLObject()
 		m_laserList[i]->drawLaser(m_robotObjects[0]->getWorldTransform());
 	}
 }
-
-
-

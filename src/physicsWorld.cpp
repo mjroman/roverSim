@@ -273,8 +273,3 @@ void physicsWorld::placeObstacleShapeAt(btVector3 pos,float yaw, float massval)
 	body->setDamping(0.5,0.75);
     m_obstacleObjects.push_back(body);
 }
-
-
-
-
-

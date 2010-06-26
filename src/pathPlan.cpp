@@ -22,14 +22,14 @@ simGLObject(glView),
 m_linkCount(0),
 m_doneBuilding(false)
 {
-	vertices[0] = btVector3(1,1,1);
-	vertices[1] = btVector3(1,-1,1);
-    vertices[2] = btVector3(-1,-1,1);
-    vertices[3] = btVector3(-1,1,1);
-    vertices[4] = btVector3(1,1,-1);
-    vertices[5] = btVector3(1,-1,-1);
-    vertices[6] = btVector3(-1,-1,-1);
-    vertices[7] = btVector3(-1,1,-1);
+	m_vertices[0] = btVector3(1,1,1);
+	m_vertices[1] = btVector3(-1,1,1);
+    m_vertices[2] = btVector3(-1,-1,1);
+    m_vertices[3] = btVector3(1,-1,1);
+    m_vertices[4] = btVector3(1,1,-1);
+    m_vertices[5] = btVector3(1,-1,-1);
+    m_vertices[6] = btVector3(-1,-1,-1);
+    m_vertices[7] = btVector3(-1,1,-1);
 
 	arena = physicsWorld::instance();
 
@@ -248,14 +248,12 @@ void pathPlan::getExtremes(btCollisionObject* obj, rankPoint pivotPoint, rankPoi
 {
 	float leftMax = 0;
 	float rightMax = 0;
-	
+	QList<btVector3> ptList = getTopShapePoints(obj);
 	btTransform objTrans = obj->getWorldTransform();
-	const btBoxShape* boxShape = static_cast<const btBoxShape*>(obj->getCollisionShape());
-	btVector3 halfDims = boxShape->getHalfExtentsWithMargin();
 
-	for(int i = 0; i < 4; ++i)
+	for(int i = 0; i < ptList.size(); ++i)
 	{
-		btVector3 vert = objTrans(halfDims * vertices[i]);
+		btVector3 vert = objTrans(ptList[i]);
 		vert.setZ(objTrans.getOrigin().z());
 		// get the cross product to find the direction, left or right side
 		btVector3 xc = (objTrans.getOrigin() - pivotPoint.point).cross(vert - pivotPoint.point);
@@ -278,7 +276,7 @@ void pathPlan::getExtremes(btCollisionObject* obj, rankPoint pivotPoint, rankPoi
 				(*right).corner = i;
 			}
 		}
-	}
+	}		
 
 	(*left).object = obj;
 	(*right).object = obj;
@@ -488,7 +486,9 @@ void pathPlan::generateCSpace()
 		}
 	}
 	
+	// run a simulation step to update all the newly added C-Space ghost shapes
 	arena->simulatStep();
+	// get the number of objects the are in contact with another
 	int totalManifolds = arena->getDynamicsWorld()->getDispatcher()->getNumManifolds();
 	
 	// btTransform tfA;
@@ -549,17 +549,23 @@ void pathPlan::generateCSpace()
 	//int j=0;
 	
 	for(i=0;i<totalManifolds;i++){
+		// a manifold holds the two overlapping bodies as well as the intersection points
 		btPersistentManifold* contactManifold =  arena->getDynamicsWorld()->getDispatcher()->getManifoldByIndexInternal(i);
 		btCollisionObject* baseobjA = static_cast<btCollisionObject*>(contactManifold->getBody0());
 		btCollisionObject* baseobjB = static_cast<btCollisionObject*>(contactManifold->getBody1());
 		
+		// C-Space objects are only GHOST type and must have at least one contact point
 		if(baseobjA->getInternalType() == btCollisionObject::CO_GHOST_OBJECT &&
 		   baseobjB->getInternalType() == btCollisionObject::CO_GHOST_OBJECT &&
-		   contactManifold->getNumContacts() > 0){
+		   contactManifold->getNumContacts() > 0)
+		{
 		//	if(j!=6) {j++;continue;}
 			transA = baseobjA->getWorldTransform();
 			transB = baseobjB->getWorldTransform();
 			
+			// if the userPointer is set then the base object has already been reshaped, use the new HULL shape
+			// base objects are not deleted until reshaping is complete
+			// the userPointer of the base object is set to the new HULL shape when it is created
 			objA = (btCollisionObject*)baseobjA->getUserPointer();
 			if(!objA) objA = baseobjA;
 			
@@ -570,16 +576,18 @@ void pathPlan::generateCSpace()
 			
 			objListA.clear();
 			objListB.clear();
-
+			
+			// get the top vertices of the objects, used as 2D representation of objects
 			objListA = getTopShapePoints(objA);
 			objListB = getTopShapePoints(objB);
 
 			// get a new point list for polygon A clipped from B
+			// inverseTimes(transB) is used to transform the points in polygonB to polygonA's reference
 			QList<btVector3> newListA = clipAfromB(objListA,objListB, transA.inverseTimes(transB) ,&shapeChanged);		
 			if(shapeChanged) {
-				btCollisionObject* modobjA = createGhostHull(transA, newListA);// create a new hull shape add it to the world
-				baseobjA->setUserPointer(modobjA);
-				if(!oldObjectList.contains(objA)) oldObjectList << objA; // add old object to delete list
+				btCollisionObject* modobjA = createGhostHull(transA, newListA);	// create a new hull shape add it to the world
+				baseobjA->setUserPointer(modobjA);								
+				if(!oldObjectList.contains(objA)) oldObjectList << objA; 		// add old object to delete list if it isn't already there
 			}
 
 			// get a new point list for polygon B clipped from A
@@ -593,7 +601,7 @@ void pathPlan::generateCSpace()
 		}
 	}
 	
-	// delete old ghost object that have been reshaped
+	// delete old base ghost objects that have been reshaped
 	for(i=0;i<oldObjectList.size();i++) deleteGhostObject(oldObjectList[i]);
 	oldObjectList.clear();
 }
@@ -704,7 +712,7 @@ btCollisionObject* pathPlan::createGhostHull(btTransform bodyTrans, QList<btVect
 		list[i].setZ(-list[i].z());
 		cshape->addPoint(list[i]);
 	}
-	// create a new c-space object
+	// create a new C-Space object
 	btGhostObject* ghostObj = new btGhostObject();
 	// place it over the object
 	ghostObj->setWorldTransform(bodyTrans);
@@ -730,10 +738,10 @@ QList<btVector3> pathPlan::getTopShapePoints(btCollisionObject* obj)
 		case BOX_SHAPE_PROXYTYPE: {
 			const btBoxShape* boxShape = static_cast<const btBoxShape*>(colisShape);
 			btVector3 halfDims = boxShape->getHalfExtentsWithMargin();
-			list << halfDims * btVector3(1,1,1);
-			list << halfDims * btVector3(-1,1,1);
-			list << halfDims * btVector3(-1,-1,1);
-			list << halfDims * btVector3(1,-1,1);
+			list << halfDims * m_vertices[0];
+			list << halfDims * m_vertices[1];
+			list << halfDims * m_vertices[2];
+			list << halfDims * m_vertices[3];
 			break;
 		}
 		case CONVEX_HULL_SHAPE_PROXYTYPE: {
@@ -751,6 +759,7 @@ QList<btVector3> pathPlan::getTopShapePoints(btCollisionObject* obj)
 }
 
 // returns an empty list if lista polygon is inside listb polygon, mod is 0 if lista polygon is unchanged else 1
+// clips the intersection part of polygonB from polygonA and returns a list of points for reshaped polygonA
 QList<btVector3> pathPlan::clipAfromB(QList<btVector3> lista, QList<btVector3> listb, btTransform transab, int* mod)
 {
 	int i,nexti;
@@ -769,14 +778,20 @@ QList<btVector3> pathPlan::clipAfromB(QList<btVector3> lista, QList<btVector3> l
 	i=0;
 	// look for a point on lista outside of polygon listb
 	while(isPointInsidePoly(lista[i],listb) && i<lista.size()) i++;
+	
 	if(i == lista.size()){ // polygon from lista is inside of polygon listb
 		lista.clear();
 		return lista;
 	}
+	
+	// save the starting point for exit condition
 	startPoint = lista[i];
 	//qDebug("start %f,%f",startPoint.x(),startPoint.y());
-	side = false;	// start on the outside of polygon listb
+	side = false;	// always start on the outside of polygon listb
 	
+	// starting at a point on polygonA outside of polygonB traveling in a CCW (right hand rule) look for intersections
+	// with polygonB, SIDE keeps track of the current state of wether the index point is inside of polygonB or not
+	// SIDE is used to tell when to delete, replace, or insert points for the new shape
 	do{
 		if(i == lista.size()-1) nexti = 0;
 		else nexti = i+1;
@@ -788,7 +803,6 @@ QList<btVector3> pathPlan::clipAfromB(QList<btVector3> lista, QList<btVector3> l
 			for(j=0;j<listb.size();j++){	// loop through all sides of polygon listb
 				if(j == listb.size()-1) nextj = 0;
 				else nextj = j+1;
-				
 				//qDebug("A p%d %f,%f p%d %f,%f",i,lista[i].x(),lista[i].y(),nexti,lista[nexti].x(),lista[nexti].y());
 				//qDebug("B p%d %f,%f p%d %f,%f",j,listb[j].x(),listb[j].y(),nextj,listb[nextj].x(),listb[nextj].y());
 				if(segmentIntersection(lista[i],lista[nexti],listb[j],listb[nextj],&xpoint) != 0) break;
@@ -801,17 +815,17 @@ QList<btVector3> pathPlan::clipAfromB(QList<btVector3> lista, QList<btVector3> l
 			}
 			else {		// if the current index is outside (side=FALSE) polygon b
 				//qDebug("inserted intersection before %d",nexti);
-				if(nexti == 0) lista.append(xpoint);
-				else lista.insert(nexti,xpoint);	// add the intersection point to the list
+				if(nexti == 0) lista.append(xpoint);	// add new points to the end of the list if we are at the wraparound point
+				else lista.insert(nexti,xpoint);		// add the intersection point to the list
 				i+=2;
 			}
 			
 			side = !side;
 		}
-		else if(side){	// if there is no change of side and the current index is still insde polygon b
+		else if(side){	// if there is no change of side and the current index is still insde polygonB
 			lista.removeAt(i);	// remove the current index and move to the next
 		}
-		else i++;
+		else i++; // else keep moving around polygonA
 		
 		if(i == lista.size()) i=0;
 	}while(startPoint != lista[i]);
@@ -819,13 +833,14 @@ QList<btVector3> pathPlan::clipAfromB(QList<btVector3> lista, QList<btVector3> l
 	return lista;
 }
 
+// returns TRUE if pt is inside of the CONVEX polygon LS
 bool pathPlan::isPointInsidePoly(btVector3 pt,QList<btVector3> ls)
 {
 	int i,iplus;
 	double z;
 	btVector3 p1, p2;
 	
-	// traveling around the polygon point list in a CCW (right hand rule) fasion 
+	// traveling around the polygon point list in a CCW (right hand rule) direction 
 	// if z is negative for all sides, pt is inside of convex polygon ls
 	for(i=0; i<ls.size(); i++)
 	{
@@ -843,6 +858,8 @@ bool pathPlan::isPointInsidePoly(btVector3 pt,QList<btVector3> ls)
  	return true;
 }
 
+// determins if there is an intersection between two lines represented by point pairs (p1,p2) and (p3,p4)
+// returns 0 = no intersection 1 = intersection -1 = intersection is and endpoint of (p3,p4)
 int pathPlan::segmentIntersection(btVector3 p1,btVector3 p2,btVector3 p3,btVector3 p4,btVector3* intsect)
 {
 	double z1,z2;
@@ -865,19 +882,17 @@ int pathPlan::segmentIntersection(btVector3 p1,btVector3 p2,btVector3 p3,btVecto
 	}
 	
 	
-	/////////////////////////////////////////////
-	// if any of the segment end points are the same return 0
-	// don't want to deal with vertices that the robot can already reach
-	//if((p3 == p1) || (p3 == p2) || (p4 == p1) || (p4 == p2)) return 0;
-	/////////////////////////////////////////////
-	// do they straddle each other?
+	// Z1 and Z2 hold where P3 and P4 are respective of the vector from P1->P2
+	// positive values indicate the point is to the RIGHT of P1->P2
+	// negative values indicate the point is to the LEFT of P1->P2
+	// 0 indicates the point is on P1->P2
 	if((z1 = ((p3.x() - p1.x())*(p2.y() - p1.y())) - ((p3.y() - p1.y())*(p2.x() - p1.x()))) < 0)
 		s1 = -1;
 	else if(z1 > 0)
 		s1 = 1;
 	else
 	{
-		intsect->setValue(p3.x(),p3.y(),p1.z()); // return the point is on the line
+		intsect->setValue(p3.x(),p3.y(),p1.z()); // return the point is on the line, modify z value to height of P1->P2
 		return -1;
 	}
 	
@@ -887,13 +902,15 @@ int pathPlan::segmentIntersection(btVector3 p1,btVector3 p2,btVector3 p3,btVecto
 		s2 = 1;
 	else
 	{
-		intsect->setValue(p4.x(),p4.y(),p1.z()); // return the point is on the line
+		intsect->setValue(p4.x(),p4.y(),p1.z()); // return the point is on the line, modify z value to height of P1->P2
 		return -1;
 	}
 	
+	// do they straddle each other?
 	if(s1 != s2) // if side 1 and side 2 are different the lines straddle
 	{
-		num = p2.y() - p1.y();
+		// FINDING THE INTERSECTION POINT
+		num = p2.y() - p1.y();	// slope calculation rise/run
 		dnm = p2.x() - p1.x();
 		if(num == 0){
 			 m1 = 0;		// horizontal line
@@ -904,7 +921,7 @@ int pathPlan::segmentIntersection(btVector3 p1,btVector3 p2,btVector3 p3,btVecto
 			intsect->setX(p1.x());
 		}
 		else m1 = num/dnm;
-		b1 = p1.y() - m1*p1.x();
+		b1 = p1.y() - m1*p1.x();	// find the y-intercept
 		
 		num = p4.y() - p3.y();
 		dnm = p4.x() - p3.x();
@@ -917,7 +934,7 @@ int pathPlan::segmentIntersection(btVector3 p1,btVector3 p2,btVector3 p3,btVecto
 			intsect->setX(p3.x());
 		}
 		else m2 = num/dnm;
-		b2 = p3.y() - m2*p3.x();
+		b2 = p3.y() - m2*p3.x();	// find the y-intercept
 		
 		//qDebug("m1%f b1%f m2%f b2%f",m1,b1,m2,b2);
 		if(m1 != 1 && m2 != 1) intsect->setX((b2-b1)/(m1-m2));
@@ -927,12 +944,12 @@ int pathPlan::segmentIntersection(btVector3 p1,btVector3 p2,btVector3 p3,btVecto
 			else intsect->setY(m2*intsect->x() + b2);
 		}
 		
-		intsect->setZ(p2.z());
+		intsect->setZ(p1.z());
 		//qDebug("intersection %f,%f,%f",intsect->x(),intsect->y(),intsect->z());
 		
+		// a valid intersection happens only ON the segment defined by P1->P2
 		if(intsect->x() >= MINIMUM(p1.x(), p2.x()) && intsect->x() <= MAXIMUM(p1.x(), p2.x()) &&
 		intsect->y() >= MINIMUM(p1.y(), p2.y()) && intsect->y() <= MAXIMUM(p1.y(),p2.y())) return 1;
-		//qDebug("not really");
 	}
 	
 	intsect = NULL;
@@ -969,7 +986,7 @@ void pathPlan::renderGLObject()
 				break;
 			}
 			case CONVEX_HULL_SHAPE_PROXYTYPE: {
-				glColor3f(0.99f,0.7f,0.5f);
+				glColor3f(0.99f,0.82f,0.5f);
 				const btConvexHullShape* hullShape = static_cast<const btConvexHullShape*>(colisShape);
 				const btVector3* ptlist = hullShape->getUnscaledPoints();
 				int numPts = hullShape->getNumPoints();

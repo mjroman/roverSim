@@ -117,13 +117,13 @@ void simGLView::initializeGL()
 
 	// fog
 	//glEnable(GL_FOG); // DON'T FORGET TO SET THE CLEAR COLOR
-	GLfloat fogColor[4] = {0.5, 0.5, 0.5, 1.0};
-	glFogi (GL_FOG_MODE, GL_LINEAR);
+	GLfloat fogColor[4] = {0.05, 0.05, 0.05, 1.0};
+	glFogi (GL_FOG_MODE, GL_EXP2);
 	glFogfv (GL_FOG_COLOR, fogColor);
-	glFogf (GL_FOG_DENSITY, 0.05);
+	glFogf (GL_FOG_DENSITY, 0.1);
 	glHint (GL_FOG_HINT, GL_DONT_CARE);
 	glFogf (GL_FOG_START, 10);	// ONLY USED FOR LINEAR FOG EQUATION
-	glFogf (GL_FOG_END, 50);	// ONLY USED FOR LINEAR FOG EQUATION
+	glFogf (GL_FOG_END, 40);	// ONLY USED FOR LINEAR FOG EQUATION
 }
 
 void simGLView::resizeGL(int width, int height)
@@ -200,6 +200,20 @@ void simGLView::overlayGL()
     glPopMatrix();
     glMatrixMode(GL_MODELVIEW);
     glPopMatrix();
+}
+
+void simGLView::toggleFog()
+{
+	static int i=1;
+	if(i>5) {
+		i=1;
+		glDisable(GL_FOG);
+	}
+	else {
+		glEnable(GL_FOG);
+		glFogf(GL_FOG_DENSITY,0.02*i);
+	}
+	i++;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////

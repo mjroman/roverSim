@@ -225,6 +225,11 @@ void MainGUI::keyPressEvent(QKeyEvent *event)
 			SController->pauseSim();
             return;
         }
+		case 'F':
+		{
+			glView->toggleFog();
+			return;
+		}
 		case 'P':
 		{
 			textConsole->append("stop drawing");

@@ -38,7 +38,7 @@ private:
 	rankPoint									m_midPoint;
 	rankPoint									m_goalPoint;
 	int											m_linkCount;
-	btVector3 									vertices[8];
+	btVector3 									m_vertices[8];
 	
 	QList<rankLink>								m_linkList;
 	bool										m_doneBuilding;
