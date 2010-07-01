@@ -70,6 +70,10 @@ public:
     int     simSubSteps;
 
 	btAlignedObjectArray<btCollisionObject*>* getObstacleObjectArray() { return &m_obstacleObjects; }
+	bool isObstacle(btCollisionObject* obj) { 
+		if(m_obstacleObjects.findLinearSearch(obj) < m_obstacleObjects.size()) return true;
+		else return false;
+		}
 
     static physicsWorld *initialize(float x, float y, float z, float boundary) {
         if(!m_pWorld){

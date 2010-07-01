@@ -3,6 +3,7 @@
 
 #include <QTimer>
 #include "physicsWorld.h"
+#include "utility/structures.h"
 
 class terrain;
 class SR2rover;
@@ -10,6 +11,7 @@ class skydome;
 class simGLView;
 class autoCode;
 class pathPlan;
+
 
 class simControl : public QObject
 {
@@ -25,6 +27,7 @@ class simControl : public QObject
 	    double          delTime;
 		simGLView		*glView;
 		QList<WayPoint>	waypointList;
+		pickValue		m_pickingObject;
 		
 	public:
 		// obstacle members
@@ -50,7 +53,6 @@ class simControl : public QObject
 	
 		// obstacles setting functions
 		//void setObstacleData(int param, char *data);
-		void hullShapeTest();
 	
 		// terrain control functions
 		terrain* getGround() { return ground; }
@@ -72,6 +74,11 @@ class simControl : public QObject
 	// obstacle control functions
 		void generateObstacles();
 		void removeObstacles();
+		void pickObstacle(btVector3 camPos,btVector3 mousePos);
+		void moveObstacle(btVector3 camPos,btVector3 mousePos);
+		void dropObstacle();
+		void spinObstacle(float spin);
+		void orientObstacle();
 		void stepSim();
 		
 		void openNewGround(QString filename);

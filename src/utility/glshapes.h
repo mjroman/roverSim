@@ -12,6 +12,7 @@ void box(float length,float width,float height);
 void wireBox(float length,float width,float height);
 void cylinder(float rad, float length, int res);
 void cone(float rad, float length, int res);
+void conePoint(float rad, float length, int res);
 void sphere(float rad, int lats, int longs);
 void wireSymHull(Vertex* pts,int num);
 

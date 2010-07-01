@@ -230,6 +230,26 @@ void cone(float rad, float length, int res)
     glEnd();
 }
 
+void conePoint(float rad, float length, int res)
+{
+	int i;
+    float px,py;
+    float nx,ny;
+
+	glBegin(GL_TRIANGLE_FAN);
+	glNormal3f(0,0,1);
+	glVertex3f(0,0,0);
+	for(i=0;i<=360;i+=res){
+		nx = cos(DEGTORAD(i));
+		ny = sin(DEGTORAD(i));
+		px = rad*nx;
+		py = rad*ny;
+		//glNormal3f(nx,ny,0);
+		glVertex3f(px,py,length);
+	}
+	glEnd();
+}
+
 void sphere(float rad, int lats, int longs)
 {
     int i, j;

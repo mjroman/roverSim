@@ -225,6 +225,11 @@ void MainGUI::keyPressEvent(QKeyEvent *event)
 			SController->pauseSim();
             return;
         }
+		case 'A':
+		{
+			SController->orientObstacle();
+			return;
+		}
 		case 'F':
 		{
 			glView->toggleFog();

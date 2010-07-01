@@ -2,6 +2,15 @@
 #define STRUCTURES_H
 
 #include <LinearMath/btVector3.h>
+class btRigidBody;
+
+typedef struct _pickValue
+{
+	btRigidBody*	rigidbody;
+	btVector3		hitPoint;
+	btVector3		rotAxis;
+	btVector3		eulerVector;
+}pickValue;
 
 typedef	enum _WPstate{
 	WPstateNew = 0, // to be visited

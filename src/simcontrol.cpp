@@ -45,6 +45,11 @@ m_obstDensity(5)
 	simTimer = new QTimer(this);
     connect(simTimer, SIGNAL(timeout()), this, SLOT(stepSim()));
     this->startSimTimer(10);
+
+	connect(glView, SIGNAL(pickingVector(btVector3,btVector3)), this, SLOT(pickObstacle(btVector3,btVector3)));
+	connect(glView, SIGNAL(movingVector(btVector3,btVector3)), this, SLOT(moveObstacle(btVector3,btVector3)));
+	connect(glView, SIGNAL(dropPicked()), this, SLOT(dropObstacle()));
+	connect(glView, SIGNAL(spinPicked(float)), this, SLOT(spinObstacle(float)));
 }
 
 simControl::~simControl()
@@ -190,25 +195,6 @@ void simControl::generateObstacles()
 		
         arena->placeObstacleShapeAt(tempPlace,alphaYaw,mass);
     }
-	//this->hullShapeTest();
-}
-void simControl::hullShapeTest()
-{
-	btVector3 position(2,2,0);
-	position.setZ(ground->terrainHeightAt(position) + m_dropHeight);
-	btVector3 pts[10];
-	pts[0]=btVector3(0.5,0.25,1);
-	pts[1]=btVector3(0.25,0.5,1);
-	pts[2]=btVector3(-0.5,0.5,1);
-	pts[3]=btVector3(-0.5,-0.5,1);
-	pts[4]=btVector3(0.5,-0.5,1);
-	pts[5]=btVector3(0.5,0.25,0);
-	pts[6]=btVector3(0.25,0.5,0);
-	pts[7]=btVector3(-0.5,0.5,0);
-	pts[8]=btVector3(-0.5,-0.5,0);
-	pts[9]=btVector3(0.5,-0.5,0);
-	arena->createHullObstacleShape(pts,10);
-	arena->placeObstacleShapeAt(position,0,5);
 }
 
 void simControl::removeObstacles()
@@ -216,6 +202,90 @@ void simControl::removeObstacles()
 	if(path) delete path;
 	path = 0;
 	arena->deleteObstacleGroup();
+}
+
+void simControl::pickObstacle(btVector3 camPos,btVector3 mousePos)
+{
+	// this will be a connection from glview
+	// which sets the camera position and mouse world position for ray testing
+	
+	// test the ray and the object
+	btCollisionWorld::ClosestRayResultCallback rayCBto(camPos,mousePos);
+	arena->getDynamicsWorld()->rayTest(camPos,mousePos,rayCBto);
+	if(rayCBto.hasHit() && arena->isObstacle(rayCBto.m_collisionObject))
+	{
+			// turn on mouse tracking for glView
+			glView->setMouseTracking(true);
+			// move the obstacle up above terrain
+			m_pickingObject.rigidbody = btRigidBody::upcast(rayCBto.m_collisionObject);
+			m_pickingObject.rigidbody->forceActivationState(WANTS_DEACTIVATION);
+			m_pickingObject.rotAxis.setValue(0,0,1);
+			m_pickingObject.hitPoint = rayCBto.m_hitPointWorld;
+			glView->setPickObject(&m_pickingObject);
+			
+			btTransform trans = m_pickingObject.rigidbody->getWorldTransform();
+			trans.setIdentity();
+			trans.setOrigin(m_pickingObject.hitPoint + btVector3(0,0,5));
+			
+			btDefaultMotionState* bodyMotionState = (btDefaultMotionState*)m_pickingObject.rigidbody->getMotionState();
+			bodyMotionState->m_startWorldTrans = trans;
+			bodyMotionState->m_graphicsWorldTrans = trans;
+			m_pickingObject.rigidbody->setCenterOfMassTransform(trans);
+			m_pickingObject.rigidbody->setInterpolationWorldTransform(trans);
+			//rigidbody->activate();
+			//rigidbody->applyCentralImpulse(btVector3(0,0,50));
+	}
+}
+
+void simControl::moveObstacle(btVector3 camPos,btVector3 mousePos)
+{
+	// when the mouse is moved, move the obstacle
+	btCollisionWorld::ClosestRayResultCallback rayCBto(camPos,mousePos);
+	arena->getDynamicsWorld()->rayTest(camPos,mousePos,rayCBto);
+	if(rayCBto.hasHit()){
+		// use the world hitpoint to position the object
+		m_pickingObject.rigidbody->setActivationState(WANTS_DEACTIVATION);
+		btTransform trans = m_pickingObject.rigidbody->getWorldTransform();
+		m_pickingObject.hitPoint = rayCBto.m_hitPointWorld;
+		trans.setOrigin(m_pickingObject.hitPoint + btVector3(0,0,5));
+		
+		btDefaultMotionState* pickingMS = (btDefaultMotionState*)m_pickingObject.rigidbody->getMotionState();
+		pickingMS->m_startWorldTrans = trans;
+		pickingMS->m_graphicsWorldTrans = trans;
+		m_pickingObject.rigidbody->setCenterOfMassTransform(trans);
+		m_pickingObject.rigidbody->setInterpolationWorldTransform(trans);
+	}
+}
+
+void simControl::spinObstacle(float spin)
+{	
+	// when scrolling change the yaw of the obstacle
+	btTransform trans = m_pickingObject.rigidbody->getWorldTransform();
+	btQuaternion rot(m_pickingObject.rotAxis,DEGTORAD(spin*0.125));
+	trans.setRotation(trans.getRotation() * rot);
+	
+	btDefaultMotionState* pickingMS = (btDefaultMotionState*)m_pickingObject.rigidbody->getMotionState();
+	pickingMS->m_startWorldTrans = trans;
+	pickingMS->m_graphicsWorldTrans = trans;
+	m_pickingObject.rigidbody->setCenterOfMassTransform(trans);
+	m_pickingObject.rigidbody->setInterpolationWorldTransform(trans);
+}
+
+void simControl::dropObstacle()
+{
+	// when the mouse is clicked again drop the obstacle
+	// turn off mouse tracking for glView
+	glView->setMouseTracking(false);
+	m_pickingObject.rigidbody->activate();
+	glView->setPickObject(NULL);
+	m_pickingObject.rigidbody = NULL;
+}
+void simControl::orientObstacle()
+{
+	// change the atitude or UP vector of the obstacle
+	if(m_pickingObject.rotAxis.x()) m_pickingObject.rotAxis.setValue(0,1,0);
+	else if(m_pickingObject.rotAxis.y()) m_pickingObject.rotAxis.setValue(0,0,1);
+	else m_pickingObject.rotAxis.setValue(1,0,0);
 }
 
 /////////////////////////////////////////

@@ -123,19 +123,18 @@ void camera::cameraMouseMove(QPoint delta,QMouseEvent *event)
     }
 }
 
-void camera::cameraMouseWheel(QWheelEvent *event)
+void camera::cameraMouseWheel(float scroll)
 {
-    float scrl = (float)event->delta();
-    zoom[cameraView] += scrl/270;
+    //zoom[cameraView] += scrl/270;
+	zoom[cameraView] += zoom[cameraView]*scroll/200;
     if(zoom[cameraView] < 1.0) zoom[cameraView] = 1.0;
-    else if(zoom[cameraView] > 100) zoom[cameraView] = 100;
+    else if(zoom[cameraView] > 200) zoom[cameraView] = 200;
 }
 
 void camera::cameraToggleView()
 {
     cameraView++;
     if(cameraView == CAMERAINDEXSIZE) cameraView = FreeView;
-    //qDebug("View index:%d",cameraView);
 }
 
 void camera::cameraSetView(viewIndex x)

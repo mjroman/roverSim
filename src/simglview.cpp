@@ -43,7 +43,6 @@ simGLView::simGLView(QWidget *parent) : QGLWidget(parent)
     m_timer->start(100);
 
     arena = physicsWorld::instance(); // get the physics world object
-	
 }
 
 QSize simGLView::sizeHint() const
@@ -163,12 +162,13 @@ void simGLView::paintGL()
         glLightfv(GL_LIGHT1, GL_DIFFUSE, lightOne);
         glLightfv(GL_LIGHT1, GL_POSITION, lightOnePos);
 
-        drawObstacles();
+		drawObstacles();
 		drawWaypoints();
 		
         for(int i=0;i<renderList.size();i++)
             renderList[i]->renderGLObject();
-
+		
+		if(m_pickObject) drawPickingHalo();
         overlayGL();
         emit refreshView();
     }
@@ -222,6 +222,10 @@ void simGLView::toggleFog()
 void simGLView::mousePressEvent(QMouseEvent *event)
 {
     m_lastMousePoint = event->pos();
+	if(this->hasMouseTracking() && event->modifiers() == Qt::NoModifier) 
+		emit dropPicked();
+	else if(!this->hasMouseTracking() && event->modifiers() & Qt::AltModifier) 
+		emit pickingVector(m_eye->cameraPosition(),mouseRayTo(event->pos()));
 }
 
 void simGLView::mouseMoveEvent(QMouseEvent *event)
@@ -229,16 +233,62 @@ void simGLView::mouseMoveEvent(QMouseEvent *event)
     QPoint del;
 	
     del = event->pos() - m_lastMousePoint;
+	m_lastMousePoint = event->pos();
 	
-    m_eye->cameraMouseMove(del,event);
-    m_lastMousePoint = event->pos();
+	if(this->hasMouseTracking() && event->modifiers() == Qt::NoModifier){
+		emit movingVector(m_eye->cameraPosition(),mouseRayTo(event->pos()));
+	}
+    else 
+		m_eye->cameraMouseMove(del,event);
 }
 
 void simGLView::wheelEvent(QWheelEvent *event)
 {
-    m_eye->cameraMouseWheel(event);
+	if(this->hasMouseTracking() && event->modifiers() & Qt::AltModifier)
+		emit spinPicked((float)event->delta());
+	else
+    	m_eye->cameraMouseWheel((float)event->delta());
 }
 
+btVector3 simGLView::mouseRayTo(QPoint mousePoint)
+{
+	float tanfov = tanf(0.5*DEGTORAD(35/m_viewAngle));
+	
+	btVector3 rayFrom = m_eye->cameraPosition();
+	btVector3 rayForward = (m_eye->cameraDirection() - m_eye->cameraPosition());
+	rayForward.normalize();
+	rayForward *= FARCLIPPING;
+	
+	btVector3 hor = rayForward.cross(m_eye->cameraUpDirection());
+	hor.normalize();
+	btVector3 vertical = hor.cross(rayForward);
+	vertical.normalize();
+	
+	hor *= 2.f * FARCLIPPING * tanfov;
+	vertical *= 2.f * FARCLIPPING * tanfov;
+
+	float aspect;
+
+	if (this->width() > this->height()) {
+		aspect = this->width() / (float)this->height();
+		hor*=aspect;
+	} 
+	else {
+		aspect = this->height() / (float)this->width();
+		vertical*=aspect;
+	}
+	
+	btVector3 rayToCenter = rayFrom + rayForward;
+	btVector3 dHor = hor * 1.f/float(this->width());
+	btVector3 dVert = vertical * 1.f/float(this->height());
+	btVector3 rayTo = rayToCenter - 0.5f * hor + 0.5f * vertical;
+	
+	rayTo += mousePoint.x() * dHor;
+	rayTo -= mousePoint.y() * dVert;
+	return rayTo;
+}
+
+	
 //////////////////////////////////////////////////////////////////////////////////////////
 // drawing methods
 //////////////////
@@ -295,63 +345,61 @@ void simGLView::drawObstacles()
         btCollisionObject*	colisObject = obstacleArray->at(i);
 		
 		// test colisobject if rigid body
-		if(colisObject->getInternalType() == btCollisionObject::CO_RIGID_BODY){
-			btRigidBody* body = btRigidBody::upcast(colisObject);
+		btRigidBody* body = btRigidBody::upcast(colisObject);
 
-			if(body && body->getMotionState())
-			{
-				btDefaultMotionState* objMotionState = (btDefaultMotionState*)body->getMotionState();
-				objMotionState->m_graphicsWorldTrans.getOpenGLMatrix(glm);
-			}
-			else
-				colisObject->getWorldTransform().getOpenGLMatrix(glm);
+		if(body && body->getMotionState())
+		{
+			btDefaultMotionState* objMotionState = (btDefaultMotionState*)body->getMotionState();
+			objMotionState->m_graphicsWorldTrans.getOpenGLMatrix(glm);
 		}
+		else
+			colisObject->getWorldTransform().getOpenGLMatrix(glm);
 
         btCollisionShape* colisShape = colisObject->getCollisionShape();
 		
         glPushMatrix();
         glMultMatrixf(glm);
 
-        switch (colisShape->getShapeType()) {
-			case BOX_SHAPE_PROXYTYPE: {
+		switch (colisShape->getShapeType()) {
+			case BOX_SHAPE_PROXYTYPE: 
+			{
 				const btBoxShape* boxShape = static_cast<const btBoxShape*>(colisShape);
 				btVector3 halfDims = boxShape->getHalfExtentsWithMargin();
-                               	box(halfDims.x(),halfDims.y(),halfDims.z());
+				box(halfDims.x(),halfDims.y(),halfDims.z());
 				break;
 			}
 			case SPHERE_SHAPE_PROXYTYPE:
-                        {
+			{
 				const btSphereShape* sphereShape = static_cast<const btSphereShape*>(colisShape);
 				float radius = sphereShape->getMargin();//radius doesn't include the margin, so draw with margin
-                                sphere(radius,10,10);
+				sphere(radius,10,10);
 				break;
 			}
 			case CONE_SHAPE_PROXYTYPE:
-                        {
+			{
 				const btConeShape* coneShape = static_cast<const btConeShape*>(colisShape);
 				//int upIndex = coneShape->getConeUpIndex();
 				float radius = coneShape->getRadius();//+coneShape->getMargin();
 				float height = coneShape->getHeight();//+coneShape->getMargin();
-                                cone(radius, height, 20);
+				cone(radius, height, 20);
 				break;
 			}
 			case CYLINDER_SHAPE_PROXYTYPE:
-                        {
+			{
 				const btCylinderShape* cylShape = static_cast<const btCylinderShape*>(colisShape);
 				btVector3 halfDims = cylShape->getHalfExtentsWithMargin();
-                                cylinder(halfDims.y(),halfDims.x(),10);
+				cylinder(halfDims.y(),halfDims.x(),10);
 				break;
 			}
-            case STATIC_PLANE_PROXYTYPE:
-                        {
+			case STATIC_PLANE_PROXYTYPE:
+			{
 				const btStaticPlaneShape* staticPlaneShape = static_cast<const btStaticPlaneShape*>(colisShape);
 				btScalar planeConst = staticPlaneShape->getPlaneConstant();
 				btVector3 planeNormal = staticPlaneShape->getPlaneNormal();
 				drawPlane(planeConst, planeNormal);
 				break;
 			}
-			default:
-			
+			default:		
 				if (colisShape->isConvex())
 				{
 					ShapeCache* sc = (ShapeCache*)colisShape->getUserPointer();
@@ -397,11 +445,9 @@ void simGLView::drawObstacles()
 					}
 				}
 				break;
-        }
-		
+        }	
         glPopMatrix();
-    }
-	
+    }	
 }
 
 void simGLView::drawWaypoints()
@@ -437,7 +483,7 @@ void simGLView::drawWaypoints()
 
 void simGLView::drawFrame()
 {
-        float fSize = 1;
+        float fSize = 2;
         glLineWidth(2.0);
         glBegin(GL_LINES);
 
@@ -460,10 +506,47 @@ void simGLView::drawFrame()
         // z blue
         glColor3f(0,0,255.f);
 		glVertex3d(0,0,0);
-        glVertex3d(0,0,2*fSize);
+        glVertex3d(0,0,fSize);
 		// btVector3 vZ = tr*btVector3(0,0,fSize);
         // glVertex3d(tr.getOrigin().getX(), tr.getOrigin().getY(), tr.getOrigin().getZ());
         // glVertex3d(vZ.getX(), vZ.getY(), vZ.getZ());
 
         glEnd();
+}
+
+void simGLView::drawPickingHalo()
+{	
+	glPushMatrix();
+	glTranslatef(m_pickObject->hitPoint.x(),m_pickObject->hitPoint.y(),m_pickObject->hitPoint.z());
+	glColor4f(1,1,0.2,0.25);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
+	conePoint(0.7,2.0,20);
+	glCullFace(GL_FRONT);
+	conePoint(0.7,2.0,20);
+	glDisable(GL_CULL_FACE);
+	glDisable(GL_BLEND);
+	glPopMatrix();
+	
+	btScalar	glm[16];
+	btDefaultMotionState* objMotionState = (btDefaultMotionState*)m_pickObject->rigidbody->getMotionState();
+	objMotionState->m_graphicsWorldTrans.getOpenGLMatrix(glm);
+	glDisable(GL_LIGHTING);
+	glPushMatrix();
+    glMultMatrixf(glm);
+
+	drawFrame();
+	
+	glLineWidth(5.0);
+	glColor3f(1,1,0);
+	glBegin(GL_LINES);
+	btVector3 ax = m_pickObject->rotAxis * 2.0;
+	glVertex3fv(ax.m_floats);
+	glVertex3f(0,0,0);
+	glEnd();
+	
+	glPopMatrix();
+	glEnable(GL_LIGHTING);
 }

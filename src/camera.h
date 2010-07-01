@@ -32,12 +32,14 @@ public:
     camera(const btVector3& pos,const btVector3& dir);
     void cameraUpdate();
     void cameraMouseMove(QPoint delta,QMouseEvent *event);
-    void cameraMouseWheel(QWheelEvent *event);
+    void cameraMouseWheel(float scroll);
     void cameraToggleView();
 	void cameraSetView(viewIndex x);
 	QString	cameraViewName();
     void cameraSetRoverPointer(SR2rover* rp){ bot = rp; }
+	btVector3 cameraPosition(){ return position; }
     btVector3 cameraDirection(){ return direction; }
+	btVector3 cameraUpDirection(){ return upVector; }
     btVector3 cameraPitchYawZoom();
 
 	void cameraFreeView();

@@ -5,6 +5,7 @@
 #include "camera.h"
 #include "physicsWorld.h"
 #include "utility/definitions.h"
+#include "utility/structures.h"
 
 class simGLObject;
 
@@ -21,6 +22,7 @@ private:
     QList<simGLObject*> renderList;
     GLuint              m_texture[5];
 	QList<WayPoint>		*WPlist;
+	pickValue*			m_pickObject;
 
 protected:
     void loadTextures();
@@ -38,6 +40,7 @@ protected:
     void drawObstacles();
 	void drawWaypoints();
 	void drawFrame();
+	void drawPickingHalo();
 
 public:
 	int debugVal;
@@ -55,8 +58,14 @@ public:
     void unregisterGLObject(simGLObject *obj);
 	void setWaypointList(QList<WayPoint> *list) { WPlist = list; };
 	void toggleFog();
+	btVector3 mouseRayTo(QPoint mousePoint);
+	void setPickObject(pickValue* pk){ m_pickObject = pk; }
 signals:
     void refreshView();
+	void pickingVector(btVector3,btVector3);
+	void movingVector(btVector3,btVector3);
+	void dropPicked();
+	void spinPicked(float);
 };
 
 #endif // SIMGLVIEW_H
