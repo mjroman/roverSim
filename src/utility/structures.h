@@ -9,7 +9,7 @@ typedef struct _pickValue
 	btRigidBody*	rigidbody;
 	btVector3		hitPoint;
 	btVector3		rotAxis;
-	btVector3		eulerVector;
+	float			dropHeight;
 }pickValue;
 
 typedef	enum _WPstate{

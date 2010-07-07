@@ -52,6 +52,7 @@ public:
     void keyReleaseEvent(QKeyEvent *event);
 
 public slots:
+	void screenSize();
 	void showSimTool();
 	void showTerrainTool();
 	void showObstacleTool();

@@ -2,7 +2,7 @@
 #define DEFINITIONS_H
 
 #define FARCLIPPING     1001.0
-#define NEARCLIPPING    1.0//0.05
+#define NEARCLIPPING    0.05
 
 #define	PI				3.14159265358979323846
 #define TWOPI			2*PI

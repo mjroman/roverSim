@@ -9,7 +9,6 @@
 		<file>src/textures/spark.png</file>
 		<file>src/textures/mud.png</file>
         <file>src/textures/defaultTerrain.png</file>
-        <file>src/textures/domePan1.png</file>
     </qresource>
     <qresource prefix="/images">
         <file>src/images/redrobot.icns</file>

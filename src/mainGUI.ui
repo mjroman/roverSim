@@ -770,6 +770,13 @@
     <addaction name="actionRemove_Obstacles"/>
     <addaction name="actionObstacle_Parameters"/>
    </widget>
+   <widget class="QMenu" name="menuView">
+    <property name="title">
+     <string>View</string>
+    </property>
+    <addaction name="actionFullScreen"/>
+   </widget>
+   <addaction name="menuView"/>
    <addaction name="menuWorld"/>
    <addaction name="menuRover"/>
    <addaction name="menuTerrain"/>
@@ -786,9 +793,6 @@
   <action name="actionOpen_Terrain">
    <property name="text">
     <string>Open Terrain</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+T</string>
    </property>
   </action>
   <action name="actionFlatten_Terrain">
@@ -842,6 +846,9 @@
    <property name="text">
     <string>Terrain Parameters</string>
    </property>
+   <property name="shortcut">
+    <string>Ctrl+T</string>
+   </property>
   </action>
   <action name="actionSave_Terrain">
    <property name="text">
@@ -880,6 +887,14 @@
   <action name="actionShow_Rover_Info">
    <property name="text">
     <string>Show Rover Info</string>
+   </property>
+  </action>
+  <action name="actionFullScreen">
+   <property name="text">
+    <string>Fullscreen Mode</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+F</string>
    </property>
   </action>
  </widget>

@@ -3,7 +3,7 @@
 skydome::skydome(simGLView* glView)
     :
     simGLObject(glView),
-    m_domeRadius(200.0),
+    m_domeRadius(800.0),
     m_delLat(15),
     m_delLon(15)
 {
@@ -82,11 +82,17 @@ void skydome::createTextCords()
         vx /= mag;
         vy /= mag;
         vz /= mag;
-
-        m_domeTextPoints[i].u = hTile * (float)(atan2(vx, vy)/(PI*2)) + 0.5f;
-        //m_domeTextPoints[i].v = vTile * (float)(asin(vz) / PI) + 0.5f;
-		m_domeTextPoints[i].v = vTile * (float)(asin(vz) / PI)/0.75f + 0.25f;
-        //qDebug("%d (%f,%f,%f) - %f,%f",i,m_domeVerts[i].x,m_domeVerts[i].y,m_domeVerts[i].z,m_domeTextPoints[i].u,m_domeTextPoints[i].v);
+		
+		// all texture coordinates must be between 0 and 1
+		// horizontal texture point is from 0 to 2PI, atan2 returns -PI to PI
+		m_domeTextPoints[i].u = (hTile * (float)(atan2(vx, vy)/PI) + 1)*0.5;
+		// vertical texture point is from 0 to HALFPI, since it is only the top half of a sphere
+		m_domeTextPoints[i].v = vTile * (float)(asin(vz))/HALFPI;
+		
+		//m_domeTextPoints[i].u = hTile * (float)(atan2(vx, vy)/(PI*2)) + 0.5f;
+		//m_domeTextPoints[i].v = vTile * (float)(asin(vz) / PI) + 0.5f;
+		//m_domeTextPoints[i].v = vTile * (float)(asin(vz) / PI)/0.75f + 0.25f;
+        //qDebug("%d (%f,%f,%f) : %f,%f",i,m_domeVerts[i].x,m_domeVerts[i].y,m_domeVerts[i].z,m_domeTextPoints[i].u,m_domeTextPoints[i].v);
     }
 
     for(i=0; i < m_domeVertexCount - 2; i++){
@@ -124,10 +130,12 @@ void skydome::renderGLObject()
     glDisable(GL_LIGHTING);
     glEnable(GL_TEXTURE_2D);
     glColor3f(1.0f, 1.0f, 1.0f);
+	//glColor3f(0.f,0.93f,0.93f);
 
 	glPushMatrix();
-	glTranslatef(0,0,-20);
-    glBindTexture(GL_TEXTURE_2D, m_view->getTexture(0));
+	btVector3 pos = m_view->getCameraPosition();
+	glTranslatef(pos.x(),pos.y(),-20);
+	glBindTexture(GL_TEXTURE_2D, m_view->getTexture(0));
     glBegin(GL_TRIANGLE_STRIP);
     for (i=0; i < m_domeVertexCount; i++){
         glTexCoord2f(m_domeTextPoints[i].u, m_domeTextPoints[i].v);

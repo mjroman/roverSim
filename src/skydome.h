@@ -12,6 +12,7 @@ private:
     Vertex          *m_domeVerts;
     Point           *m_domeTextPoints;
     int             m_domeVertexCount;
+	GLuint			m_texture;
     float           m_domeRadius;
     float           m_delLat;
     float           m_delLon;

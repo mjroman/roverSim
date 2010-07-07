@@ -30,11 +30,11 @@ m_obstDensity(5)
 	m_minObstSize = btVector3(0.1,0.1,0.25);
 	m_maxObstSize = btVector3(1,1,0.5);
 	
-	//ground = new terrain(QString(":/textures/src/textures/defaultTerrain.png"), glView);
-	ground = new terrain(NULL, glView);
+	ground = new terrain(QString(":/textures/src/textures/defaultTerrain.png"), glView);
+	//ground = new terrain(NULL, glView);
 	this->generateObstacles();
 	
-	//sky = new skydome(glView);
+	sky = new skydome(glView);
 	
 	// add a few test waypoints
 	addWaypointAt(657,50.0,50.0);
@@ -50,6 +50,7 @@ m_obstDensity(5)
 	connect(glView, SIGNAL(movingVector(btVector3,btVector3)), this, SLOT(moveObstacle(btVector3,btVector3)));
 	connect(glView, SIGNAL(dropPicked()), this, SLOT(dropObstacle()));
 	connect(glView, SIGNAL(spinPicked(float)), this, SLOT(spinObstacle(float)));
+	connect(glView, SIGNAL(loftPicked(float)), this, SLOT(loftObstacle(float)));
 }
 
 simControl::~simControl()
@@ -220,12 +221,13 @@ void simControl::pickObstacle(btVector3 camPos,btVector3 mousePos)
 			m_pickingObject.rigidbody = btRigidBody::upcast(rayCBto.m_collisionObject);
 			m_pickingObject.rigidbody->forceActivationState(WANTS_DEACTIVATION);
 			m_pickingObject.rotAxis.setValue(0,0,1);
+			m_pickingObject.dropHeight = 5.0;
 			m_pickingObject.hitPoint = rayCBto.m_hitPointWorld;
 			glView->setPickObject(&m_pickingObject);
 			
 			btTransform trans = m_pickingObject.rigidbody->getWorldTransform();
 			trans.setIdentity();
-			trans.setOrigin(m_pickingObject.hitPoint + btVector3(0,0,5));
+			trans.setOrigin(m_pickingObject.hitPoint + btVector3(0,0,m_pickingObject.dropHeight));
 			
 			btDefaultMotionState* bodyMotionState = (btDefaultMotionState*)m_pickingObject.rigidbody->getMotionState();
 			bodyMotionState->m_startWorldTrans = trans;
@@ -247,7 +249,7 @@ void simControl::moveObstacle(btVector3 camPos,btVector3 mousePos)
 		m_pickingObject.rigidbody->setActivationState(WANTS_DEACTIVATION);
 		btTransform trans = m_pickingObject.rigidbody->getWorldTransform();
 		m_pickingObject.hitPoint = rayCBto.m_hitPointWorld;
-		trans.setOrigin(m_pickingObject.hitPoint + btVector3(0,0,5));
+		trans.setOrigin(m_pickingObject.hitPoint + btVector3(0,0,m_pickingObject.dropHeight));
 		
 		btDefaultMotionState* pickingMS = (btDefaultMotionState*)m_pickingObject.rigidbody->getMotionState();
 		pickingMS->m_startWorldTrans = trans;
@@ -258,11 +260,26 @@ void simControl::moveObstacle(btVector3 camPos,btVector3 mousePos)
 }
 
 void simControl::spinObstacle(float spin)
-{	
+{
 	// when scrolling change the yaw of the obstacle
 	btTransform trans = m_pickingObject.rigidbody->getWorldTransform();
 	btQuaternion rot(m_pickingObject.rotAxis,DEGTORAD(spin*0.125));
 	trans.setRotation(trans.getRotation() * rot);
+	
+	btDefaultMotionState* pickingMS = (btDefaultMotionState*)m_pickingObject.rigidbody->getMotionState();
+	pickingMS->m_startWorldTrans = trans;
+	pickingMS->m_graphicsWorldTrans = trans;
+	m_pickingObject.rigidbody->setCenterOfMassTransform(trans);
+	m_pickingObject.rigidbody->setInterpolationWorldTransform(trans);
+}
+
+void simControl::loftObstacle(float loft)
+{
+	// when scrolling change the yaw of the obstacle
+	btTransform trans = m_pickingObject.rigidbody->getWorldTransform();
+	m_pickingObject.dropHeight += loft*0.01;
+	if(m_pickingObject.dropHeight < 0) m_pickingObject.dropHeight = 0;
+	trans.setOrigin(m_pickingObject.hitPoint + btVector3(0,0,m_pickingObject.dropHeight));
 	
 	btDefaultMotionState* pickingMS = (btDefaultMotionState*)m_pickingObject.rigidbody->getMotionState();
 	pickingMS->m_startWorldTrans = trans;
@@ -362,6 +379,7 @@ void simControl::editWaypoint(int index)
 {
 	WayPoint wp = waypointList[index];
 	wp.position.setZ(ground->terrainHeightAt(wp.position));
+	qDebug("z height at %f,%f = %f", wp.position.x(),wp.position.y(),wp.position.z());
 	waypointList.replace(index,wp);
 }
 void simControl::addWaypointAt(WayPoint wp, int index)

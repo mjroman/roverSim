@@ -291,16 +291,29 @@ void terrain::terrainLower(btVector3 dir, float amount, float area)
 float terrain::terrainHeightAt(btVector3 pt)
 {
 	float avgHeight;
-    int index = pt.x() + pt.y()*m_worldSize.x();
-	if(pt.x() < 0) index = pt.y()*m_worldSize.x() + 1;			// return height of point on left edge of terrain
-	if(pt.x() > m_worldSize.x()) index = pt.y()*m_worldSize.x();// return height of point on right edge of terrain
-	if(pt.y() < 0) index = pt.x();								// return height of point on bottom edge of terrain
-	if(pt.y() > m_worldSize.y()) index = pt.x() + (m_worldSize.y()-1)*m_worldSize.x(); // return height of point on top edge
-    
+	
+	int px = pt.x() / m_terrainScale.x();
+	int py = pt.y() / m_terrainScale.y();
+	
+    int index = px + py*m_pixelx;	
+	if(px <= 0){
+		if(py <= 0) return m_terrainVerts[0].z;	// return the lower left corner height
+		if(py >= m_pixely) return m_terrainVerts[(m_pixely-1)*m_pixelx].z;	// return the upper left corner height
+		return m_terrainVerts[py*m_pixelx].z;	// return height of point on left edge of terrain
+	}
+	else if(px >= m_pixelx-1){
+		if(py <= 0) return m_terrainVerts[m_pixelx-1].z; // return the lower right corner heigth
+		if(py >= m_pixely) return m_terrainVerts[(m_pixely-1)*(m_pixelx-1)].z; // return the upper right corner height
+		return m_terrainVerts[py*m_pixelx - 1].z; 	// return height of point on right edge of terrain
+	}
+	if(py <= 0) return m_terrainVerts[px].z;								// return height of point on bottom edge of terrain
+	else if(py >= m_pixely-1) return m_terrainVerts[px + (m_pixely-1)*m_pixelx].z; // return height of point on top edge
+
+	// otherwise take an average of the heights on the corners of a square containing the point
     avgHeight = m_terrainVerts[index].z;
     avgHeight += m_terrainVerts[index+1].z;
-    avgHeight += m_terrainVerts[index+(int)m_worldSize.x()].z;
-    avgHeight += m_terrainVerts[index+1+(int)m_worldSize.x()].z;
+    avgHeight += m_terrainVerts[index+m_pixelx].z;
+    avgHeight += m_terrainVerts[index+1+m_pixelx].z;
 
     return avgHeight/4;
 }
@@ -321,7 +334,7 @@ void terrain::terrainRescale(btVector3 scale)
 	m_terrainScale.setX(m_terrainScale.x() * scale.x());
 	m_terrainScale.setY(m_terrainScale.y() * scale.y());
 	m_terrainScale.setZ(m_terrainScale.z() * scale.z());
-
+	qDebug("new Scale %f,%f,%f",m_terrainScale.x(),m_terrainScale.y(),m_terrainScale.z());
     arena->setWorldSize(m_worldSize);
 
     this->terrainRefresh();

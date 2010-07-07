@@ -20,7 +20,7 @@ private:
     physicsWorld        *arena;
     camera              *m_eye;
     QList<simGLObject*> renderList;
-    GLuint              m_texture[5];
+	QList<GLuint>		m_textureList;
 	QList<WayPoint>		*WPlist;
 	pickValue*			m_pickObject;
 
@@ -51,6 +51,7 @@ public:
 	void stopDrawing();
 	void startDrawing();
     camera* getCamera() { return m_eye; }
+	btVector3 getCameraPosition() { return m_eye->cameraPosition(); }
     void setViewAngle(float angle);
     float getViewAngle(){ return m_viewAngle; }
     GLuint getTexture(int n);
@@ -66,6 +67,7 @@ signals:
 	void movingVector(btVector3,btVector3);
 	void dropPicked();
 	void spinPicked(float);
+	void loftPicked(float);
 };
 
 #endif // SIMGLVIEW_H

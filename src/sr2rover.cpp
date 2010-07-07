@@ -469,7 +469,7 @@ void SR2rover::updateRobot()
 	emit updated();
 }
 
-void SR2rover::paintLasers(bool state)
+void SR2rover::paintLasers(int state)
 {
 	for(int i = 0; i < m_laserList.size(); ++i)
 	{
@@ -527,9 +527,10 @@ float* SR2rover::getProfileLaserHeights()
 /////////////
 void SR2rover::toggleSensors()
 {
-    static bool state = true;
+    static int state = 1;
     paintLasers(state);
-    state = !state;
+	state++;
+	if(state > 3) state = 0;
 }
 
 void SR2rover::renderGLObject()

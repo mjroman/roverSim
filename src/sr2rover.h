@@ -54,7 +54,7 @@ public:
 	void stopRobot();
 	
 	
-    void paintLasers(bool state);
+    void paintLasers(int state);
 	void paintBodyLaser(bool state);
 	laserScanner* getLaserScanner(int i) { return m_laserList[i]; }
 	float* getPanelLaserHeights();

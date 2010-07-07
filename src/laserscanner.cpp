@@ -100,7 +100,7 @@ m_rangeData(NULL)
 
     configure();	// configures the laser scanner, sets up position and data arrays
 
-    m_displayBeam = false;
+    m_displayBeam = 1;
 	m_displayBody = true;
     m_scanTrans = xForm;
 
@@ -176,25 +176,30 @@ void laserScanner::drawLaser(btTransform botTrans)
 
     glDisable(GL_LIGHTING);
 
-    if(m_displayBeam) {
-        glColor3f(1.,0.3,0.3);
-        glBegin(GL_LINES);
-        for(i=0;i<m_dataSize;i++){
-            btVector3 beam = m_beamVector[i] * m_rangeData[i];
-            glVertex3f(0,0,0);
-            glVertex3f(beam.x(),beam.y(),beam.z());
-        }
-        glEnd();
-    }
-
-    glColor3f(0.,1.,0.);
-	glPointSize(3);
-	glBegin(GL_POINTS);
-	for(i=0;i<m_dataSize;i++){
-		btVector3 beam = m_beamVector[i] * m_rangeData[i];
-		glVertex3f(beam.x(),beam.y(),beam.z());
+	if(m_displayBeam) {
+		// draw the green laser endpoints
+		if(m_displayBeam <= 2){
+			glColor3f(0.,1.,0.);
+			glPointSize(3);
+			glBegin(GL_POINTS);
+			for(i=0;i<m_dataSize;i++){
+				btVector3 beam = m_beamVector[i] * m_rangeData[i];
+				glVertex3f(beam.x(),beam.y(),beam.z());
+			}
+			glEnd();
+		}
+		// draw the red laser beams
+		if(m_displayBeam > 1){
+			glColor3f(1.,0.3,0.3);
+			glBegin(GL_LINES);
+			for(i=0;i<m_dataSize;i++){
+				btVector3 beam = m_beamVector[i] * m_rangeData[i];
+				glVertex3f(0,0,0);
+				glVertex3f(beam.x(),beam.y(),beam.z());
+			}
+			glEnd();
+		}
 	}
-	glEnd();
 
 	glEnable(GL_LIGHTING);
 	glPopMatrix();

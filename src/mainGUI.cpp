@@ -30,6 +30,8 @@ m_wTool(this)
 	SController = new simControl(glView);
 	
     // menu bar connections
+// view menu
+	connect(actionFullScreen, SIGNAL(triggered()), this, SLOT(screenSize()));
 // world menu
     connect(actionSim_Timing, SIGNAL(triggered()), this, SLOT(showSimTool()));
 // rover menu
@@ -94,25 +96,51 @@ void MainGUI::closeEvent(QCloseEvent *event)
 }
 
 /////////////////////////////////////////
+// VIEW items
+/////////////
+void MainGUI::screenSize()
+{
+	if(this->isFullScreen()) {
+		this->showNormal();
+		move(240,22);
+		resize(1200,700);
+		actionFullScreen->setText("Fullscreen Mode");
+	}
+	else{
+		this->showFullScreen();
+		actionFullScreen->setText("Exit Fullscreen");
+	}
+}
+
+/////////////////////////////////////////
 // GUI tool views
 /////////////
 void MainGUI::showSimTool()
 {
 	m_tTool.hide();
 	m_oTool.hide();
-	m_simTool.show();
+	if(m_simTool.isVisible())
+		m_simTool.hide();
+	else
+		m_simTool.show();
 }
 void MainGUI::showTerrainTool()
 {
 	m_oTool.hide();
 	m_simTool.hide();
-	m_tTool.show();
+	if(m_tTool.isVisible())
+		m_tTool.hide();
+	else
+		m_tTool.show();
 }
 void MainGUI::showObstacleTool()
 {
 	m_simTool.hide();
 	m_tTool.hide();
-	m_oTool.show();
+	if(m_oTool.isVisible())
+		m_oTool.hide();
+	else
+		m_oTool.show();
 }
 
 /////////////////////////////////////////

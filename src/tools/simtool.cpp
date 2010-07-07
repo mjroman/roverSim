@@ -19,11 +19,11 @@ simtool::simtool(QWidget *parent) : QWidget(parent)
     physicsWorld *arena = physicsWorld::instance(); // get the physics world object
 
     timeStepLine->setText(QString::number(arena->simTimeStep));
-    timeStepLine->setFixedWidth(60);
+    timeStepLine->setFixedWidth(80);
     fixedStepLine->setText(QString::number(arena->simFixedTimeStep));
-    fixedStepLine->setFixedWidth(60);
+    fixedStepLine->setFixedWidth(80);
     subStepLine->setText(QString::number(arena->simSubSteps));
-    subStepLine->setFixedWidth(60);
+    subStepLine->setFixedWidth(80);
 
     timeStepLabel = new QLabel(this);
     timeStepLabel->setText(QString("Time step:"));

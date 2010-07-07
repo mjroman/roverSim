@@ -14,7 +14,7 @@ private:
     int         m_dataSize;
     float*      m_rangeData;
     btVector3*  m_beamVector;
-    bool        m_displayBeam;
+    int	        m_displayBeam;
 	bool		m_displayBody;
     btTransform m_scanTrans;
     GLuint      m_aScanner;
@@ -38,7 +38,7 @@ public:
 	int getDataSize() { return m_dataSize; }
     void setTransform(const btTransform& xForm){ m_scanTrans = xForm; }
     void update(btTransform botTrans);
-    void setBeamVisable(bool q){ m_displayBeam = q; }
+    void setBeamVisable(int q){ m_displayBeam = q; }
 	void setBodyVisable(bool q){ m_displayBody = q; }
     void drawLaser(btTransform botTrans);
 };

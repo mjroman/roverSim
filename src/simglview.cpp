@@ -64,7 +64,8 @@ simGLView::~simGLView()
 	delete m_timer;
 	
     int i=0;
-    for(i=0;i<3;i++) this->deleteTexture(m_texture[i]);
+    for(i=0;i<3;i++) this->deleteTexture(m_textureList[i]);
+	m_textureList.clear();
     delete m_eye;
     qDebug("deleting glView");
 	qDebug("#################################################################");
@@ -83,19 +84,20 @@ void simGLView::unregisterGLObject(simGLObject *obj)
 
 void simGLView::loadTextures()
 {
-    m_texture[0] = this->bindTexture(QPixmap(QString(":/textures/src/textures/domePan1.png")),GL_TEXTURE_2D,GL_RGBA);
-    m_texture[1] = this->bindTexture(QPixmap(QString(":/textures/src/textures/pancam.png")),GL_TEXTURE_2D,GL_RGBA);
-    m_texture[2] = this->bindTexture(QPixmap(QString(":/textures/src/textures/solarPanel2.png")),GL_TEXTURE_2D,GL_RGBA);
-	m_texture[3] = this->bindTexture(QPixmap(QString(":/textures/src/textures/spark.png")),GL_TEXTURE_2D,GL_RGBA);
-	m_texture[4] = this->bindTexture(QPixmap(QString(":/textures/src/textures/mud.png")),GL_TEXTURE_2D,GL_RGBA);
-	glBindTexture(GL_TEXTURE_2D, m_texture[0]);
+	//m_textureList << this->bindTexture(QPixmap(QString("/Users/mattroman/Documents/code/roverSim/src/textures/domePan1.png")),GL_TEXTURE_2D,GL_RGBA);
+	m_textureList << this->bindTexture(QPixmap(QString("/Users/mattroman/Documents/code/roverSim/src/textures/skydome3.bmp")),GL_TEXTURE_2D,GL_RGBA);
+    m_textureList << this->bindTexture(QPixmap(QString(":/textures/src/textures/pancam.png")),GL_TEXTURE_2D,GL_RGBA);
+    m_textureList << this->bindTexture(QPixmap(QString(":/textures/src/textures/solarPanel2.png")),GL_TEXTURE_2D,GL_RGBA);
+	m_textureList << this->bindTexture(QPixmap(QString(":/textures/src/textures/spark.png")),GL_TEXTURE_2D,GL_RGBA);
+	m_textureList << this->bindTexture(QPixmap(QString(":/textures/src/textures/mud.png")),GL_TEXTURE_2D,GL_RGBA);
+	
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
 }
 
 GLuint simGLView::getTexture(int n)
 {
-    return m_texture[n];
+    return m_textureList[n];
 }
 
 void simGLView::initializeGL()
@@ -116,13 +118,13 @@ void simGLView::initializeGL()
 
 	// fog
 	//glEnable(GL_FOG); // DON'T FORGET TO SET THE CLEAR COLOR
-	GLfloat fogColor[4] = {0.05, 0.05, 0.05, 1.0};
-	glFogi (GL_FOG_MODE, GL_EXP2);
+	GLfloat fogColor[4] = {0.85, 0.95, 0.95, .9};
+	glFogi (GL_FOG_MODE, GL_LINEAR);
 	glFogfv (GL_FOG_COLOR, fogColor);
-	glFogf (GL_FOG_DENSITY, 0.1);
-	glHint (GL_FOG_HINT, GL_DONT_CARE);
-	glFogf (GL_FOG_START, 10);	// ONLY USED FOR LINEAR FOG EQUATION
-	glFogf (GL_FOG_END, 40);	// ONLY USED FOR LINEAR FOG EQUATION
+	glFogf (GL_FOG_DENSITY, 0.8);
+	glHint (GL_FOG_HINT, GL_FASTEST);
+	glFogf (GL_FOG_START, 40);	// ONLY USED FOR LINEAR FOG EQUATION
+	glFogf (GL_FOG_END, 200);	// ONLY USED FOR LINEAR FOG EQUATION
 }
 
 void simGLView::resizeGL(int width, int height)
@@ -206,12 +208,13 @@ void simGLView::toggleFog()
 {
 	static int i=1;
 	if(i>5) {
-		i=1;
+		i=0;
 		glDisable(GL_FOG);
 	}
 	else {
 		glEnable(GL_FOG);
-		glFogf(GL_FOG_DENSITY,0.02*i);
+		//glFogf(GL_FOG_DENSITY,0.1*i);
+		glFogf (GL_FOG_END, 80*i);
 	}
 	i++;
 }
@@ -246,6 +249,8 @@ void simGLView::wheelEvent(QWheelEvent *event)
 {
 	if(this->hasMouseTracking() && event->modifiers() & Qt::AltModifier)
 		emit spinPicked((float)event->delta());
+	else if(this->hasMouseTracking() && event->modifiers() & Qt::ControlModifier)
+		emit loftPicked((float)event->delta());
 	else
     	m_eye->cameraMouseWheel((float)event->delta());
 }
@@ -515,14 +520,15 @@ void simGLView::drawFrame()
 }
 
 void simGLView::drawPickingHalo()
-{	
+{
 	glPushMatrix();
 	glTranslatef(m_pickObject->hitPoint.x(),m_pickObject->hitPoint.y(),m_pickObject->hitPoint.z());
 	glColor4f(1,1,0.2,0.25);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	// due to translucency of halo culling must be done and the object must be drawn twice for front and back culling
 	glEnable(GL_CULL_FACE);
-	glCullFace(GL_BACK);
+	glCullFace(GL_BACK);	
 	conePoint(0.7,2.0,20);
 	glCullFace(GL_FRONT);
 	conePoint(0.7,2.0,20);
@@ -533,12 +539,15 @@ void simGLView::drawPickingHalo()
 	btScalar	glm[16];
 	btDefaultMotionState* objMotionState = (btDefaultMotionState*)m_pickObject->rigidbody->getMotionState();
 	objMotionState->m_graphicsWorldTrans.getOpenGLMatrix(glm);
+	
 	glDisable(GL_LIGHTING);
 	glPushMatrix();
     glMultMatrixf(glm);
 
+	// draw an xyz axis frame
 	drawFrame();
 	
+	// draw a yellow mark on the selected axis of rotation
 	glLineWidth(5.0);
 	glColor3f(1,1,0);
 	glBegin(GL_LINES);

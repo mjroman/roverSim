@@ -488,55 +488,8 @@ void pathPlan::generateCSpace()
 	
 	// run a simulation step to update all the newly added C-Space ghost shapes
 	arena->simulatStep();
-	// get the number of objects the are in contact with another
+	// get the number of objects that are in contact with another
 	int totalManifolds = arena->getDynamicsWorld()->getDispatcher()->getNumManifolds();
-	
-	// btTransform tfA;
-	// tfA.setIdentity();
-	// tfA.setOrigin(btVector3(3,3,3));
-	// QList<btVector3> partA;
-	// partA << btVector3(1,.75,1);
-	// partA << btVector3(.75,1,1);
-	// partA << btVector3(-1,1,1);
-	// partA << btVector3(-1,-.75,1);
-	// partA << btVector3(-.75,-1,1);
-	// partA << btVector3(1,-1,1);
-	// btCollisionObject* objA = createGhostHull(tfA,partA);
-	// partA = getTopShapePoints(m_ghostObjects[m_ghostObjects.size()-1]);
-	// qDebug("start partA");
-	// for(i=0;i<partA.size();i++) qDebug("x=%f,y=%f,z=%f",partA[i].x(),partA[i].y(),partA[i].z());
-	// 
-	// btTransform tfB;
-	// tfB.setIdentity();
-	// tfB.setOrigin(btVector3(4,2,3));
-	// QList<btVector3> partB;
-	// partB << btVector3(1,1,1);
-	// partB << btVector3(-1,1,1);
-	// partB << btVector3(-1,-1,1);
-	// partB << btVector3(1,-1,1);
-	// btCollisionObject* objB = createGhostHull(tfB,partB);
-	// partB = getTopShapePoints(m_ghostObjects[m_ghostObjects.size()-1]);
-	// qDebug("start partB");
-	// for(i=0;i<partB.size();i++) qDebug("x=%f,y=%f,z=%f",partB[i].x(),partB[i].y(),partB[i].z());
-	// 
-	// 	//tfB = tfB.inverseTimes(tfA);
-	// int ballz;
-	// QList<btVector3> partAn = clipAfromB(partA,partB,tfA.inverseTimes(tfB),&ballz);
-	// if(ballz){
-	// 	createGhostHull(tfA,partAn);
-	// 	deleteGhostObject(objA);
-	// }
-	// 
-	// qDebug("new partA");
-	// for(i=0;i<partA.size();i++) qDebug("x=%f,y=%f,z=%f",partA[i].x(),partA[i].y(),partA[i].z());
-	// qDebug("-------------");
-	// partB = clipAfromB(partB,partA,tfB.inverseTimes(tfA),&ballz);
-	// qDebug("new partB");
-	// for(i=0;i<partB.size();i++) qDebug("x=%f,y=%f,z=%f",partB[i].x(),partB[i].y(),partB[i].z());
-	// if(ballz){
-	// 	createGhostHull(tfB,partB);
-	// 	deleteGhostObject(objB);
-	// }
 	
 	int shapeChanged;
 	btCollisionObject* objA;
@@ -697,7 +650,7 @@ void pathPlan::createGhostShape(btCollisionObject* bodyObj)
 	arena->getDynamicsWorld()->addCollisionObject(ghostObj,btBroadphaseProxy::SensorTrigger,btBroadphaseProxy::SensorTrigger);
 }
 
-// creates a new ghost object from a list of points
+// creates a new ghost hull object from a list of points
 btCollisionObject* pathPlan::createGhostHull(btTransform bodyTrans, QList<btVector3> list)
 {
 	int i;

@@ -136,6 +136,8 @@ void physicsWorld::setWorldSize(btVector3 xyz)
 void physicsWorld::setGravity(btVector3 gv)
 {
 	m_dynamicsWorld->setGravity(gv);
+	for(int i=0; i<m_dynamicsWorld->getCollisionObjectArray().size(); i++)
+		m_dynamicsWorld->getCollisionObjectArray()[i]->activate();
 }
 
 // toggles on and off the simulation

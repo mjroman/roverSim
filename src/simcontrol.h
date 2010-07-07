@@ -78,6 +78,7 @@ class simControl : public QObject
 		void moveObstacle(btVector3 camPos,btVector3 mousePos);
 		void dropObstacle();
 		void spinObstacle(float spin);
+		void loftObstacle(float loft);
 		void orientObstacle();
 		void stepSim();
 		
