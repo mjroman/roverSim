@@ -14,7 +14,7 @@ void cylinder(float rad, float length, int res);
 void cone(float rad, float length, int res);
 void conePoint(float rad, float length, int res);
 void sphere(float rad, int lats, int longs);
-void wireSymHull(Vertex* pts,int num);
+void wireSymmetricHull(Vertex* pts,int num);
 
 #ifdef __cplusplus
 }

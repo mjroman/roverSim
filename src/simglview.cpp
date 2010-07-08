@@ -114,7 +114,7 @@ void simGLView::initializeGL()
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_COLOR_MATERIAL);
     //glEnable(GL_NORMALIZE);
-    //glEnable(GL_CULL_FACE);
+    glEnable(GL_CULL_FACE);
 
 	// fog
 	//glEnable(GL_FOG); // DON'T FORGET TO SET THE CLEAR COLOR
@@ -527,12 +527,13 @@ void simGLView::drawPickingHalo()
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	// due to translucency of halo culling must be done and the object must be drawn twice for front and back culling
-	glEnable(GL_CULL_FACE);
-	glCullFace(GL_BACK);	
+	//glEnable(GL_CULL_FACE);
+	//glCullFace(GL_BACK);	
 	conePoint(0.7,2.0,20);
 	glCullFace(GL_FRONT);
 	conePoint(0.7,2.0,20);
-	glDisable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
+	//glDisable(GL_CULL_FACE);
 	glDisable(GL_BLEND);
 	glPopMatrix();
 	

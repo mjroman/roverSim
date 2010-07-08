@@ -63,7 +63,8 @@ private:
 	
 	void createGhostShape(btCollisionObject* bodyObj);
 	btCollisionObject* createGhostHull(btTransform bodyTrans, QList<btVector3> list);
-	QList<btVector3> getTopShapePoints(btCollisionObject* obj);
+	btCollisionObject* createGhostObject(btCollisionShape* cshape,btTransform bodyTrans);
+	QList<btVector3> getTopShapePoints(btCollisionShape* colisShape);
 	QList<btVector3> clipAfromB(QList<btVector3> lista, QList<btVector3> listb, btTransform transab, int* mod=NULL);
 	bool isPointInsidePoly(btVector3 pt,QList<btVector3> ls);
 	int segmentIntersection(btVector3 p1,btVector3 p2,btVector3 p3,btVector3 p4,btVector3* intsec);
@@ -74,6 +75,8 @@ public:
 	
 	void deleteGhostGroup();
 	void generateCSpace();
+	void compoundCSpace();
+	void mergeCSpace();
 	bool findPathA();
 	void constructRoadMap();
 	void renderGLObject();

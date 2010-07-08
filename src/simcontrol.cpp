@@ -379,7 +379,6 @@ void simControl::editWaypoint(int index)
 {
 	WayPoint wp = waypointList[index];
 	wp.position.setZ(ground->terrainHeightAt(wp.position));
-	qDebug("z height at %f,%f = %f", wp.position.x(),wp.position.y(),wp.position.z());
 	waypointList.replace(index,wp);
 }
 void simControl::addWaypointAt(WayPoint wp, int index)

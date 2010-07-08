@@ -128,6 +128,7 @@ void skydome::renderGLObject()
 {
     int i;
     glDisable(GL_LIGHTING);
+	glCullFace(GL_FRONT);
     glEnable(GL_TEXTURE_2D);
     glColor3f(1.0f, 1.0f, 1.0f);
 	//glColor3f(0.f,0.93f,0.93f);
@@ -144,5 +145,6 @@ void skydome::renderGLObject()
     glEnd();
 	glPopMatrix();
     glDisable(GL_TEXTURE_2D);
+	glCullFace(GL_BACK);
     glEnable(GL_LIGHTING);
 }

@@ -20,36 +20,54 @@ void wheel(float rad,float width)
         }
         else colorswitch++;
         glNormal3f(0,sin(DEGTORAD(i)),cos(DEGTORAD(i)));
-        glVertex3f(-width/2,rad*sin(DEGTORAD(i)), rad*cos(DEGTORAD(i)));
-        glVertex3f(width/2,rad*sin(DEGTORAD(i)), rad*cos(DEGTORAD(i)));
-        glVertex3f(width/2,rad*sin(DEGTORAD(i-10)),rad*cos(DEGTORAD(i-10)));
         glVertex3f(-width/2,rad*sin(DEGTORAD(i-10)), rad*cos(DEGTORAD(i-10)));
+        glVertex3f(width/2,rad*sin(DEGTORAD(i-10)), rad*cos(DEGTORAD(i-10)));
+        glVertex3f(width/2,rad*sin(DEGTORAD(i)),rad*cos(DEGTORAD(i)));
+        glVertex3f(-width/2,rad*sin(DEGTORAD(i)), rad*cos(DEGTORAD(i)));
     }
     glEnd();
 
     // draw the inner and outer hubcaps
     j=-1;
-    while(j<=1){
-        colorswitch = 0;
-        clr = 1.0;
-        glColor3f(clr, clr, clr);
-        glBegin(GL_TRIANGLES);
-        for(i=360;i>=10;i-=10){
-            if(colorswitch > 7) {
-                colorswitch = 0;
-                clr = !clr;
-                glColor3f(clr,clr,clr);
-            }
-            else colorswitch++;
+	colorswitch = 0;
+	clr = 1.0;
+	glColor3f(clr, clr, clr);
+	glBegin(GL_TRIANGLES);
+	for(i=360;i>=10;i-=10){
+		if(colorswitch > 7) {
+			colorswitch = 0;
+			clr = !clr;
+			glColor3f(clr,clr,clr);
+		}
+		else colorswitch++;
 
-            glNormal3f(j*0.707, 0.707*sin(DEGTORAD(i)), 0.707*cos(DEGTORAD(i)));
-            glVertex3f(j*(width/2+0.02),0,0);
-            glVertex3f(j*width/2,rad*sin(DEGTORAD(i)), rad*cos(DEGTORAD(i)));
-            glVertex3f(j*width/2,rad*sin(DEGTORAD(i-10)), rad*cos(DEGTORAD(i-10)));
-        }
-        glEnd();
-        j+=2;
-    }
+		glNormal3f(-0.707, 0.707*sin(DEGTORAD(i)), 0.707*cos(DEGTORAD(i)));
+		glVertex3f(-(width/2+0.02),0,0);
+		glVertex3f(-width/2,rad*sin(DEGTORAD(i-10)), rad*cos(DEGTORAD(i-10)));
+		glVertex3f(-width/2,rad*sin(DEGTORAD(i)), rad*cos(DEGTORAD(i)));
+	}
+	glEnd();
+	
+	colorswitch = 0;
+	clr = 1.0;
+	glColor3f(clr, clr, clr);
+	glBegin(GL_TRIANGLES);
+	for(i=360;i>=10;i-=10){
+		if(colorswitch > 7) {
+			colorswitch = 0;
+			clr = !clr;
+			glColor3f(clr,clr,clr);
+		}
+		else colorswitch++;
+
+		glNormal3f(0.707, 0.707*sin(DEGTORAD(i)), 0.707*cos(DEGTORAD(i)));
+		glVertex3f((width/2+0.02),0,0);
+		glVertex3f(width/2,rad*sin(DEGTORAD(i)), rad*cos(DEGTORAD(i)));
+		glVertex3f(width/2,rad*sin(DEGTORAD(i-10)), rad*cos(DEGTORAD(i-10)));
+	}
+	glEnd();
+	
+
 }
 
 void tube(float rad,float width)
@@ -75,7 +93,7 @@ void tube(float rad,float width)
         glBegin(GL_TRIANGLE_FAN);
         glNormal3f(-1, 0, 0);
         glVertex3f(0,0,0);
-        for(i=360;i>=0;i-=20){
+        for(i=0;i<=360;i+=20){
                 glVertex3f(0,rad*sin(DEGTORAD(i)), rad*cos(DEGTORAD(i)));
         }
         glEnd();
@@ -176,7 +194,7 @@ void cylinder(float rad, float length, int res)
     float ny,nz;
 
     glBegin(GL_QUAD_STRIP);
-    for(i=0;i<=360; i+=res){
+    for(i=360;i>=0; i-=res){
         ny = cos(DEGTORAD(i));
         nz = sin(DEGTORAD(i));
         py = rad*ny;
@@ -187,10 +205,10 @@ void cylinder(float rad, float length, int res)
     }
     glEnd();
 
-        glBegin(GL_TRIANGLE_FAN);
-        glNormal3f(-1,0,0);
+    glBegin(GL_TRIANGLE_FAN);
+    glNormal3f(-1,0,0);
     glVertex3f(-length,0,0);
-    for(i=0;i<=360;i+=res){
+    for(i=360;i>=0;i-=res){
         py = rad*cos(DEGTORAD(i));
         pz = rad*sin(DEGTORAD(i));
         glNormal3f(-1,0,0);
@@ -199,7 +217,7 @@ void cylinder(float rad, float length, int res)
     glEnd();
 
     glBegin(GL_TRIANGLE_FAN);
-        glNormal3f(1,0,0);
+    glNormal3f(1,0,0);
     glVertex3f(length,0,0);
     for(i=0;i<=360;i+=res){
         py = rad*cos(DEGTORAD(i));
@@ -276,10 +294,11 @@ void sphere(float rad, int lats, int longs)
     }
 }
 
-void wireSymHull(Vertex* pts,int num)
+void wireSymmetricHull(Vertex* pts,int num)
 {
 	int i;
 	int halfNum = num/2;
+	// draw the top loop of the hull
 	glBegin(GL_LINE_LOOP);
 	Vertex normal = normalCross(diff(pts[1],pts[0]),diff(pts[2],pts[0]));
 	glNormal3f(normal.x,normal.y,normal.z);
@@ -289,6 +308,7 @@ void wireSymHull(Vertex* pts,int num)
 	}
 	glEnd();
 	
+	// draw the bottom loop
 	glBegin(GL_LINE_LOOP);
 	glNormal3f(-normal.x,-normal.y,-normal.z);
 	for(i = halfNum; i < num; ++i)
@@ -297,6 +317,7 @@ void wireSymHull(Vertex* pts,int num)
 	}
 	glEnd();
 	
+	// draw the connecting edge lines
 	glBegin(GL_LINES);
 	glNormal3f(normal.x,normal.y,normal.z);
 	for(i=0;i<halfNum;i++)

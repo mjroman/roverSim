@@ -9,6 +9,7 @@
 #include <BulletCollision/CollisionShapes/btConeShape.h>
 #include <BulletCollision/CollisionShapes/btCylinderShape.h>
 #include <BulletCollision/CollisionShapes/btConvexHullShape.h>
+#include <BulletCollision/CollisionShapes/btCompoundShape.h>
 #include <BulletDynamics/Dynamics/btDynamicsWorld.h>
 #include <LinearMath/btAlignedObjectArray.h>
 
@@ -46,7 +47,9 @@ m_doneBuilding(false)
 	m_goalDistance = start.distance(end);
 	
 	generateCSpace();
-	findPathA();
+	compoundCSpace();
+	//mergeCSpace();
+	//findPathA();
 	//constructRoadMap();
 	qDebug("Maping Complete");
 	m_doneBuilding = true;
@@ -248,7 +251,7 @@ void pathPlan::getExtremes(btCollisionObject* obj, rankPoint pivotPoint, rankPoi
 {
 	float leftMax = 0;
 	float rightMax = 0;
-	QList<btVector3> ptList = getTopShapePoints(obj);
+	QList<btVector3> ptList = getTopShapePoints(obj->getCollisionShape());
 	btTransform objTrans = obj->getWorldTransform();
 
 	for(int i = 0; i < ptList.size(); ++i)
@@ -461,7 +464,7 @@ bool pathPlan::isNewLink(rankLink link)
 }
 
 
-/////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // C-Space ghost object creation
 /////////////
 void pathPlan::generateCSpace()
@@ -473,91 +476,16 @@ void pathPlan::generateCSpace()
 	// loop through all obstacle rigid bodies
 	for(i=0;i<obstArray->size();i++){
 		btCollisionObject*	colisObject = obstArray->at(i);
-
-	// test colisobject if rigid body
-		if(colisObject->getInternalType() == btCollisionObject::CO_RIGID_BODY)
-		{
+		// check if object is in-active
+		if(colisObject->isActive()) continue;
+		// check if the obstacle is on the terrain
+		if(colisObject->getWorldTransform().getOrigin().z() < 0.0) continue;
 		// create CSpace
-			// check if object is in-active
-			if(colisObject->isActive()) continue;
-			// check if the obstacle is on the terrain
-			if(colisObject->getWorldTransform().getOrigin().z() < 0.0) continue;
-			createGhostShape(colisObject);
-		}
+		createGhostShape(colisObject);
 	}
-	
-	// run a simulation step to update all the newly added C-Space ghost shapes
-	arena->simulatStep();
-	// get the number of objects that are in contact with another
-	int totalManifolds = arena->getDynamicsWorld()->getDispatcher()->getNumManifolds();
-	
-	int shapeChanged;
-	btCollisionObject* objA;
-	btCollisionObject* objB;
-	QList<btCollisionObject*> oldObjectList;
-	QList<btVector3> objListA;
-	QList<btVector3> objListB;
-	btTransform	transA;
-	btTransform	transB;
-	//int j=0;
-	
-	for(i=0;i<totalManifolds;i++){
-		// a manifold holds the two overlapping bodies as well as the intersection points
-		btPersistentManifold* contactManifold =  arena->getDynamicsWorld()->getDispatcher()->getManifoldByIndexInternal(i);
-		btCollisionObject* baseobjA = static_cast<btCollisionObject*>(contactManifold->getBody0());
-		btCollisionObject* baseobjB = static_cast<btCollisionObject*>(contactManifold->getBody1());
-		
-		// C-Space objects are only GHOST type and must have at least one contact point
-		if(baseobjA->getInternalType() == btCollisionObject::CO_GHOST_OBJECT &&
-		   baseobjB->getInternalType() == btCollisionObject::CO_GHOST_OBJECT &&
-		   contactManifold->getNumContacts() > 0)
-		{
-		//	if(j!=6) {j++;continue;}
-			transA = baseobjA->getWorldTransform();
-			transB = baseobjB->getWorldTransform();
-			
-			// if the userPointer is set then the base object has already been reshaped, use the new HULL shape
-			// base objects are not deleted until reshaping is complete
-			// the userPointer of the base object is set to the new HULL shape when it is created
-			objA = (btCollisionObject*)baseobjA->getUserPointer();
-			if(!objA) objA = baseobjA;
-			
-			objB = (btCollisionObject*)baseobjB->getUserPointer();
-			if(!objB) objB = baseobjB;
-			//qDebug("A %f,%f",transA.getOrigin().x(),transA.getOrigin().y());
-			//qDebug("B %f,%f",transB.getOrigin().x(),transB.getOrigin().y());
-			
-			objListA.clear();
-			objListB.clear();
-			
-			// get the top vertices of the objects, used as 2D representation of objects
-			objListA = getTopShapePoints(objA);
-			objListB = getTopShapePoints(objB);
-
-			// get a new point list for polygon A clipped from B
-			// inverseTimes(transB) is used to transform the points in polygonB to polygonA's reference
-			QList<btVector3> newListA = clipAfromB(objListA,objListB, transA.inverseTimes(transB) ,&shapeChanged);		
-			if(shapeChanged) {
-				btCollisionObject* modobjA = createGhostHull(transA, newListA);	// create a new hull shape add it to the world
-				baseobjA->setUserPointer(modobjA);								
-				if(!oldObjectList.contains(objA)) oldObjectList << objA; 		// add old object to delete list if it isn't already there
-			}
-
-			// get a new point list for polygon B clipped from A
-			QList<btVector3> newListB = clipAfromB(objListB,objListA, transB.inverseTimes(transA) ,&shapeChanged);
-			if(shapeChanged) {
-				btCollisionObject* modobjB = createGhostHull(transB, newListB);	// create a new hull shape add it to the world
-				baseobjB->setUserPointer(modobjB);
-				if(!oldObjectList.contains(objB)) oldObjectList << objB; // add old object to delete list
-			}
-			//break;
-		}
-	}
-	
-	// delete old base ghost objects that have been reshaped
-	for(i=0;i<oldObjectList.size();i++) deleteGhostObject(oldObjectList[i]);
-	oldObjectList.clear();
 }
+
+// creates a C-Space hull shape object based on the collision object
 void pathPlan::createGhostShape(btCollisionObject* bodyObj)
 {
 	// check what axis is up
@@ -642,15 +570,176 @@ void pathPlan::createGhostShape(btCollisionObject* bodyObj)
 	btCollisionShape* cshape = arena->createShape(BOX_SHAPE_PROXYTYPE, lwh);
 	ghostObj->setCollisionShape(cshape);
 	ghostObj->setCollisionFlags(btCollisionObject::CF_CUSTOM_MATERIAL_CALLBACK);
-	
+
 	m_ghostShapes.push_back(cshape);
 	m_ghostObjects.push_back(ghostObj);
-	
+
 	// add the object to the world
 	arena->getDynamicsWorld()->addCollisionObject(ghostObj,btBroadphaseProxy::SensorTrigger,btBroadphaseProxy::SensorTrigger);
 }
 
-// creates a new ghost hull object from a list of points
+void pathPlan::compoundCSpace()
+{
+	int i;
+	btCollisionObject* objA;
+	btCollisionObject* objB;
+	btCollisionObject* comboObject;
+	QList<btCollisionObject*> oldObjectList;
+	btTransform	transA;
+	btTransform	transB;
+	
+	// run a simulation step to update all the newly added C-Space ghost shapes
+	arena->simulatStep();
+	// get the number of objects that are in contact with another
+	int totalManifolds = arena->getDynamicsWorld()->getDispatcher()->getNumManifolds();
+
+	for(i=0;i<totalManifolds;i++){
+		// a manifold holds the two overlapping bodies as well as the intersection points
+		btPersistentManifold* contactManifold =  arena->getDynamicsWorld()->getDispatcher()->getManifoldByIndexInternal(i);
+		btCollisionObject* baseobjA = static_cast<btCollisionObject*>(contactManifold->getBody0());
+		btCollisionObject* baseobjB = static_cast<btCollisionObject*>(contactManifold->getBody1());
+		
+		// C-Space objects are only GHOST type and must have at least one contact point
+		if(baseobjA->getInternalType() == btCollisionObject::CO_GHOST_OBJECT &&
+		   baseobjB->getInternalType() == btCollisionObject::CO_GHOST_OBJECT &&
+		   contactManifold->getNumContacts() > 0)
+		{
+			transA = baseobjA->getWorldTransform();
+			transB = baseobjB->getWorldTransform();
+			
+			// if the userPointer is set then the base object has already been added to a compound shape, use the new compound shape
+			// base objects are not deleted until combining is complete
+			// the userPointer of the base object is set to the new compound shape when it is created
+			objA = (btCollisionObject*)baseobjA->getUserPointer();
+			objB = (btCollisionObject*)baseobjB->getUserPointer();
+			if(objA == NULL && objB == NULL){
+				// create a compound shape object and add the two base object to it
+				btCompoundShape* cshape = new btCompoundShape();
+				cshape->addChildShape(transA, baseobjA->getCollisionShape());
+				cshape->addChildShape(transB, baseobjB->getCollisionShape());
+
+				comboObject = createGhostObject(cshape,transA);
+
+				baseobjA->setUserPointer(comboObject);
+				baseobjB->setUserPointer(comboObject);
+				if(!oldObjectList.contains(baseobjA)) oldObjectList << baseobjA; 	// add old object to delete list if it isn't already there
+				if(!oldObjectList.contains(baseobjB)) oldObjectList << baseobjB; 	// add old object to delete list
+			}
+			else{	// one of the objects is already a compound object
+				if(!objA){ // objA is a base object add it to the compound object
+					
+					btCompoundShape* shp = static_cast<btCompoundShape*>(objB->getCollisionShape());	// get the compound shape
+					shp->addChildShape(transA,baseobjA->getCollisionShape());						// add the base shape to the compound
+					baseobjA->setUserPointer(objB);													// set the user pointer of the base object
+					if(!oldObjectList.contains(baseobjA)) oldObjectList << baseobjA;				// add the old object to delete list
+				}
+				else if(!objB){ // objB is a base object add it to the compound object
+					btCompoundShape* shp = static_cast<btCompoundShape*>(objA->getCollisionShape());	
+					shp->addChildShape(transB,baseobjB->getCollisionShape());
+					baseobjB->setUserPointer(objA);
+					if(!oldObjectList.contains(baseobjB)) oldObjectList << baseobjB; 	// add old object to delete list
+				}
+				else{ // both objects are compound add all shapes from objB to compound objA
+					if(objA == objB) continue;
+					comboObject = objA;
+					btCompoundShape* comboShape = static_cast<btCompoundShape*>(comboObject->getCollisionShape());
+					btCompoundShape* shapeB = static_cast<btCompoundShape*>(objB->getCollisionShape());
+					for(int j=0; j < shapeB->getNumChildShapes();j++){
+						comboShape->addChildShape(shapeB->getChildTransform(j),shapeB->getChildShape(j));	// add all shapes from B to the compound
+					}
+					baseobjB->setUserPointer(comboObject);
+					if(!oldObjectList.contains(objB)) oldObjectList << objB; 	// add old compound object to delete list
+				}
+			}
+		}
+	}
+	
+	arena->setDraw(false); // do not draw
+ 	arena->idle();// pause simulation
+	// delete old base ghost objects that have been reshaped
+	for(i=0;i<oldObjectList.size();i++) {
+		arena->getDynamicsWorld()->removeCollisionObject(oldObjectList[i]);
+		m_ghostObjects.remove(oldObjectList[i]);
+	}
+	arena->resetBroadphaseSolver();
+	arena->toggleIdle(); // unpause simulation
+	arena->setDraw(true); // draw obstacles
+	oldObjectList.clear();
+}
+void pathPlan::mergeCSpace()
+{
+	// run a simulation step to update all the newly added C-Space ghost shapes
+	arena->simulatStep();
+	
+	int i;
+	int shapeChanged;
+	btCollisionObject* objA;
+	btCollisionObject* objB;
+	QList<btCollisionObject*> oldObjectList;
+	QList<btVector3> objListA;
+	QList<btVector3> objListB;
+	btTransform	transA;
+	btTransform	transB;
+	// get the number of objects that are in contact with another
+	int totalManifolds = arena->getDynamicsWorld()->getDispatcher()->getNumManifolds();
+
+	for(i=0;i<totalManifolds;i++){
+		// a manifold holds the two overlapping bodies as well as the intersection points
+		btPersistentManifold* contactManifold =  arena->getDynamicsWorld()->getDispatcher()->getManifoldByIndexInternal(i);
+		btCollisionObject* baseobjA = static_cast<btCollisionObject*>(contactManifold->getBody0());
+		btCollisionObject* baseobjB = static_cast<btCollisionObject*>(contactManifold->getBody1());
+		
+		// C-Space objects are only GHOST type and must have at least one contact point
+		if(baseobjA->getInternalType() == btCollisionObject::CO_GHOST_OBJECT &&
+		   baseobjB->getInternalType() == btCollisionObject::CO_GHOST_OBJECT &&
+		   contactManifold->getNumContacts() > 0)
+		{
+			transA = baseobjA->getWorldTransform();
+			transB = baseobjB->getWorldTransform();
+			
+			// if the userPointer is set then the base object has already been reshaped, use the new HULL shape
+			// base objects are not deleted until reshaping is complete
+			// the userPointer of the base object is set to the new HULL shape when it is created
+			objA = (btCollisionObject*)baseobjA->getUserPointer();
+			if(!objA) objA = baseobjA;
+			
+			objB = (btCollisionObject*)baseobjB->getUserPointer();
+			if(!objB) objB = baseobjB;
+			//qDebug("A %f,%f",transA.getOrigin().x(),transA.getOrigin().y());
+			//qDebug("B %f,%f",transB.getOrigin().x(),transB.getOrigin().y());
+			
+			objListA.clear();
+			objListB.clear();
+
+			// get the top vertices of the objects, used as 2D representation of objects
+			objListA = getTopShapePoints(objA->getCollisionShape());
+			objListB = getTopShapePoints(objB->getCollisionShape());
+			
+			// get a new point list for polygon A clipped from B
+			// inverseTimes(transB) is used to transform the points in polygonB to polygonA's reference
+			QList<btVector3> newListA = clipAfromB(objListA,objListB, transA.inverseTimes(transB) ,&shapeChanged);		
+			if(shapeChanged) {
+				btCollisionObject* modobjA = createGhostHull(transA, newListA);	// create a new hull shape add it to the world
+				baseobjA->setUserPointer(modobjA);								
+				if(!oldObjectList.contains(objA)) oldObjectList << objA; 		// add old object to delete list if it isn't already there
+			}
+			
+			// get a new point list for polygon B clipped from A
+			QList<btVector3> newListB = clipAfromB(objListB,objListA, transB.inverseTimes(transA) ,&shapeChanged);
+			if(shapeChanged) {
+				btCollisionObject* modobjB = createGhostHull(transB, newListB);	// create a new hull shape add it to the world
+				baseobjB->setUserPointer(modobjB);
+				if(!oldObjectList.contains(objB)) oldObjectList << objB; // add old object to delete list
+			}
+		}
+	}
+	
+	// delete old base ghost objects that have been reshaped
+	for(i=0;i<oldObjectList.size();i++) deleteGhostObject(oldObjectList[i]);
+	oldObjectList.clear();
+}
+
+// creates a new ghost hull object from a list of points that represent the top outline of the shape, must be convex
 btCollisionObject* pathPlan::createGhostHull(btTransform bodyTrans, QList<btVector3> list)
 {
 	int i;
@@ -665,6 +754,11 @@ btCollisionObject* pathPlan::createGhostHull(btTransform bodyTrans, QList<btVect
 		list[i].setZ(-list[i].z());
 		cshape->addPoint(list[i]);
 	}
+	return createGhostObject(cshape, bodyTrans);
+}
+
+btCollisionObject* pathPlan::createGhostObject(btCollisionShape* cshape,btTransform bodyTrans)
+{
 	// create a new C-Space object
 	btGhostObject* ghostObj = new btGhostObject();
 	// place it over the object
@@ -679,36 +773,6 @@ btCollisionObject* pathPlan::createGhostHull(btTransform bodyTrans, QList<btVect
 	// add the object to the world
 	arena->getDynamicsWorld()->addCollisionObject(ghostObj,btBroadphaseProxy::SensorTrigger,btBroadphaseProxy::SensorTrigger);
 	return (btCollisionObject*)ghostObj;
-}
-
-// takes and object and returns a list of points that represent the top of its geometric shape, assumes symetric
-QList<btVector3> pathPlan::getTopShapePoints(btCollisionObject* obj)
-{
-	QList<btVector3> list;
-	
-	btCollisionShape* colisShape = obj->getCollisionShape();
-	switch(colisShape->getShapeType()){ 
-		case BOX_SHAPE_PROXYTYPE: {
-			const btBoxShape* boxShape = static_cast<const btBoxShape*>(colisShape);
-			btVector3 halfDims = boxShape->getHalfExtentsWithMargin();
-			list << halfDims * m_vertices[0];
-			list << halfDims * m_vertices[1];
-			list << halfDims * m_vertices[2];
-			list << halfDims * m_vertices[3];
-			break;
-		}
-		case CONVEX_HULL_SHAPE_PROXYTYPE: {
-			const btConvexHullShape* hullShape = static_cast<const btConvexHullShape*>(colisShape);
-			const btVector3* ptlist = hullShape->getUnscaledPoints();
-			int numPts = hullShape->getNumPoints()/2;
-			for(int i = 0; i < numPts; ++i)
-			{
-				list << ptlist[i];
-			}
-			break;
-		}
-	}
-	return list;
 }
 
 // returns an empty list if lista polygon is inside listb polygon, mod is 0 if lista polygon is unchanged else 1
@@ -730,11 +794,14 @@ QList<btVector3> pathPlan::clipAfromB(QList<btVector3> lista, QList<btVector3> l
 	
 	i=0;
 	// look for a point on lista outside of polygon listb
-	while(isPointInsidePoly(lista[i],listb) && i<lista.size()) i++;
-	
-	if(i == lista.size()){ // polygon from lista is inside of polygon listb
-		lista.clear();
-		return lista;
+	while(isPointInsidePoly(lista[i],listb)){
+		i++;
+		// polygon from lista is inside of polygon listb
+		if(i==lista.size()) {
+			*mod = 1;
+			lista.clear();
+			return lista;
+		}
 	}
 	
 	// save the starting point for exit condition
@@ -784,6 +851,35 @@ QList<btVector3> pathPlan::clipAfromB(QList<btVector3> lista, QList<btVector3> l
 	}while(startPoint != lista[i]);
 	
 	return lista;
+}
+
+// takes and object and returns a list of points that represent the top of its geometric shape, assumes symmetric
+QList<btVector3> pathPlan::getTopShapePoints(btCollisionShape* colisShape)
+{
+	QList<btVector3> list;
+
+	switch(colisShape->getShapeType()){ 
+		case BOX_SHAPE_PROXYTYPE: {
+			const btBoxShape* boxShape = static_cast<const btBoxShape*>(colisShape);
+			btVector3 halfDims = boxShape->getHalfExtentsWithMargin();
+			list << halfDims * m_vertices[0];
+			list << halfDims * m_vertices[1];
+			list << halfDims * m_vertices[2];
+			list << halfDims * m_vertices[3];
+			break;
+		}
+		case CONVEX_HULL_SHAPE_PROXYTYPE: {
+			const btConvexHullShape* hullShape = static_cast<const btConvexHullShape*>(colisShape);
+			const btVector3* ptlist = hullShape->getUnscaledPoints();
+			int numPts = hullShape->getNumPoints()/2;
+			for(int i = 0; i < numPts; ++i)
+			{
+				list << ptlist[i];
+			}
+			break;
+		}
+	}
+	return list;
 }
 
 // returns TRUE if pt is inside of the CONVEX polygon LS
@@ -919,14 +1015,15 @@ void pathPlan::renderGLObject()
 	btScalar	glm[16];
 
 
-	glLineWidth(1.5);
+	glLineWidth(1.);
+	glDisable(GL_LIGHTING);
 
 	for(i = 0; i < m_ghostObjects.size(); ++i)
 	{
 		m_ghostObjects[i]->getWorldTransform().getOpenGLMatrix(glm);
 		btCollisionShape* colisShape = m_ghostObjects[i]->getCollisionShape();
 		
-			switch(colisShape->getShapeType()){ 
+		switch(colisShape->getShapeType()){ 
 			case BOX_SHAPE_PROXYTYPE: {
 				glColor3f(0.99f,0.82f,0.1f); // golden C-Space
 				const btBoxShape* boxShape = static_cast<const btBoxShape*>(colisShape);
@@ -954,14 +1051,29 @@ void pathPlan::renderGLObject()
 				
 				glPushMatrix();
 				glMultMatrixf(glm);
-				wireSymHull(verts,numPts);
+				wireSymmetricHull(verts,numPts);
 				glPopMatrix();
 				break;
+			}
+			case COMPOUND_SHAPE_PROXYTYPE: {
+				glColor3f(0.f,1.f,0.f); //C-Space
+				const btCompoundShape* shp = static_cast<const btCompoundShape*>(colisShape);
+				for(int j=0; j<shp->getNumChildShapes(); j++){
+					shp->getChildTransform(j).getOpenGLMatrix(glm);
+					const btBoxShape* boxShape = static_cast<const btBoxShape*>(shp->getChildShape(j));
+					btVector3 halfDims = boxShape->getHalfExtentsWithMargin();
+
+					glPushMatrix();
+					glMultMatrixf(glm);
+					wireBox(halfDims.x(),halfDims.y(),halfDims.z());
+					glPopMatrix();
+				}
 			}
 			default:
 			break;
 		}
 	}
+	glEnable(GL_LIGHTING);
 	
 // draws the roadmap construction
 	if(false){

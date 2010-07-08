@@ -172,12 +172,12 @@ void terrain::terrainCreateMesh(unsigned int *heightData)
 			
             // low triangle
             m_terrainTriangles[k].v1 = ind1;
-            m_terrainTriangles[k].v2 = ind2;
-            m_terrainTriangles[k].v3 = ind3;
+            m_terrainTriangles[k].v2 = ind3;
+            m_terrainTriangles[k].v3 = ind2;
             // high triangle
             m_terrainTriangles[k+1].v1 = ind2;
-            m_terrainTriangles[k+1].v2 = ind4;
-            m_terrainTriangles[k+1].v3 = ind3;
+            m_terrainTriangles[k+1].v2 = ind3;
+            m_terrainTriangles[k+1].v3 = ind4;
             k += 2;
         }
     }
