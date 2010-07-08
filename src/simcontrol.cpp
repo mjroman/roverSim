@@ -30,8 +30,8 @@ m_obstDensity(5)
 	m_minObstSize = btVector3(0.1,0.1,0.25);
 	m_maxObstSize = btVector3(1,1,0.5);
 	
-	ground = new terrain(QString(":/textures/src/textures/defaultTerrain.png"), glView);
-	//ground = new terrain(NULL, glView);
+	//ground = new terrain(QString(":/textures/src/textures/defaultTerrain.png"), glView);
+	ground = new terrain(NULL, glView);
 	this->generateObstacles();
 	
 	sky = new skydome(glView);

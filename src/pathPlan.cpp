@@ -47,8 +47,8 @@ m_doneBuilding(false)
 	m_goalDistance = start.distance(end);
 	
 	generateCSpace();
-	compoundCSpace();
-	//mergeCSpace();
+	groupOverlapCSpace();
+	
 	//findPathA();
 	//constructRoadMap();
 	qDebug("Maping Complete");
@@ -60,8 +60,10 @@ pathPlan::~pathPlan()
 	deleteGhostGroup();
 	m_pointPath.clear();
 	m_linkList.clear();
-	contactPointsA.clear();
-	contactPointsB.clear();
+	for(int i=0; i<m_ghostGroups.size(); i++)
+		m_ghostGroups[i].list.clear();
+	m_ghostGroups.clear();
+	contactPoints.clear();
 }
 
 void pathPlan::deleteGhostGroup()
@@ -163,22 +165,23 @@ void pathPlan::constructRoadMap()
 bool pathPlan::findPathA()
 {
 	btCollisionObject *objBlock = this->clearToGoal(m_midPoint);
-	if(objBlock == NULL){
-		m_pointPath << m_goalPoint;
-		return true;// no intersection all done
+	if(objBlock == NULL){			// made it to the goal 
+		m_pointPath << m_goalPoint;	// add the goal point to the path
+		return true;				// no intersection all done
 	}
 	
-	// incase of endless loop
-	if(m_linkCount > 100) {
+
+	if(m_linkCount > 100) {	// incase of endless loop
 		qDebug("looping");
 		return false;
 	}
 	m_linkCount++;
 	
 	// testing 
-	//this->getExtremes(objBlock,m_midPoint,&leftMost,&rightMost);
-	//m_midPoint = leftMost;
-	//testPoint = m_midPoint.point;
+	this->getExtremes(objBlock,m_midPoint,&leftMost,&rightMost);
+	contactPoints << m_midPoint << leftMost;
+	contactPoints << m_midPoint << rightMost;
+	return true;
 	
 	QList<rankPoint>	prospectPoints = getVisablePointsFrom(m_midPoint);
 
@@ -220,14 +223,6 @@ btCollisionObject* pathPlan::isRayBlocked(rankPoint from,rankPoint to)
 	if(rayCBto.hasHit() && rayCBto.m_collisionObject != to.object && rayCBto.m_collisionObject != from.object)
 		return rayCBto.m_collisionObject;
 	
-	// check the ray toward the FROM point
-	// btCollisionWorld::ClosestRayResultCallback rayCBfrom(to.point,from.point);
-	// rayCBfrom.m_collisionFilterGroup = btBroadphaseProxy::SensorTrigger;
-	// rayCBfrom.m_collisionFilterMask = btBroadphaseProxy::SensorTrigger;
-	// arena->getDynamicsWorld()->rayTest(to.point,from.point,rayCBfrom);	
-	// if(rayCBfrom.hasHit() && rayCBfrom.m_collisionObject != from.object) 
-	// 	return rayCBfrom.m_collisionObject;
-	
 	// if ray neither ray has a hit return all clear
 	return NULL;
 }
@@ -256,7 +251,7 @@ void pathPlan::getExtremes(btCollisionObject* obj, rankPoint pivotPoint, rankPoi
 
 	for(int i = 0; i < ptList.size(); ++i)
 	{
-		btVector3 vert = objTrans(ptList[i]);
+		btVector3 vert = objTrans(ptList[i]); // convert the point to world coordinates
 		vert.setZ(objTrans.getOrigin().z());
 		// get the cross product to find the direction, left or right side
 		btVector3 xc = (objTrans.getOrigin() - pivotPoint.point).cross(vert - pivotPoint.point);
@@ -285,12 +280,12 @@ void pathPlan::getExtremes(btCollisionObject* obj, rankPoint pivotPoint, rankPoi
 	(*right).object = obj;
 }
 
+// check if objPoint is on a CSpace object and if the path goes through it
+// returns false if objPoint is not on an object or the testPoint is on the same object
 bool pathPlan::isPointThroughObject(rankPoint objPoint,rankPoint testPoint)
 {
-	// if not on an object return false
-	if(objPoint.object == 0) return false;
-	// if the test point is already on the object return false
-	if(objPoint.object == testPoint.object) return false;
+	if(objPoint.object == 0) return false;	// return false if not on an object
+	if(objPoint.object == testPoint.object) return false; // if the test point is already on the object return false
 	
 	static rankPoint previous;
 	rankPoint le,re;
@@ -298,9 +293,9 @@ bool pathPlan::isPointThroughObject(rankPoint objPoint,rankPoint testPoint)
 	// if the object is the same don't need to recalculate the extremes
 	if(previous.object != objPoint.object || previous.corner != objPoint.corner) 
 	{
-		this->getExtremes(objPoint.object,objPoint,&le,&re);
-		lv = le.point - objPoint.point;
-		rv = re.point - objPoint.point;
+		this->getExtremes(objPoint.object,objPoint,&le,&re); // get the extremes from objPoint
+		lv = le.point - objPoint.point; // vector to left extreme point
+		rv = re.point - objPoint.point; // vector to right extreme point
 		previous = objPoint;
 	}
 
@@ -485,6 +480,24 @@ void pathPlan::generateCSpace()
 	}
 }
 
+btCollisionObject* pathPlan::createGhostObject(btCollisionShape* cshape,btTransform bodyTrans)
+{
+	// create a new C-Space object
+	btGhostObject* ghostObj = new btGhostObject();
+	// place it over the object
+	ghostObj->setWorldTransform(bodyTrans);
+	// link the shape to the c-space object
+	ghostObj->setCollisionShape(cshape);
+	ghostObj->setCollisionFlags(btCollisionObject::CF_CUSTOM_MATERIAL_CALLBACK);
+	
+	m_ghostShapes.push_back(cshape);
+	m_ghostObjects.push_back(ghostObj);
+	
+	// add the object to the world
+	arena->getDynamicsWorld()->addCollisionObject(ghostObj,btBroadphaseProxy::SensorTrigger,btBroadphaseProxy::SensorTrigger);
+	return (btCollisionObject*)ghostObj;
+}
+
 // creates a C-Space hull shape object based on the collision object
 void pathPlan::createGhostShape(btCollisionObject* bodyObj)
 {
@@ -561,23 +574,72 @@ void pathPlan::createGhostShape(btCollisionObject* bodyObj)
 		break;
 	}
 	
-	// create c-space object
-	btGhostObject* ghostObj = new btGhostObject();
-	// place it over the object
-	ghostObj->setWorldTransform(bodyTrans);
+	
 	// grow the object and set the shape
 	btVector3 lwh = halfDims + notUpVector * SPACEMARGIN;
 	btCollisionShape* cshape = arena->createShape(BOX_SHAPE_PROXYTYPE, lwh);
-	ghostObj->setCollisionShape(cshape);
-	ghostObj->setCollisionFlags(btCollisionObject::CF_CUSTOM_MATERIAL_CALLBACK);
-
-	m_ghostShapes.push_back(cshape);
-	m_ghostObjects.push_back(ghostObj);
-
-	// add the object to the world
-	arena->getDynamicsWorld()->addCollisionObject(ghostObj,btBroadphaseProxy::SensorTrigger,btBroadphaseProxy::SensorTrigger);
+	createGhostObject(cshape,bodyTrans); // create c-space object
 }
 
+void pathPlan::groupOverlapCSpace()
+{
+	int i;
+	overlapGroup* groupA;
+	overlapGroup* groupB;
+	// run a simulation step to update all the newly added C-Space ghost shapes
+	arena->simulatStep();
+	// get the number of objects that are in contact with another
+	int totalManifolds = arena->getDynamicsWorld()->getDispatcher()->getNumManifolds();
+	
+	for(i=0;i<totalManifolds;i++){
+		// a manifold holds the two overlapping bodies as well as the intersection points
+		btPersistentManifold* contactManifold =  arena->getDynamicsWorld()->getDispatcher()->getManifoldByIndexInternal(i);
+		btCollisionObject* baseobjA = static_cast<btCollisionObject*>(contactManifold->getBody0());
+		btCollisionObject* baseobjB = static_cast<btCollisionObject*>(contactManifold->getBody1());
+		
+		// C-Space objects are only GHOST type and must have at least one contact point
+		if(baseobjA->getInternalType() == btCollisionObject::CO_GHOST_OBJECT &&
+		   baseobjB->getInternalType() == btCollisionObject::CO_GHOST_OBJECT &&
+		   contactManifold->getNumContacts() > 0)
+		{
+			// if the userPointer is set then the base object has already been added to a compound shape, use the new compound shape
+			// base objects are not deleted until combining is complete
+			// the userPointer of the base object is set to the new compound shape when it is created
+			groupA = (overlapGroup*)baseobjA->getUserPointer();
+			groupB = (overlapGroup*)baseobjB->getUserPointer();
+			if(groupA == NULL && groupB == NULL){
+				// add overlapping objects to the list
+				overlapGroup gp;
+				gp.list << baseobjA << baseobjB;
+				gp.index = m_ghostGroups.size();
+				m_ghostGroups << gp;
+				baseobjA->setUserPointer(&m_ghostGroups.last());
+				baseobjB->setUserPointer(&m_ghostGroups.last());
+			}
+			else{	// one of the objects is already a compound object
+				if(groupA == groupB) continue; // make sure they are not pointing to the same object
+				if(!groupA){ // objA is a base object add it to the group object
+					groupB->list << baseobjA;
+					baseobjA->setUserPointer(groupB);
+				}
+				else if(!groupB){ // objB is a base object add it to the group object
+					groupA->list << baseobjB;
+					baseobjB->setUserPointer(groupA);
+				}
+				else{ // both objects are in seperate groups add all objects from objB to objA
+					for(int j=0;j<groupB->list.size();j++){
+						btCollisionObject* obj = groupB->list[j]; // change all the pointers of the object in group B to point to group A
+						obj->setUserPointer(groupA);
+					}
+					groupA->list << groupB->list;
+					m_ghostGroups.removeAt(groupB->index);
+				}
+			}
+		}
+	}
+}
+
+// combines overlapping objects into one compound object, ray testing doesn't work with compound object FUCK YOU BULLET!
 void pathPlan::compoundCSpace()
 {
 	int i;
@@ -626,6 +688,7 @@ void pathPlan::compoundCSpace()
 				if(!oldObjectList.contains(baseobjB)) oldObjectList << baseobjB; 	// add old object to delete list
 			}
 			else{	// one of the objects is already a compound object
+				if(objA == objB) continue; // make sure they are not pointing to the same object
 				if(!objA){ // objA is a base object add it to the compound object
 					
 					btCompoundShape* shp = static_cast<btCompoundShape*>(objB->getCollisionShape());	// get the compound shape
@@ -640,7 +703,6 @@ void pathPlan::compoundCSpace()
 					if(!oldObjectList.contains(baseobjB)) oldObjectList << baseobjB; 	// add old object to delete list
 				}
 				else{ // both objects are compound add all shapes from objB to compound objA
-					if(objA == objB) continue;
 					comboObject = objA;
 					btCompoundShape* comboShape = static_cast<btCompoundShape*>(comboObject->getCollisionShape());
 					btCompoundShape* shapeB = static_cast<btCompoundShape*>(objB->getCollisionShape());
@@ -666,6 +728,8 @@ void pathPlan::compoundCSpace()
 	arena->setDraw(true); // draw obstacles
 	oldObjectList.clear();
 }
+
+// trys to merge CSpace objects together by clipping overlapping portions, doesn't really work well
 void pathPlan::mergeCSpace()
 {
 	// run a simulation step to update all the newly added C-Space ghost shapes
@@ -757,24 +821,6 @@ btCollisionObject* pathPlan::createGhostHull(btTransform bodyTrans, QList<btVect
 	return createGhostObject(cshape, bodyTrans);
 }
 
-btCollisionObject* pathPlan::createGhostObject(btCollisionShape* cshape,btTransform bodyTrans)
-{
-	// create a new C-Space object
-	btGhostObject* ghostObj = new btGhostObject();
-	// place it over the object
-	ghostObj->setWorldTransform(bodyTrans);
-	// link the shape to the c-space object
-	ghostObj->setCollisionShape(cshape);
-	ghostObj->setCollisionFlags(btCollisionObject::CF_CUSTOM_MATERIAL_CALLBACK);
-	
-	m_ghostShapes.push_back(cshape);
-	m_ghostObjects.push_back(ghostObj);
-	
-	// add the object to the world
-	arena->getDynamicsWorld()->addCollisionObject(ghostObj,btBroadphaseProxy::SensorTrigger,btBroadphaseProxy::SensorTrigger);
-	return (btCollisionObject*)ghostObj;
-}
-
 // returns an empty list if lista polygon is inside listb polygon, mod is 0 if lista polygon is unchanged else 1
 // clips the intersection part of polygonB from polygonA and returns a list of points for reshaped polygonA
 QList<btVector3> pathPlan::clipAfromB(QList<btVector3> lista, QList<btVector3> listb, btTransform transab, int* mod)
@@ -851,35 +897,6 @@ QList<btVector3> pathPlan::clipAfromB(QList<btVector3> lista, QList<btVector3> l
 	}while(startPoint != lista[i]);
 	
 	return lista;
-}
-
-// takes and object and returns a list of points that represent the top of its geometric shape, assumes symmetric
-QList<btVector3> pathPlan::getTopShapePoints(btCollisionShape* colisShape)
-{
-	QList<btVector3> list;
-
-	switch(colisShape->getShapeType()){ 
-		case BOX_SHAPE_PROXYTYPE: {
-			const btBoxShape* boxShape = static_cast<const btBoxShape*>(colisShape);
-			btVector3 halfDims = boxShape->getHalfExtentsWithMargin();
-			list << halfDims * m_vertices[0];
-			list << halfDims * m_vertices[1];
-			list << halfDims * m_vertices[2];
-			list << halfDims * m_vertices[3];
-			break;
-		}
-		case CONVEX_HULL_SHAPE_PROXYTYPE: {
-			const btConvexHullShape* hullShape = static_cast<const btConvexHullShape*>(colisShape);
-			const btVector3* ptlist = hullShape->getUnscaledPoints();
-			int numPts = hullShape->getNumPoints()/2;
-			for(int i = 0; i < numPts; ++i)
-			{
-				list << ptlist[i];
-			}
-			break;
-		}
-	}
-	return list;
 }
 
 // returns TRUE if pt is inside of the CONVEX polygon LS
@@ -1005,6 +1022,40 @@ int pathPlan::segmentIntersection(btVector3 p1,btVector3 p2,btVector3 p3,btVecto
 	return 0;
 }
 
+// takes and object and returns a list of points that represent the top of its geometric shape, assumes symmetric
+QList<btVector3> pathPlan::getTopShapePoints(btCollisionShape* colisShape)
+{
+	QList<btVector3> list;
+
+	switch(colisShape->getShapeType()){ 
+		case BOX_SHAPE_PROXYTYPE: {
+			const btBoxShape* boxShape = static_cast<const btBoxShape*>(colisShape);
+			btVector3 halfDims = boxShape->getHalfExtentsWithMargin();
+			list << halfDims * m_vertices[0];
+			list << halfDims * m_vertices[1];
+			list << halfDims * m_vertices[2];
+			list << halfDims * m_vertices[3];
+			break;
+		}
+		case CONVEX_HULL_SHAPE_PROXYTYPE: {
+			const btConvexHullShape* hullShape = static_cast<const btConvexHullShape*>(colisShape);
+			const btVector3* ptlist = hullShape->getUnscaledPoints();
+			int numPts = hullShape->getNumPoints()/2;
+			for(int i = 0; i < numPts; ++i)
+			{
+				list << ptlist[i];
+			}
+			break;
+		}
+		case COMPOUND_SHAPE_PROXYTYPE: {
+			btCompoundShape* comboShape = static_cast<btCompoundShape*>(colisShape);
+			for(int i=0; i < comboShape->getNumChildShapes(); i++){
+				list << getTopShapePoints(comboShape->getChildShape(i));
+			}
+		}
+	}
+	return list;
+}
 /////////////////////////////////////////
 // Draw the C-space objects and the path's
 /////////////
@@ -1013,7 +1064,6 @@ void pathPlan::renderGLObject()
 	int i;
 // draws the golden outline for the c-space ghost objects
 	btScalar	glm[16];
-
 
 	glLineWidth(1.);
 	glDisable(GL_LIGHTING);
@@ -1026,6 +1076,7 @@ void pathPlan::renderGLObject()
 		switch(colisShape->getShapeType()){ 
 			case BOX_SHAPE_PROXYTYPE: {
 				glColor3f(0.99f,0.82f,0.1f); // golden C-Space
+				if(m_ghostObjects[i]->getUserPointer()) glColor3f(0,1,0);
 				const btBoxShape* boxShape = static_cast<const btBoxShape*>(colisShape);
 				btVector3 halfDims = boxShape->getHalfExtentsWithMargin();
 
@@ -1132,31 +1183,13 @@ void pathPlan::renderGLObject()
 
 // draws test points and lines	
 	glPointSize(8.0);
-		glBegin(GL_POINTS);
-		glNormal3f(0,0,1);
-		glColor3f(0,0,1);
-		for(i = 0; i < contactPointsA.size(); ++i)
-		{
-			btVector3 p = contactPointsA[i];
-			glVertex3f(p.x(),p.y(),p.z());
-		}
-		glColor3f(0,1,1);
-		for(i = 0; i < contactPointsB.size(); ++i)
-		{
-			btVector3 p = contactPointsB[i];
-			glVertex3f(p.x(),p.y(),p.z());
-		}
-		glEnd();
-	// 
-	// glBegin(GL_LINES);
-	// glColor3f(1,1,0);
-	// glNormal3f(0,0,1);
-	// for(i = 0; i < prospectPoints.size(); ++i)
-	// {
-	// 	btVector3 v = prospectPoints[i].point;
-	// 	btVector3 x = testPoint;
-	// 	glVertex3f(x.x(),x.y(),x.z());
-	// 	glVertex3f(v.x(),v.y(),v.z());
-	// }
-	// glEnd();
+	glBegin(GL_POINTS);
+	glNormal3f(1,1,1);
+	glColor3f(0,0,1);
+	for(i = 0; i < contactPoints.size(); ++i)
+	{
+		glVertex3fv(contactPoints[i].point.m_floats);
+	}
+	
+	glEnd();
 }
