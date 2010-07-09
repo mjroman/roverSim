@@ -49,7 +49,7 @@ m_doneBuilding(false)
 	generateCSpace();
 	groupOverlapCSpace();
 	
-	//findPathA();
+	findPathA();
 	//constructRoadMap();
 	qDebug("Maping Complete");
 	m_doneBuilding = true;
@@ -178,16 +178,18 @@ bool pathPlan::findPathA()
 	m_linkCount++;
 	
 	// testing 
-	this->getExtremes(objBlock,m_midPoint,&leftMost,&rightMost);
-	contactPoints << m_midPoint << leftMost;
-	contactPoints << m_midPoint << rightMost;
-	return true;
+	// 	getExtremes(objBlock, m_midPoint, &lMost, &rMost);
+	// 	if(!isRayBlocked(m_midPoint,lMost)) contactPoints << lMost;
+	// 	if(!isRayBlocked(m_midPoint,rMost)) contactPoints << rMost;
+	//contactPoints << lMost << rMost;
+	//contactPoints << getVisablePointsFrom(m_midPoint);
+	//return true;
 	
 	QList<rankPoint>	prospectPoints = getVisablePointsFrom(m_midPoint);
 
 // remove points that are already in the point path
 	prospectPoints = this->prunePointsFrom(prospectPoints);
-	if(prospectPoints.size() < 1) return false;
+	if(prospectPoints.isEmpty()) return false;
 // compute the ranks of the remaining points based on angle to goal from midPoint
 	prospectPoints = this->angleBasedRank(prospectPoints, m_midPoint);
 // sort the list with the smallest angle to the goal
@@ -220,8 +222,18 @@ btCollisionObject* pathPlan::isRayBlocked(rankPoint from,rankPoint to)
 	rayCBto.m_collisionFilterGroup = btBroadphaseProxy::SensorTrigger;
 	rayCBto.m_collisionFilterMask = btBroadphaseProxy::SensorTrigger;
 	arena->getDynamicsWorld()->rayTest(from.point,to.point,rayCBto);
-	if(rayCBto.hasHit() && rayCBto.m_collisionObject != to.object && rayCBto.m_collisionObject != from.object)
+	
+	if(rayCBto.hasHit()){
+		if(rayCBto.m_collisionObject == to.object) return NULL;	// do not count blocking object that are at either end of the ray 
+		if(rayCBto.m_collisionObject == from.object) return NULL;
+		overlapGroup* gp = (overlapGroup*)rayCBto.m_collisionObject->getUserPointer();	// check if it has intersected a grouped object
+		if(gp){	
+			for(int i=0; i<gp->list.size(); i++){
+				if(gp->list[i] == from.object || gp->list[i] == to.object) return NULL;	// if the blocking object is in the group ignore it
+			}
+		}
 		return rayCBto.m_collisionObject;
+	}
 	
 	// if ray neither ray has a hit return all clear
 	return NULL;
@@ -246,38 +258,50 @@ void pathPlan::getExtremes(btCollisionObject* obj, rankPoint pivotPoint, rankPoi
 {
 	float leftMax = 0;
 	float rightMax = 0;
-	QList<btVector3> ptList = getTopShapePoints(obj->getCollisionShape());
-	btTransform objTrans = obj->getWorldTransform();
+	QList<btVector3> ptList;
+	QList<btCollisionObject*> oList;
+	
+	btTransform objTrans = obj->getWorldTransform();	// the transform of the object being intersected
+		
+	// get all the top points of the obj
+	overlapGroup* gp = (overlapGroup*)obj->getUserPointer();
+	if(gp) oList = gp->list;
+	else oList << obj;
 
-	for(int i = 0; i < ptList.size(); ++i)
+	for(int j = 0; j < oList.size(); j++)
 	{
-		btVector3 vert = objTrans(ptList[i]); // convert the point to world coordinates
-		vert.setZ(objTrans.getOrigin().z());
-		// get the cross product to find the direction, left or right side
-		btVector3 xc = (objTrans.getOrigin() - pivotPoint.point).cross(vert - pivotPoint.point);
-		// get the angle to find the extremes
-		float angle = (objTrans.getOrigin() - pivotPoint.point).angle(vert - pivotPoint.point);
+		ptList = getTopShapePoints(oList[j]);
+		
+		for(int i = 0; i < ptList.size(); ++i)
+		{
+			btVector3 vert = ptList[i]; 
+			vert.setZ(objTrans.getOrigin().z());
+			// get the cross product to find the direction, left or right side
+			btVector3 xc = (objTrans.getOrigin() - pivotPoint.point).cross(vert - pivotPoint.point);
+			// get the angle to find the extremes
+			float angle = (objTrans.getOrigin() - pivotPoint.point).angle(vert - pivotPoint.point);
 
-		// if cross product between obj center and vertex is + or UP then left point
-		if(xc.z() > 0){
-			if(angle > leftMax){
-				leftMax = angle;
-				(*left).point = vert;
-				(*left).corner = i;
+			// if cross product between obj center and vertex is + or UP then left point
+			if(xc.z() > 0){
+				if(angle > leftMax){
+					leftMax = angle;
+					(*left).point = vert;
+					(*left).corner = i;
+				}
 			}
-		}
-		// else if - or DOWN then right point
-		else{
-			if(angle > rightMax){
-				rightMax = angle;
-				(*right).point = vert;
-				(*right).corner = i;
+			// else if - or DOWN then right point
+			else{
+				if(angle > rightMax){
+					rightMax = angle;
+					(*right).point = vert;
+					(*right).corner = i;
+				}
 			}
-		}
-	}		
+		}		
 
-	(*left).object = obj;
-	(*right).object = obj;
+		(*left).object = oList[j];
+		(*right).object = oList[j];
+	}
 }
 
 // check if objPoint is on a CSpace object and if the path goes through it
@@ -352,11 +376,18 @@ QList<rankPoint> pathPlan::getVisablePointsFrom(rankPoint here)
 	QList<rankPoint> list;
 	
 // gather all objects extreme vertices
+	// get all points from individual objects
 	for(i = 0; i < m_ghostObjects.size(); ++i)
 	{
+		if(m_ghostObjects[i]->getUserPointer()) continue;
 		// get the far left and right points around the obstacle
 		this->getExtremes(m_ghostObjects[i],here,&leftMost,&rightMost);
 		list << leftMost << rightMost;
+	}
+	// get all points from grouped objects
+	for(i = 0; i < m_ghostGroups.size(); i++){
+		this->getExtremes(m_ghostGroups[i].list[0],here,&leftMost,&rightMost);
+		list << leftMost << rightMost;	
 	}
 
 // begin Pruning points from the list	
@@ -581,6 +612,7 @@ void pathPlan::createGhostShape(btCollisionObject* bodyObj)
 	createGhostObject(cshape,bodyTrans); // create c-space object
 }
 
+// groups all overlapping CSpace boxes into a list, m_ghostGroups contains a list of all grouped objects
 void pathPlan::groupOverlapCSpace()
 {
 	int i;
@@ -776,13 +808,14 @@ void pathPlan::mergeCSpace()
 			objListB.clear();
 
 			// get the top vertices of the objects, used as 2D representation of objects
-			objListA = getTopShapePoints(objA->getCollisionShape());
-			objListB = getTopShapePoints(objB->getCollisionShape());
+			objListA = getTopShapePoints(objA);
+			objListB = getTopShapePoints(objB);
 			
 			// get a new point list for polygon A clipped from B
 			// inverseTimes(transB) is used to transform the points in polygonB to polygonA's reference
 			QList<btVector3> newListA = clipAfromB(objListA,objListB, transA.inverseTimes(transB) ,&shapeChanged);		
 			if(shapeChanged) {
+				
 				btCollisionObject* modobjA = createGhostHull(transA, newListA);	// create a new hull shape add it to the world
 				baseobjA->setUserPointer(modobjA);								
 				if(!oldObjectList.contains(objA)) oldObjectList << objA; 		// add old object to delete list if it isn't already there
@@ -791,6 +824,7 @@ void pathPlan::mergeCSpace()
 			// get a new point list for polygon B clipped from A
 			QList<btVector3> newListB = clipAfromB(objListB,objListA, transB.inverseTimes(transA) ,&shapeChanged);
 			if(shapeChanged) {
+				
 				btCollisionObject* modobjB = createGhostHull(transB, newListB);	// create a new hull shape add it to the world
 				baseobjB->setUserPointer(modobjB);
 				if(!oldObjectList.contains(objB)) oldObjectList << objB; // add old object to delete list
@@ -833,7 +867,7 @@ QList<btVector3> pathPlan::clipAfromB(QList<btVector3> lista, QList<btVector3> l
 	*mod = 0;
 	
 	// convert all the points in listb to lista reference frame
-	for(i=0;i<listb.size();i++) listb[i] = transab(listb[i]);
+	//for(i=0;i<listb.size();i++) listb[i] = transab(listb[i]);
 	
 	//for(i=0;i<lista.size();i++) qDebug("ptA%d %f,%f",i,lista[i].x(),lista[i].y());
 	//for(i=0;i<listb.size();i++) qDebug("ptB%d %f,%f",i,listb[i].x(),listb[i].y());
@@ -1023,18 +1057,21 @@ int pathPlan::segmentIntersection(btVector3 p1,btVector3 p2,btVector3 p3,btVecto
 }
 
 // takes and object and returns a list of points that represent the top of its geometric shape, assumes symmetric
-QList<btVector3> pathPlan::getTopShapePoints(btCollisionShape* colisShape)
+QList<btVector3> pathPlan::getTopShapePoints(btCollisionObject* obj)
 {
 	QList<btVector3> list;
+	
+	btTransform trans = obj->getWorldTransform();
+	btCollisionShape* colisShape = obj->getCollisionShape();
 
 	switch(colisShape->getShapeType()){ 
 		case BOX_SHAPE_PROXYTYPE: {
 			const btBoxShape* boxShape = static_cast<const btBoxShape*>(colisShape);
 			btVector3 halfDims = boxShape->getHalfExtentsWithMargin();
-			list << halfDims * m_vertices[0];
-			list << halfDims * m_vertices[1];
-			list << halfDims * m_vertices[2];
-			list << halfDims * m_vertices[3];
+			list << trans(halfDims * m_vertices[0]);
+			list << trans(halfDims * m_vertices[1]);
+			list << trans(halfDims * m_vertices[2]);
+			list << trans(halfDims * m_vertices[3]);
 			break;
 		}
 		case CONVEX_HULL_SHAPE_PROXYTYPE: {
@@ -1043,16 +1080,16 @@ QList<btVector3> pathPlan::getTopShapePoints(btCollisionShape* colisShape)
 			int numPts = hullShape->getNumPoints()/2;
 			for(int i = 0; i < numPts; ++i)
 			{
-				list << ptlist[i];
+				list << trans(ptlist[i]);
 			}
 			break;
 		}
-		case COMPOUND_SHAPE_PROXYTYPE: {
-			btCompoundShape* comboShape = static_cast<btCompoundShape*>(colisShape);
-			for(int i=0; i < comboShape->getNumChildShapes(); i++){
-				list << getTopShapePoints(comboShape->getChildShape(i));
-			}
-		}
+		// case COMPOUND_SHAPE_PROXYTYPE: {
+		// 			btCompoundShape* comboShape = static_cast<btCompoundShape*>(colisShape);
+		// 			for(int i=0; i < comboShape->getNumChildShapes(); i++){
+		// 				list << getTopShapePoints(comboShape->getChildShape(i));
+		// 			}
+		// 		}
 	}
 	return list;
 }
@@ -1076,7 +1113,7 @@ void pathPlan::renderGLObject()
 		switch(colisShape->getShapeType()){ 
 			case BOX_SHAPE_PROXYTYPE: {
 				glColor3f(0.99f,0.82f,0.1f); // golden C-Space
-				if(m_ghostObjects[i]->getUserPointer()) glColor3f(0,1,0);
+				if(m_ghostObjects[i]->getUserPointer()) glColor3f(0.8f,1,0.5);
 				const btBoxShape* boxShape = static_cast<const btBoxShape*>(colisShape);
 				btVector3 halfDims = boxShape->getHalfExtentsWithMargin();
 
@@ -1147,7 +1184,7 @@ void pathPlan::renderGLObject()
 	
 // draws the path
 	if(true){
-		glColor4f(0,1,0,0.5);
+		glDisable(GL_CULL_FACE);
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -1156,19 +1193,22 @@ void pathPlan::renderGLObject()
 		for(i = 0; i < m_pointPath.size(); ++i)
 		{	
 			btVector3 t = m_pointPath[i].point;
+			glColor4f(0.4,0.9,0.93,0.45);
 			glVertex3f(t.x(),t.y(),t.z());
-			glVertex3f(t.x(),t.y(),t.z()+0.25);
+			glColor4f(1,1,1,0.0);
+			glVertex3f(t.x(),t.y(),t.z()+1.5);
 		}
 		glEnd();
 		glDisable(GL_BLEND);
+		glEnable(GL_CULL_FACE);
+		
 // draws the blue line on the path
 		glBegin(GL_LINE_STRIP);
-		glColor3f(0,1,1);
+		glColor3f(0.4,0.9,0.93);
 		glNormal3f(0,0,1);
 		for(i = 0; i < m_pointPath.size(); ++i)
 		{
-			btVector3 t = m_pointPath[i].point;
-			glVertex3f(t.x(),t.y(),t.z());
+			glVertex3fv(m_pointPath[i].point.m_floats);
 		}
 		glEnd();
 	}
@@ -1183,11 +1223,12 @@ void pathPlan::renderGLObject()
 
 // draws test points and lines	
 	glPointSize(8.0);
-	glBegin(GL_POINTS);
+	glBegin(GL_LINES);
 	glNormal3f(1,1,1);
-	glColor3f(0,0,1);
+	glColor3f(0,1,0);
 	for(i = 0; i < contactPoints.size(); ++i)
 	{
+		glVertex3fv(m_midPoint.point.m_floats);
 		glVertex3fv(contactPoints[i].point.m_floats);
 	}
 	

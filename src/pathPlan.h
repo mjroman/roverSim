@@ -49,7 +49,7 @@ private:
 	
 	QList<rankLink>								m_linkList;
 	bool										m_doneBuilding;
-	rankPoint 	leftMost,rightMost;
+	rankPoint 	lMost,rMost;
 	QList<rankPoint>	contactPoints;
 	
 	void deleteGhostObject(btCollisionObject* obj);
@@ -72,7 +72,7 @@ private:
 	QList<btVector3> clipAfromB(QList<btVector3> lista, QList<btVector3> listb, btTransform transab, int* mod=NULL);
 	bool isPointInsidePoly(btVector3 pt,QList<btVector3> ls);
 	int segmentIntersection(btVector3 p1,btVector3 p2,btVector3 p3,btVector3 p4,btVector3* intsec);
-	QList<btVector3> getTopShapePoints(btCollisionShape* colisShape);
+	QList<btVector3> getTopShapePoints(btCollisionObject* obj);
 	
 public:
 	pathPlan(btVector3 start, btVector3 end, simGLView* glView = NULL);
