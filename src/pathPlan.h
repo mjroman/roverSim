@@ -44,16 +44,19 @@ private:
 	rankPoint									m_startPoint;
 	rankPoint									m_midPoint;
 	rankPoint									m_goalPoint;
+	btCollisionObject*							m_goalOccluded;
 	int											m_linkCount;
 	btVector3 									m_vertices[8];
 	
+	// testing
 	QList<rankLink>								m_linkList;
 	bool										m_doneBuilding;
 	rankPoint 	lMost,rMost;
 	QList<rankPoint>	contactPoints;
+	QList<btVector3>	hitPoints;
 	
 	void deleteGhostObject(btCollisionObject* obj);
-	btCollisionObject* isRayBlocked(rankPoint from,rankPoint to);
+	btCollisionObject* isRayBlocked(rankPoint from,rankPoint to, btVector3* point = NULL);
 	btCollisionObject* clearToGoal(rankPoint node);
 	void getExtremes(btCollisionObject* obj, rankPoint pivotPoint, rankPoint* left, rankPoint* right);
 	bool isPointThroughObject(rankPoint objPoint,rankPoint testPoint);
@@ -67,10 +70,11 @@ private:
 	bool isNewLink(rankLink link);
 	
 	btCollisionObject* createGhostObject(btCollisionShape* cshape,btTransform bodyTrans);
-	void createGhostShape(btCollisionObject* bodyObj);
+ 	btCollisionObject* createGhostShape(btCollisionObject* bodyObj);
 	btCollisionObject* createGhostHull(btTransform bodyTrans, QList<btVector3> list);
 	QList<btVector3> clipAfromB(QList<btVector3> lista, QList<btVector3> listb, btTransform transab, int* mod=NULL);
 	bool isPointInsidePoly(btVector3 pt,QList<btVector3> ls);
+	bool isPointInsideObject(btVector3 pt, btCollisionObject* obj);
 	int segmentIntersection(btVector3 p1,btVector3 p2,btVector3 p3,btVector3 p4,btVector3* intsec);
 	QList<btVector3> getTopShapePoints(btCollisionObject* obj);
 	
@@ -85,6 +89,7 @@ public:
 	void mergeCSpace();
 	bool findPathA();
 	void constructRoadMap();
+	void togglePathPoint();
 	void renderGLObject();
 	
 	// struct cspaceRayResultCallback : public btCollisionWorld::RayResultCallback

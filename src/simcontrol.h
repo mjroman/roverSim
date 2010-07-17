@@ -88,7 +88,9 @@ class simControl : public QObject
 		void addWaypointAt(WayPoint wp, int index);
 		void editWaypoint(int index);
 		void resetWaypointStates();
+		
 		void generatePath();
+		void testPath();
 		
 		void newRover(QWidget* parent);
 		void showNavTool();

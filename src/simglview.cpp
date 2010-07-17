@@ -125,6 +125,10 @@ void simGLView::initializeGL()
 	glHint (GL_FOG_HINT, GL_FASTEST);
 	glFogf (GL_FOG_START, 40);	// ONLY USED FOR LINEAR FOG EQUATION
 	glFogf (GL_FOG_END, 200);	// ONLY USED FOR LINEAR FOG EQUATION
+	// volumetric fog testing
+	// glFogf(GL_FOG_START, 0.);
+	// 	glFogf(GL_FOG_END, 1.0);
+	// 	glFogi(GL_FOG_COORD_SRC, GL_FOG_COORD);
 }
 
 void simGLView::resizeGL(int width, int height)

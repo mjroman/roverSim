@@ -288,6 +288,11 @@ void MainGUI::keyPressEvent(QKeyEvent *event)
             else glView->setViewAngle(1.0);
             return;
         }
+		case 'X':
+		{
+			SController->testPath();
+			return;
+		}
         case '[':
         {
 			SController->getGround()->terrainRaise(glView->getCamera()->cameraDirection(),m_tTool.increment(),m_tTool.diameter());

@@ -141,6 +141,7 @@ void simControl::generateObstacles()
     btVector3   tempPlace,tempSize;
     float   alphaYaw,volume;
     int i;
+	float dpht = m_dropHeight;
 	
 	if(path) delete path;
 	path = 0;
@@ -156,7 +157,7 @@ void simControl::generateObstacles()
 		// keep all obstacles away from rover start position
         if(tempPlace.x() < 5 && tempPlace.y() < 5){ tempPlace.setX(5);} 
         //tempPlace.setZ(ground->maxHeight() + m_dropHeight);
-		tempPlace.setZ(ground->terrainHeightAt(tempPlace) + m_dropHeight);
+		tempPlace.setZ(ground->terrainHeightAt(tempPlace) + dpht);
 		
         tempSize.setX(m_minObstSize.x() + Randomn()*(m_maxObstSize.x() - m_minObstSize.x()));
         tempSize.setY(m_minObstSize.y() + Randomn()*(m_maxObstSize.y() - m_minObstSize.y()));
@@ -193,7 +194,7 @@ void simControl::generateObstacles()
                 break;
         }
         float mass = m_obstDensity * (volume);
-		
+		dpht += tempSize.z();
         arena->placeObstacleShapeAt(tempPlace,alphaYaw,mass);
     }
 }
@@ -326,6 +327,11 @@ void simControl::generatePath()
 		end.setZ(ground->terrainHeightAt(end));
 		path = new pathPlan(start, end, glView);
 	}
+}
+
+void simControl::testPath()
+{
+	if(path) path->togglePathPoint();
 }
 
 /////////////////////////////////////////
