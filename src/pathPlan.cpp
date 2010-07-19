@@ -22,6 +22,7 @@ pathPlan::pathPlan(btVector3 start, btVector3 end, simGLView* glView)
 simGLObject(glView),
 m_goalOccluded(NULL),
 m_linkCount(0),
+m_linkViewIndex(0),
 m_doneBuilding(false)
 {
 	m_vertices[0] = btVector3(1,1,1);
@@ -66,7 +67,6 @@ pathPlan::~pathPlan()
 		m_ghostGroups[i].list.clear();
 	m_ghostGroups.clear();
 	contactPoints.clear();
-	hitPoints.clear();
 }
 
 void pathPlan::deleteGhostGroup()
@@ -201,7 +201,7 @@ bool pathPlan::findPathA()
 		m_midPoint = prospectPoints[i];			// change the midPoint to the lowest rank point
 		
 		m_pointPath << m_midPoint;				// add the potential point to the global path list
-		
+		m_view->updateGL();
 		if(this->findPathA()){					// if a path to the goal has been found
 			prospectPoints.clear();				// clear all the prospecive points and return true
 			return true;
@@ -214,42 +214,125 @@ bool pathPlan::findPathA()
 
 void pathPlan::togglePathPoint()
 {
-	static int i = 0;
-	if(i >= m_pointPath.size()) i=0;
+	if(m_linkViewIndex >= m_pointPath.size()) m_linkViewIndex=0;
 	
+	hitPoints.clear();
 	contactPoints.clear();
-	contactPoints << m_pointPath[i];
-	contactPoints << getVisablePointsFrom(m_pointPath[i]);
-	qDebug("obj%d corner%d",m_pointPath[i].object,m_pointPath[i].corner);
-	if(clearToGoal(m_pointPath[i]) == NULL) qDebug("Clear to GOAL");
-	i++;
+	contactPoints << m_pointPath[m_linkViewIndex];
+	
+	//contactPoints << getVisablePointsFrom(m_pointPath[m_linkViewIndex]);
+	int i;
+	rankPoint here = m_pointPath[m_linkViewIndex];
+	rankPoint leftMost;
+	rankPoint rightMost;	
+	QList<rankPoint> list;
+
+	// gather all objects extreme vertices
+	for(i = 0; i < m_ghostObjects.size(); ++i)									// get all points from individual objects
+	{
+		if(m_ghostObjects[i]->getUserPointer()) continue;						// skip all grouped obstacles, get them later
+		this->getExtremes(m_ghostObjects[i],here,&leftMost,&rightMost);			// get the far left and right points around the obstacle
+		list << leftMost << rightMost;
+	}
+	for(i = 0; i < m_ghostGroups.size(); i++){									// get all points from grouped objects
+		this->getExtremes(m_ghostGroups[i].list[0],here,&leftMost,&rightMost);
+		list << leftMost << rightMost;	
+	}
+
+	// begin Pruning points from the list
+		// if here is on a C space object remove all the points between the two edges of the current obstacle  
+	if(true){
+		if(here.object)
+		{
+			i=0;
+			while(i < list.size()){
+				if(this->isPointThroughObject(here,list[i])) 	// is the point on the other side of the object where ray testing fails
+					list.removeAt(i);
+				else i++;
+			}
+		}
+	}
+
+	if(true){	// remove all remaining points that are blocked
+		btVector3 pt;
+		i=0;
+		while(i < list.size()){
+			if(this->isRayBlocked(here,list[i],&pt)) {
+				hitPoints << pt;				
+				list.removeAt(i);
+			}
+			else{
+				i++;
+			}
+		}
+	}
+	contactPoints << list;
+	
+	//qDebug("obj%d corner%d",m_pointPath[i].object,m_pointPath[i].corner);
+	if(clearToGoal(m_pointPath[m_linkViewIndex]) == NULL) qDebug("Clear to GOAL");
+	m_linkViewIndex++;
 }
 
 // checks the ray between from and to, if it is clear NULL is returned else returns the object blocking
+//btCollisionObject* pathPlan::isVectorBlocked(rankPoint from,rankPoint to, btVector3* point)
 btCollisionObject* pathPlan::isRayBlocked(rankPoint from,rankPoint to, btVector3* point)
 {
-	// check the ray toward the TO point
-	btCollisionWorld::ClosestRayResultCallback rayCBto(from.point,to.point);
-	rayCBto.m_collisionFilterGroup = btBroadphaseProxy::SensorTrigger;
-	rayCBto.m_collisionFilterMask = btBroadphaseProxy::SensorTrigger;
-	arena->getDynamicsWorld()->rayTest(from.point,to.point,rayCBto);
+	QList<rankPoint> hitList;
 	
-	if(rayCBto.hasHit()){
-		if(point) *point = rayCBto.m_hitPointWorld;
-		if(rayCBto.m_collisionObject == to.object) return NULL;	// do not count blocking object that are at either end of the ray 
-		if(rayCBto.m_collisionObject == from.object) return NULL;
-		// overlapGroup* gp = static_cast<overlapGroup*>(rayCBto.m_collisionObject->getUserPointer());	// check if it has intersected a grouped object
-		// 		if(gp){	
-		// 			for(int i=0; i<gp->list.size(); i++){
-		// 				if(gp->list[i] == from.object || gp->list[i] == to.object) return NULL;	// if the blocking object is in the group ignore it
-		// 			}
-		// 		}
-		return rayCBto.m_collisionObject;
+	for(int i=0;i<m_ghostObjects.size();i++){
+		int k;
+		rankPoint rp;
+		rp.object = m_ghostObjects[i];
+		if(rp.object == to.object || rp.object == from.object) continue;
+		QList<btVector3> shapePoints = this->getTopShapePoints(rp.object);
+		for(int j=0;j<shapePoints.size();j++){
+			if(j == shapePoints.size()-1) k=0;
+			else k=j+1;
+			if(this->segmentIntersection(from.point,to.point,shapePoints[j],shapePoints[k],&rp.point)){
+				rp.rank = from.point.distance2(rp.point);
+				hitList << rp;
+			}
+		}
 	}
 	
-	// if ray neither ray has a hit return all clear
+	if(hitList.isEmpty()) return NULL; // no hits all clear
+	
+	hitList = this->quickSortRankLessthan(hitList); // sort all hit points from closest to farthest
+	
+	for(int i=0;i<hitList.size();i++){
+		if(hitList[i].rank > 0.0){
+			if(point) *point = hitList[i].point;
+			return hitList[i].object;
+		}
+	}
 	return NULL;
 }
+
+// checks the ray between from and to, if it is clear NULL is returned else returns the object blocking
+// btCollisionObject* pathPlan::isRayBlocked(rankPoint from,rankPoint to, btVector3* point)
+// {	
+// 	// check the ray toward the TO point
+// 	btCollisionWorld::ClosestRayResultCallback rayCBto(from.point,to.point);
+// 	rayCBto.m_collisionFilterGroup = btBroadphaseProxy::SensorTrigger;
+// 	rayCBto.m_collisionFilterMask = btBroadphaseProxy::SensorTrigger;
+// 	arena->getDynamicsWorld()->rayTest(from.point,to.point,rayCBto);
+// 	
+// 	if(rayCBto.hasHit()){
+// 		if(point) *point = rayCBto.m_hitPointWorld;
+// 		if(rayCBto.m_collisionObject == to.object) return NULL;	// do not count blocking object that are at either end of the ray 
+// 		if(rayCBto.m_collisionObject == from.object) return NULL;
+// 		overlapGroup* gp = static_cast<overlapGroup*>(rayCBto.m_collisionObject->getUserPointer());	// check if it has intersected a grouped object
+// 		if(gp){	
+// 			for(int i=0; i<gp->list.size(); i++){
+// 				if(gp->list[i] == from.object) return NULL;	// if the blocking object is in the group ignore it
+// 			}
+// 		}
+// 		return rayCBto.m_collisionObject;
+// 	}
+// 	
+// 	// if neither ray has a hit return all clear
+// 	return NULL;
+// }
 
 // check if the path to the goal is clear returns NULL, if not clear returns the obstacle in the way
 btCollisionObject* pathPlan::clearToGoal(rankPoint node)
@@ -379,16 +462,11 @@ QList<rankPoint> pathPlan::getVisablePointsFrom(rankPoint here)
 	}
 
 	i=0;
-	btVector3 hitPoint;
-	hitPoints.clear();
 	while(i < list.size()){
-		hitPoint.setValue(0,0,0);
-		if(this->isRayBlocked(here,list[i],&hitPoint)) 				// remove all remaining points that are blocked
+		if(this->isRayBlocked(here,list[i])) 				// remove all remaining points that are blocked
 			list.removeAt(i);
-		else {
+		else
 			i++;	
-			hitPoints << hitPoint;
-		}
 	}
 
 	return list;
@@ -984,7 +1062,7 @@ bool pathPlan::isPointInsideObject(btVector3 pt, btCollisionObject* obj)
 }
 
 // determins if there is an intersection between two lines represented by point pairs (p1,p2) and (p3,p4)
-// returns 0 = no intersection 1 = intersection -1 = intersection is and endpoint of (p3,p4)
+// returns 0 = no intersection 1 = intersection -1 = intersection is an endpoint of (p3,p4)
 int pathPlan::segmentIntersection(btVector3 p1,btVector3 p2,btVector3 p3,btVector3 p4,btVector3* intsect)
 {
 	double z1,z2;
@@ -1081,7 +1159,7 @@ int pathPlan::segmentIntersection(btVector3 p1,btVector3 p2,btVector3 p3,btVecto
 	return 0;
 }
 
-// takes and object and returns a list of points that represent the top of its geometric shape, assumes symmetric
+// takes an object and returns a list of points that represent the top of its geometric shape in world coordinates, assumes symmetric
 QList<btVector3> pathPlan::getTopShapePoints(btCollisionObject* obj)
 {
 	QList<btVector3> list;
@@ -1205,13 +1283,32 @@ void pathPlan::renderGLObject()
 // 	}
 // 	glEnd();
 	
+	// draws test points and lines	
+		glLineWidth(2.0);
+		glBegin(GL_LINES);
+		glNormal3f(1,1,1);
+		glColor3f(0,1,0);
+		for(i = 1; i < contactPoints.size(); ++i)
+		{
+			glVertex3fv(contactPoints[0].point.m_floats);
+			glVertex3fv(contactPoints[i].point.m_floats);
+		}
+		glEnd();
+
+		glPointSize(3.0);
+		glColor3f(1,1,1);
+		glBegin(GL_POINTS);
+		for(i=0;i<hitPoints.size();i++)
+			glVertex3fv(hitPoints[i].m_floats);
+		glEnd();
+		
 // draws the crow flies line
 	glBegin(GL_LINES);
 	glLineWidth(1.0);
 	glColor3f(0,0,1);
 	glNormal3f(0,0,1);
-	glVertex3f(m_startPoint.point.x(),m_startPoint.point.y(),m_startPoint.point.z());
-	glVertex3f(m_goalPoint.point.x(),m_goalPoint.point.y(),m_goalPoint.point.z());
+	glVertex3fv(m_startPoint.point.m_floats);
+	glVertex3fv(m_goalPoint.point.m_floats);
 	glEnd();
 	
 // draws the path
@@ -1234,35 +1331,12 @@ void pathPlan::renderGLObject()
 	glEnable(GL_CULL_FACE);
 
 // draws the blue line on the base of the path
-	// glBegin(GL_LINE_STRIP);
-	// glColor3f(0.4,0.9,0.93);
-	// glNormal3f(0,0,1);
-	// for(i = 0; i < m_pointPath.size(); ++i)
-	// {
-	// 	glVertex3fv(m_pointPath[i].point.m_floats);
-	// }
-	// glEnd();
-	
-
-// draws test points and lines	
-	glLineWidth(2.0);
-	glBegin(GL_LINES);
-	glNormal3f(1,1,1);
-	glColor3f(0,1,0);
-	for(i = 1; i < contactPoints.size(); ++i)
-	{
-		glVertex3fv(contactPoints[0].point.m_floats);
-		glVertex3fv(contactPoints[i].point.m_floats);
-	}
-	glEnd();
-	
-	glPointSize(8.0);
-	glBegin(GL_POINTS);
+	glBegin(GL_LINE_STRIP);
+	glColor3f(0.4,0.9,0.93);
 	glNormal3f(0,0,1);
-	glColor3f(1,1,0);
-	for(i=0;i<hitPoints.size();i++){
-		glVertex3fv(hitPoints[i].m_floats);
+	for(i = 0; i < m_pointPath.size(); ++i)
+	{
+		glVertex3fv(m_pointPath[i].point.m_floats);
 	}
 	glEnd();
-	
 }

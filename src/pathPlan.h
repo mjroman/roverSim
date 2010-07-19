@@ -46,6 +46,7 @@ private:
 	rankPoint									m_goalPoint;
 	btCollisionObject*							m_goalOccluded;
 	int											m_linkCount;
+	int											m_linkViewIndex;
 	btVector3 									m_vertices[8];
 	
 	// testing
@@ -53,9 +54,10 @@ private:
 	bool										m_doneBuilding;
 	rankPoint 	lMost,rMost;
 	QList<rankPoint>	contactPoints;
-	QList<btVector3>	hitPoints;
+	QList<btVector3> 	hitPoints;
 	
 	void deleteGhostObject(btCollisionObject* obj);
+//	btCollisionObject* isVectorBlocked(rankPoint from,rankPoint to, btVector3* point = NULL);
 	btCollisionObject* isRayBlocked(rankPoint from,rankPoint to, btVector3* point = NULL);
 	btCollisionObject* clearToGoal(rankPoint node);
 	void getExtremes(btCollisionObject* obj, rankPoint pivotPoint, rankPoint* left, rankPoint* right);

@@ -257,6 +257,7 @@ void conePoint(float rad, float length, int res)
 	glBegin(GL_TRIANGLE_FAN);
 	glNormal3f(0,0,1);
 	glVertex3f(0,0,0);
+	
 	for(i=0;i<=360;i+=res){
 		nx = cos(DEGTORAD(i));
 		ny = sin(DEGTORAD(i));

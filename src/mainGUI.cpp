@@ -332,14 +332,9 @@ void MainGUI::keyPressEvent(QKeyEvent *event)
 				SController->getAutoNav()->quickObstacleCheck();
 				break;
 			}
-		case 'D':
-			{
-				SController->removeRover();
-				break;
-			}
-        case 'F':
+        case 'D':
             {
-                //sr2->m_bodyParts[0]->applyCentralImpulse(btVector3(sin(sr2->heading),cos(sr2->heading),10));
+                //sr2->m_robotObjects[0]->applyCentralImpulse(btVector3(sin(sr2->heading),cos(sr2->heading),10));
                 break;
             }
         case 'L':
