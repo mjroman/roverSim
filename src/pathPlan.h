@@ -1,13 +1,7 @@
 #ifndef PATHPLAN_H
 #define PATHPLAN_H
 
-#include <QList>
-#include <OpenGL/gl.h>
-#include "simglobject.h"
-#include "physicsWorld.h"
-#include "utility/structures.h"
-#include <BulletCollision/CollisionDispatch/btCollisionWorld.h>
-#include <LinearMath/btVector3.h>
+#include "cSpace.h"
 
 class btCollisionObject;
 
@@ -19,12 +13,6 @@ typedef struct _rankPoint
 	int					corner;
 }rankPoint;
 
-typedef struct _overlapGroup
-{
-	int index;
-	QList<btCollisionObject*> list;
-}overlapGroup;
-
 typedef struct _rankLink
 {
 	rankPoint	first;
@@ -32,14 +20,10 @@ typedef struct _rankLink
 	float		length;
 }rankLink;
 
-class pathPlan : public simGLObject
+class pathPlan : protected cSpace
 {
 private:
 	float										m_goalDistance;
-	physicsWorld            					*arena;
-	btAlignedObjectArray<btCollisionShape*>		m_ghostShapes;
-	btAlignedObjectArray<btCollisionObject*>	m_ghostObjects;
-	QList<overlapGroup>							m_ghostGroups;
 	QList<rankPoint>							m_pointPath;
 	rankPoint									m_startPoint;
 	rankPoint									m_midPoint;
@@ -47,7 +31,6 @@ private:
 	btCollisionObject*							m_goalOccluded;
 	int											m_linkCount;
 	int											m_linkViewIndex;
-	btVector3 									m_vertices[8];
 	
 	// testing
 	QList<rankLink>								m_linkList;
@@ -56,12 +39,9 @@ private:
 	QList<rankPoint>	contactPoints;
 	QList<btVector3> 	hitPoints;
 	
-	void deleteGhostObject(btCollisionObject* obj);
 //	btCollisionObject* isVectorBlocked(rankPoint from,rankPoint to, btVector3* point = NULL);
 	btCollisionObject* isRayBlocked(rankPoint from,rankPoint to, btVector3* point = NULL);
-	btCollisionObject* clearToGoal(rankPoint node);
 	void getExtremes(btCollisionObject* obj, rankPoint pivotPoint, rankPoint* left, rankPoint* right);
-	bool isPointThroughObject(rankPoint objPoint,rankPoint testPoint);
 	QList<rankPoint> angleBasedRank(QList<rankPoint> list, rankPoint pivotPoint);
 	QList<rankPoint> rangeBasedRank(QList<rankPoint> list, rankPoint pivotPoint);
 	QList<rankPoint> quickSortRankLessthan(QList<rankPoint> list);
@@ -71,58 +51,13 @@ private:
 	bool isNewPoint(rankPoint pt);
 	bool isNewLink(rankLink link);
 	
-	btCollisionObject* createGhostObject(btCollisionShape* cshape,btTransform bodyTrans);
- 	btCollisionObject* createGhostShape(btCollisionObject* bodyObj);
-	btCollisionObject* createGhostHull(btTransform bodyTrans, QList<btVector3> list);
-	QList<btVector3> clipAfromB(QList<btVector3> lista, QList<btVector3> listb, btTransform transab, int* mod=NULL);
-	bool isPointInsidePoly(btVector3 pt,QList<btVector3> ls);
-	bool isPointInsideObject(btVector3 pt, btCollisionObject* obj);
-	int segmentIntersection(btVector3 p1,btVector3 p2,btVector3 p3,btVector3 p4,btVector3* intsec);
-	QList<btVector3> getTopShapePoints(btCollisionObject* obj);
-	
 public:
 	pathPlan(btVector3 start, btVector3 end, simGLView* glView = NULL);
 	~pathPlan();
 	
-	void deleteGhostGroup();
-	void generateCSpace();
-	void groupOverlapCSpace();
-	void compoundCSpace();
-	void mergeCSpace();
 	bool findPathA();
 	void constructRoadMap();
 	void togglePathPoint();
 	void renderGLObject();
-	
-	// struct cspaceRayResultCallback : public btCollisionWorld::RayResultCallback
-	// 	{
-	// 		btVector3					m_rayFromWorld;
-	// 		btVector3					m_rayToWorld;
-	// 		QList<rankPoint>			m_hitList;
-	// 
-	// 		cspaceRayResultCallback(btVector3 rayFrom,btVector3 rayTo)
-	// 			:m_rayFromWorld(rayFrom),
-	// 			m_rayToWorld(rayTo)
-	// 		{
-	// 			m_collisionFilterGroup = btBroadphaseProxy::SensorTrigger;
-	// 			m_collisionFilterMask = btBroadphaseProxy::SensorTrigger;
-	// 		}
-	// 		~cspaceRayResultCallback()
-	// 			{ m_hitList.clear(); }
-	// 
-	// 		virtual btScalar addSingleResult( btCollisionWorld::LocalRayResult& rayResult,bool btNormalInWorldSpace)
-	// 		{
-	// 			m_closestHitFraction = rayResult.m_hitFraction;
-	// 			m_collisionObject = rayResult.m_collisionObject;
-	// 
-	// 			rankPoint hit;
-	// 			hit.object = m_collisionObject;
-	// 			hit.point.setInterpolate3(m_rayFromWorld,m_rayToWorld,rayResult.m_hitFraction);
-	// 			hit.rank = rayResult.m_hitFraction;
-	// 			hit.corner = -1;
-	// 			m_hitList << hit;
-	// 			return rayResult.m_hitFraction;
-	// 		}
-	// 	};
 };
 #endif // PATHPLAN_H

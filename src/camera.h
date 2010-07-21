@@ -41,6 +41,7 @@ public:
     btVector3 cameraDirection(){ return direction; }
 	btVector3 cameraUpDirection(){ return upVector; }
     btVector3 cameraPitchYawZoom();
+	void cameraSetDirection(btVector3 pt);
 
 	void cameraFreeView();
 	void cameraRoverCenter();

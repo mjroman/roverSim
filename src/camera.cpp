@@ -167,6 +167,13 @@ btVector3 camera::cameraPitchYawZoom()
     return camParm;
 }
 
+void camera::cameraSetDirection(btVector3 pt)
+{
+	if(cameraView == FreeView){
+		direction = pt;
+	}
+}
+
 void camera::cameraFreeView() {cameraView = FreeView;}
 void camera::cameraRoverCenter() {cameraView = RoverCenter;}
 void camera::cameraRoverFollow() {cameraView = RoverFollow;}

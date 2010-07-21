@@ -47,6 +47,7 @@ SOURCES += main.cpp \
 	src/tools/waypointtool.cpp \
     src/skydome.cpp \
 	src/autoCode.cpp \
+	src/cSpace.cpp \
 	src/pathPlan.cpp
 	
 HEADERS += src/mainGUI.h \
@@ -71,6 +72,7 @@ HEADERS += src/mainGUI.h \
 	src/tools/waypointtool.h \
     src/skydome.h \
 	src/autoCode.h \
+	src/cSpace.h \
 	src/pathPlan.h
 	
 FORMS += src/mainGUI.ui \
