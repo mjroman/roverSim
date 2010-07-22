@@ -1,15 +1,16 @@
 #include "pathPlan.h"
+#include "cSpace.h"
 #include "utility/definitions.h"
 #include <BulletCollision/CollisionDispatch/btCollisionObject.h>
 
-pathPlan::pathPlan(btVector3 start, btVector3 end, simGLView* glView)
+pathPlan::pathPlan(btVector3 start, btVector3 end, cSpace* space, simGLView* glView)
 :
-cSpace(glView),
+simGLObject(glView),
 m_goalOccluded(NULL),
 m_linkCount(0),
-m_linkViewIndex(0),
-m_doneBuilding(false)
-{	
+m_linkViewIndex(0)
+{
+	m_CS = space;
 	memset(&m_startPoint,0,sizeof(rankPoint));
 	memset(&m_midPoint,0,sizeof(rankPoint));
 	memset(&m_goalPoint,0,sizeof(rankPoint));
@@ -22,24 +23,27 @@ m_doneBuilding(false)
 	
 	m_goalDistance = start.distance(end);
 	
-	for(int i=0;i<m_ghostObjects.size();i++)
+	m_colorPath.m_floats[0] = 0.4;
+	m_colorPath.m_floats[1] = 0.9;
+	m_colorPath.m_floats[2] = 0.93;
+	m_colorPath.m_floats[3] = 0.45;
+	
+	for(int i=0; i < m_CS->m_ghostObjects.size(); i++)
 	{
 		// check if goal point is inside of a cspace object
-		if(isPointInsideObject(m_goalPoint.point,m_ghostObjects[i]))
-			m_goalOccluded = m_ghostObjects[i];
+		if(m_CS->isPointInsideObject(m_goalPoint.point,m_CS->m_ghostObjects[i]))
+			m_goalOccluded = m_CS->m_ghostObjects[i];
 	}
 	
 	if(findPathA())
 		qDebug("Mapping Complete");
 	else
 		qDebug("Incomplete map due to looping or local minima");
-	m_doneBuilding = true;
 }
 
 pathPlan::~pathPlan()
 {
 	m_pointPath.clear();
-	m_linkList.clear();
 	contactPoints.clear();
 	hitPoints.clear();
 }
@@ -49,6 +53,7 @@ pathPlan::~pathPlan()
 /////////////
 // what is the difference in finding all the open paths and choosing the one with the lowest angle = miller way
 // and building a path from the initial intersected object an back calculating from the extremes? = my way
+/*
 void pathPlan::constructRoadMap()
 {
 	int i;
@@ -100,7 +105,8 @@ void pathPlan::constructRoadMap()
 		m_view->updateGL();
 		constructRoadMap();
 	}
-}
+}*/
+
 
 /////////////////////////////////////////
 // first road map algorithm
@@ -120,20 +126,15 @@ bool pathPlan::findPathA()
 	}
 	m_linkCount++;
 	
-	// testing 
-	// 	getExtremes(objBlock, m_midPoint, &lMost, &rMost);
-	// 	if(!isRayBlocked(m_midPoint,lMost)) contactPoints << lMost;
-	// 	if(!isRayBlocked(m_midPoint,rMost)) contactPoints << rMost;
-	//contactPoints << lMost << rMost;
-	//contactPoints << getVisablePointsFrom(m_midPoint);
-	//return true;
-	
 	QList<rankPoint>	prospectPoints = getVisablePointsFrom(m_midPoint); 	// get all the visable points from the current location
 
 	prospectPoints = this->prunePointsFrom(prospectPoints);					// remove points that are already in the point path
-	if(prospectPoints.isEmpty()) return false;
-	prospectPoints = this->angleBasedRank(prospectPoints, m_midPoint); 		// compute the ranks based on angle to goal from midPoint
+	
+	prospectPoints = this->progressAngleBasedRank(prospectPoints, m_midPoint);	// compute the ranks based on progress angle from start-goal vector
+	//prospectPoints = this->angleBasedRank(prospectPoints, m_midPoint); 		// compute the ranks based on angle to goal from midPoint
 	prospectPoints = this->quickSortRankLessthan(prospectPoints);			// sort the list with the smallest rank first to the goal
+	
+	if(prospectPoints.isEmpty()) return false;
 	
 	int i=0;
 	while(i < prospectPoints.size())
@@ -169,19 +170,19 @@ void pathPlan::togglePathPoint()
 		QList<rankPoint> list;
 
 	// gather all objects extreme vertices
-		for(i = 0; i < m_ghostObjects.size(); ++i)									// get all points from individual objects
+		for(i = 0; i < m_CS->m_ghostObjects.size(); ++i)									// get all points from individual objects
 		{
-			this->getExtremes(m_ghostObjects[i],here,&leftMost,&rightMost);			// get the far left and right points around the obstacle
-			if(m_ghostObjects[i]->getUserPointer())	// check both extremes to make sure they are not inside of a grouped object
+			this->getExtremes(m_CS->m_ghostObjects[i],here,&leftMost,&rightMost);			// get the far left and right points around the obstacle
+			if(m_CS->m_ghostObjects[i]->getUserPointer())	// check both extremes to make sure they are not inside of a grouped object
 			{
 				bool lState,rState;
 				lState = rState = false;
-				overlapGroup* gp = static_cast<overlapGroup*>(m_ghostObjects[i]->getUserPointer());
+				cSpace::overlapGroup* gp = static_cast<cSpace::overlapGroup*>(m_CS->m_ghostObjects[i]->getUserPointer());
 				for(int j=0;j<gp->list.size();j++)
 				{
-					if(gp->list[j] == m_ghostObjects[i]) continue;				// skip the object the extremes are from
-					if(isPointInsideObject(leftMost.point,gp->list[j])) lState = true;
-					if(isPointInsideObject(rightMost.point,gp->list[j])) rState = true;
+					if(gp->list[j] == m_CS->m_ghostObjects[i]) continue;				// skip the object the extremes are from
+					if(m_CS->isPointInsideObject(leftMost.point,gp->list[j])) lState = true;
+					if(m_CS->isPointInsideObject(rightMost.point,gp->list[j])) rState = true;
 				}
 				if(!lState) list << leftMost;
 				if(!rState) list << rightMost;
@@ -226,18 +227,18 @@ btCollisionObject* pathPlan::isRayBlocked(rankPoint from,rankPoint to, btVector3
 {
 	QList<rankPoint> hitList;
 	
-	for(int i=0;i<m_ghostObjects.size();i++){
+	for(int i=0;i<m_CS->m_ghostObjects.size();i++){
 		int k;
 		rankPoint rp;
-		rp.object = m_ghostObjects[i];
+		rp.object = m_CS->m_ghostObjects[i];
 		
 		if(rp.object == to.object && rp.object == from.object) continue; // checking the edge of an object should be ignored
 		
-		QList<btVector3> shapePoints = this->getTopShapePoints(rp.object);
+		QList<btVector3> shapePoints = m_CS->getTopShapePoints(rp.object);
 		for(int j=0;j<shapePoints.size();j++){
 			if(j == shapePoints.size()-1) k=0;
 			else k=j+1;
-			if(this->segmentIntersection(from.point,to.point,shapePoints[j],shapePoints[k],&rp.point) > 0.){
+			if(m_CS->segmentIntersection(from.point,to.point,shapePoints[j],shapePoints[k],&rp.point) > 0.){
 				rp.rank = from.point.distance2(rp.point);
 				hitList << rp;
 			}
@@ -271,7 +272,7 @@ btCollisionObject* pathPlan::isRayBlocked(rankPoint from,rankPoint to, btVector3
 		if(point) *point = rayCBto.m_hitPointWorld;
 		if(rayCBto.m_collisionObject == to.object) return NULL;	// do not count blocking object that are at either end of the ray 
 		if(rayCBto.m_collisionObject == from.object) return NULL;
-		overlapGroup* gp = static_cast<overlapGroup*>(rayCBto.m_collisionObject->getUserPointer());	// check if it has intersected a grouped object
+		cSpace::overlapGroup* gp = static_cast<cSpace::overlapGroup*>(rayCBto.m_collisionObject->getUserPointer());	// check if it has intersected a grouped object
 		if(gp){	
 			for(int i=0; i<gp->list.size(); i++){
 				if(gp->list[i] == from.object) return NULL;	// if the blocking object is in the group ignore it
@@ -292,7 +293,7 @@ void pathPlan::getExtremes(btCollisionObject* obj, rankPoint pivotPoint, rankPoi
 	QList<btVector3> ptList;
 	
 	btTransform objTrans = obj->getWorldTransform();	// the transform of the object being intersected
-	ptList = getTopShapePoints(obj);					// get all the top points of the obj
+	ptList = m_CS->getTopShapePoints(obj);					// get all the top points of the obj
 
 	for(int i = 0; i < ptList.size(); ++i)	// cycle through all top points
 	{
@@ -337,20 +338,20 @@ QList<rankPoint> pathPlan::getVisablePointsFrom(rankPoint here)
 	QList<rankPoint> list;
 	
 // gather all objects extreme vertices
-	for(i = 0; i < m_ghostObjects.size(); ++i)									// get all points from individual objects
+	for(i = 0; i < m_CS->m_ghostObjects.size(); ++i)									// get all points from individual objects
 	{
-		this->getExtremes(m_ghostObjects[i],here,&leftMost,&rightMost);			// get the far left and right points around the obstacle
+		this->getExtremes(m_CS->m_ghostObjects[i],here,&leftMost,&rightMost);			// get the far left and right points around the obstacle
 		
-		if(m_ghostObjects[i]->getUserPointer())	// check both extremes to make sure they are not inside of a grouped object
+		if(m_CS->m_ghostObjects[i]->getUserPointer())	// check both extremes to make sure they are not inside of a grouped object
 		{
 			bool lState,rState;
 			lState = rState = false;
-			overlapGroup* gp = static_cast<overlapGroup*>(m_ghostObjects[i]->getUserPointer());
+			cSpace::overlapGroup* gp = static_cast<cSpace::overlapGroup*>(m_CS->m_ghostObjects[i]->getUserPointer());
 			for(int j=0;j<gp->list.size();j++)
 			{
-				if(gp->list[j] == m_ghostObjects[i]) continue;				// skip the object the extremes are from
-				if(isPointInsideObject(leftMost.point,gp->list[j])) lState = true;
-				if(isPointInsideObject(rightMost.point,gp->list[j])) rState = true;
+				if(gp->list[j] == m_CS->m_ghostObjects[i]) continue;				// skip the object the extremes are from
+				if(m_CS->isPointInsideObject(leftMost.point,gp->list[j])) lState = true;
+				if(m_CS->isPointInsideObject(rightMost.point,gp->list[j])) rState = true;
 			}
 			if(!lState) list << leftMost;
 			if(!rState) list << rightMost;
@@ -425,6 +426,19 @@ QList<rankPoint> pathPlan::angleBasedRank(QList<rankPoint> list, rankPoint pivot
 	return list;
 }
 
+// computes the rank of each point based on the angle between the goal and the start point
+QList<rankPoint> pathPlan::progressAngleBasedRank(QList<rankPoint> list, rankPoint pivotPoint)
+{
+	// ranking can not use just the cross product or length of cross product, not enough info
+	// have to use the angle between the goal vector and the extreme point
+	for(int i = 0; i < list.size(); ++i)
+	{
+		list[i].rank = (m_goalPoint.point - m_startPoint.point).angle(list[i].point - pivotPoint.point);
+		// remove any points where the angle from the midpoint is greater than 90deg to the start-goal vector
+	}
+	return list;
+}
+
 // computes the rank of each point based on the distance from the pivot point
 QList<rankPoint> pathPlan::rangeBasedRank(QList<rankPoint> list, rankPoint pivotPoint)
 {
@@ -452,6 +466,7 @@ QList<rankPoint> pathPlan::quickSortRankLessthan(QList<rankPoint> list)
 }
 
 // returns true if the link is NEW and not in the global link list yet
+/*
 bool pathPlan::isNewPoint(rankPoint pt)
 {
 	rankPoint a,b;
@@ -479,7 +494,8 @@ bool pathPlan::isNewLink(rankLink link)
 			b.object == link.first.object && b.corner == link.first.corner) return false;
 	}
 	return true;
-}
+}*/
+
 
 /////////////////////////////////////////
 // Draw the path's
@@ -488,46 +504,26 @@ void pathPlan::renderGLObject()
 {
 	int i;
 
-	cSpace::renderGLObject();	// render the C-Space too
-	
 	glLineWidth(1.);
-	
-// // draws the roadmap construction
-// 	if(m_doneBuilding) glColor3f(1,0.6,0);
-// 	else glColor3f(0.1,0.6,0.2);
-// 		//float color;
-// 	glBegin(GL_LINES);
-// 	glNormal3f(0,0,1);
-// 	for(i = 0; i < m_linkList.size(); ++i)
-// 	{
-// 			//color = (float)i/(float)m_linkList.size();
-// 			//glColor3f(0,1-color,0);
-// 		btVector3 a = m_linkList[i].first.point;
-// 		btVector3 b = m_linkList[i].second.point;
-// 		glVertex3f(a.x(),a.y(),a.z());
-// 		glVertex3f(b.x(),b.y(),b.z());
-// 	}
-// 	glEnd();
-	
-	// draws test points and lines	
-		glLineWidth(2.0);
-		glBegin(GL_LINES);
-		glNormal3f(1,1,1);
-		glColor3f(0,1,0);
-		for(i = 1; i < contactPoints.size(); ++i)
-		{
-			glVertex3fv(contactPoints[0].point.m_floats);
-			glVertex3fv(contactPoints[i].point.m_floats);
-		}
-		glEnd();
+// draws test points and lines	
+	glLineWidth(2.0);
+	glBegin(GL_LINES);
+	glNormal3f(1,1,1);
+	glColor3f(0,1,0);
+	for(i = 1; i < contactPoints.size(); ++i)
+	{
+		glVertex3fv(contactPoints[0].point.m_floats);
+		glVertex3fv(contactPoints[i].point.m_floats);
+	}
+	glEnd();
 
-		glPointSize(3.0);
-		glColor3f(1,1,1);
-		glBegin(GL_POINTS);
-		for(i=0;i<hitPoints.size();i++)
-			glVertex3fv(hitPoints[i].m_floats);
-		glEnd();
-		
+	glPointSize(3.0);
+	glColor3f(1,1,1);
+	glBegin(GL_POINTS);
+	for(i=0;i<hitPoints.size();i++)
+		glVertex3fv(hitPoints[i].m_floats);
+	glEnd();
+
 // draws the crow flies line
 	glBegin(GL_LINES);
 	glLineWidth(1.0);
@@ -547,7 +543,7 @@ void pathPlan::renderGLObject()
 	for(i = 0; i < m_pointPath.size(); ++i)
 	{	
 		btVector3 t = m_pointPath[i].point;
-		glColor4f(0.4,0.9,0.93,0.45);
+		glColor4fv(m_colorPath.m_floats);
 		glVertex3f(t.x(),t.y(),t.z());
 		glColor4f(1,1,1,0.0);
 		glVertex3f(t.x(),t.y(),t.z()+1.5);
@@ -558,7 +554,7 @@ void pathPlan::renderGLObject()
 
 // draws the blue line on the base of the path
 	glBegin(GL_LINE_STRIP);
-	glColor3f(0.4,0.9,0.93);
+	glColor3fv(m_colorPath.m_floats);
 	glNormal3f(0,0,1);
 	for(i = 0; i < m_pointPath.size(); ++i)
 	{

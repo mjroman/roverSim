@@ -3,6 +3,7 @@
 #include "terrain.h"
 #include "sr2rover.h"
 #include "autoCode.h"
+#include "cSpace.h"
 #include "pathPlan.h"
 #include "simGLView.h"
 #include "utility/rngs.h"
@@ -16,7 +17,7 @@
 #include <LinearMath/btAlignedObjectArray.h>
 
 simControl::simControl(simGLView* vw)
-	:	ground(NULL),sky(NULL),sr2(NULL),autoNav(NULL),path(NULL),glView(vw),
+	:	ground(NULL),sky(NULL),sr2(NULL),autoNav(NULL),configSpace(NULL),path(NULL),glView(vw),
 m_obstType(0),
 m_obstCount(50),
 m_dropHeight(5),
@@ -58,6 +59,7 @@ simControl::~simControl()
 	simTimer->stop();
 	delete simTimer;
 	if(path) delete path;
+	if(configSpace) delete configSpace;
 	if(autoNav) delete autoNav;
 	if(sr2) delete sr2;
 	if(sky) delete sky;
@@ -105,6 +107,9 @@ void simControl::openNewGround(QString filename)
 	this->removeRover();
 	if(path) delete path;
 	path = 0;
+	if(configSpace) delete configSpace;
+	configSpace = 0;
+	
 	ground->openTerrain(filename);
 	
 	// generate new obstacles
@@ -143,9 +148,7 @@ void simControl::generateObstacles()
     int i;
 	float dpht = m_dropHeight;
 	
-	if(path) delete path;
-	path = 0;
-    arena->deleteObstacleGroup();
+	this->removeObstacles();
 	
     if(m_obstCount == 0) return;
 	//qDebug("generating new obstacles %d",m_obstCount);
@@ -203,6 +206,9 @@ void simControl::removeObstacles()
 {
 	if(path) delete path;
 	path = 0;
+	if(configSpace) delete configSpace;
+	configSpace = 0;
+	
 	arena->deleteObstacleGroup();
 }
 
@@ -214,7 +220,7 @@ void simControl::pickObstacle(btVector3 camPos,btVector3 mousePos)
 	// test the ray and the object
 	btCollisionWorld::ClosestRayResultCallback rayCBto(camPos,mousePos);
 	arena->getDynamicsWorld()->rayTest(camPos,mousePos,rayCBto);
-	if(rayCBto.hasHit() && arena->isObstacle(rayCBto.m_collisionObject))
+	if(rayCBto.hasHit() && arena->isObstacle(rayCBto.m_collisionObject)) // only pick up obstacle objects
 	{
 			// turn on mouse tracking for glView
 			glView->setMouseTracking(true);
@@ -243,7 +249,7 @@ void simControl::pickObstacle(btVector3 camPos,btVector3 mousePos)
 void simControl::moveObstacle(btVector3 camPos,btVector3 mousePos)
 {
 	// when the mouse is moved, move the obstacle
-	btCollisionWorld::ClosestRayResultCallback rayCBto(camPos,mousePos);
+	notMeRayResultCallback rayCBto(camPos,mousePos,m_pickingObject.rigidbody);
 	arena->getDynamicsWorld()->rayTest(camPos,mousePos,rayCBto);
 	if(rayCBto.hasHit()){
 		// use the world hitpoint to position the object
@@ -312,20 +318,26 @@ void simControl::orientObstacle()
 void simControl::generatePath()
 {
 	btVector3 start,end;
+	if(configSpace) delete configSpace;
 	if(path) delete path;
+	
 	if(sr2 && waypointList.size() > 0){
 		start = sr2->position;
-		//start.setZ(ground->terrainHeightAt(sr2->position)); // can not set to ground level, path will go under obstacles
+		start.setZ(ground->terrainHeightAt(sr2->position));
+		start += btVector3(0,0,0.01);
 		end = autoNav->getCurrentWaypoint().position;
-		end += btVector3(0,0,0.2);
-		path = new pathPlan(start, end, glView);
+		end += btVector3(0,0,0.01);
+		configSpace = new cSpace(start,10,glView);
+		path = new pathPlan(start, end, configSpace, glView);
+		//path->setColor(btVector3(1,0,0));
 	}
 	else{
 		start.setValue(1,1,0);
 		end.setValue(40,40,0);
 		start.setZ(ground->terrainHeightAt(start));
 		end.setZ(ground->terrainHeightAt(end));
-		path = new pathPlan(start, end, glView);
+		configSpace = new cSpace(start,0,glView);
+		path = new pathPlan(start, end, configSpace, glView);
 	}
 }
 
