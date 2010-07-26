@@ -50,7 +50,9 @@ public:
 	QList<btVector3> getVerticalOutlinePoints(btCollisionObject* obj);
 	
 	void setCenterPoint(btVector3 center) { m_centerPoint = center; }
-	void setDetectRange(float range) { m_detectRange = range; m_detectRangeSq = range*range;}
+	btVector3 getCenterPoint() { return m_centerPoint; }
+	void setDetectRange(float range) { m_detectRange = range; m_detectRangeSq = range*range; }
+	float getDetectRange() { return m_detectRange; }
 	void deleteGhostGroup();
 	void generateCSpace();
 	void groupOverlapCSpace();

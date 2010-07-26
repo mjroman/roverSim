@@ -15,6 +15,7 @@ void cone(float rad, float length, int res);
 void conePoint(float rad, float length, int res);
 void sphere(float rad, int lats, int longs);
 void wireSymmetricHull(Vertex* pts,int num);
+void radarFan(float* center, float rad);
 
 #ifdef __cplusplus
 }

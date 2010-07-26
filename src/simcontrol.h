@@ -5,6 +5,7 @@
 #include "physicsWorld.h"
 #include "utility/structures.h"
 #include <BulletCollision/CollisionDispatch/btCollisionWorld.h>
+#include <QTextStream>
 
 class terrain;
 class SR2rover;
@@ -31,6 +32,8 @@ class simControl : public QObject
 		simGLView		*glView;
 		QList<WayPoint>	waypointList;
 		pickValue		m_pickingObject;
+		
+		bool fileParser(QTextStream* stream, QString word, void* value);
 		
 	public:
 		// obstacle members
@@ -76,6 +79,8 @@ class simControl : public QObject
 	public slots:
 	// obstacle control functions
 		void generateObstacles();
+		void saveObstacles(QString filename);
+		void loadObstacles(QString filename);
 		void removeObstacles();
 		void pickObstacle(btVector3 camPos,btVector3 mousePos);
 		void moveObstacle(btVector3 camPos,btVector3 mousePos);

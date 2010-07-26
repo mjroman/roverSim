@@ -25,7 +25,8 @@ m_terrainTriangles(0),
 m_terrainMaxHeight(3),
 m_terrainMinHeight(0),
 m_pixelx(100),
-m_pixely(100)
+m_pixely(100),
+m_terrainModified(false)
 {
     arena = physicsWorld::instance(); // get the physics world object
 
@@ -245,10 +246,11 @@ void terrain::terrainRaise(btVector3 dir, float amount, float area)
 			m_terrainColors[i].z = 0.6 * a / m_terrainMaxHeight;
 			if(a > m_terrainMaxHeight) m_terrainMaxHeight = a;
 		}
-        }
-        buildNormals();
+	}
+    buildNormals();
 
-        this->terrainRefresh();
+    this->terrainRefresh();
+	m_terrainModified = true;
 }
 
 void terrain::terrainLower(btVector3 dir, float amount, float area)
@@ -285,7 +287,8 @@ void terrain::terrainLower(btVector3 dir, float amount, float area)
 	}
 	buildNormals();
 
-        this->terrainRefresh();
+    this->terrainRefresh();
+	m_terrainModified = true;
 }
 
 float terrain::terrainHeightAt(btVector3 pt)
@@ -452,12 +455,14 @@ void terrain::openTerrain(QString filename)
 	m_terrainFilename = filename;
 	m_terrainScale.setValue(1,1,1);
 	
-	if(filename != NULL && terrainLoadFile()) 
+	if(filename != NULL && filename != "NULL" && terrainLoadFile()) 
 		this->generateGround();  // if the image data is good create terrain
     else {
+		m_terrainFilename = "NULL";
         this->terrainCreateMesh(NULL);
         this->generateGround();
     }
+	m_terrainModified = false;
 }
 
 void terrain::saveTerrain(QString filename)
@@ -476,4 +481,5 @@ void terrain::saveTerrain(QString filename)
     modTerrain.setText("scaley",QString::number(m_terrainScale.y()));
     modTerrain.setText("scalez",QString::number(m_terrainScale.z()));
     modTerrain.save(m_terrainFilename,"png");
+	m_terrainModified = false;
 }

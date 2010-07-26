@@ -139,6 +139,7 @@ tiltAngle(-15)
 	m_laserList << laser;
 	
 	//mudParticle = new GLParticle(1,1,1,glView);
+	m_view->printText("New SR2 rover");
 }
 
 SR2rover::~SR2rover()
@@ -160,6 +161,7 @@ SR2rover::~SR2rover()
 	delete [] m_PRheights;
 	m_laserList.clear();
 	//delete mudParticle;
+	m_view->printText("SR2 deleted");
 }
 
 void SR2rover::constructRover(const btVector3& positionOffset)

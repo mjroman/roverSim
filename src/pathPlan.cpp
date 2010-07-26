@@ -1,6 +1,7 @@
 #include "pathPlan.h"
 #include "cSpace.h"
 #include "utility/definitions.h"
+#include "utility/glshapes.h"
 #include <BulletCollision/CollisionDispatch/btCollisionObject.h>
 
 pathPlan::pathPlan(btVector3 start, btVector3 end, cSpace* space, simGLView* glView)
@@ -36,9 +37,9 @@ m_linkViewIndex(0)
 	}
 	
 	if(findPathA())
-		qDebug("Mapping Complete");
+		m_view->printText("Mapping Complete");
 	else
-		qDebug("Incomplete map due to looping or local minima");
+		m_view->printText("Incomplete map due to looping or local minima");
 }
 
 pathPlan::~pathPlan()
@@ -561,4 +562,10 @@ void pathPlan::renderGLObject()
 		glVertex3fv(m_pointPath[i].point.m_floats);
 	}
 	glEnd();
+	
+// draws the range fan	
+	if(m_CS->getDetectRange() >= 0){
+		btVector3 cc = m_CS->getCenterPoint() + btVector3(0,0,0.1);
+		radarFan(cc.m_floats,m_CS->getDetectRange());
+	}
 }

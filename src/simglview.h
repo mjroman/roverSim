@@ -48,6 +48,7 @@ public:
     ~simGLView();
 
     QSize sizeHint() const;
+	void printText(QString st);
 	void stopDrawing();
 	void startDrawing();
     camera* getCamera() { return m_eye; }
@@ -61,6 +62,7 @@ public:
 	void toggleFog();
 	btVector3 mouseRayTo(QPoint mousePoint);
 	void setPickObject(pickValue* pk){ m_pickObject = pk; }
+	
 signals:
     void refreshView();
 	void pickingVector(btVector3,btVector3);
@@ -68,6 +70,7 @@ signals:
 	void dropPicked();
 	void spinPicked(float);
 	void loftPicked(float);
+	void outputText(QString);
 };
 
 #endif // SIMGLVIEW_H

@@ -50,6 +50,11 @@ QSize simGLView::sizeHint() const
     return QSize(800, 400);
 }
 
+void simGLView::printText(QString st)
+{
+	emit outputText(st);
+}
+
 void simGLView::stopDrawing()
 {
 	m_timer->stop();

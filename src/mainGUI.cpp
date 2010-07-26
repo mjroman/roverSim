@@ -3,6 +3,7 @@
 #include "terrain.h"
 #include "sr2rover.h"
 #include "autoCode.h"
+#include "utility/definitions.h"
 
 MainGUI::MainGUI(QWidget *parent)
 :
@@ -48,6 +49,8 @@ m_wTool(this)
 	menuRoverView->setEnabled(false);
 // obstacles menu
     connect(actionRandomize_Obstacles, SIGNAL(triggered()), SController, SLOT(generateObstacles()));
+	connect(actionSave_ObstacleLayout, SIGNAL(triggered()), this, SLOT(saveObstacleLayout()));
+	connect(actionLoad_ObstacleLayout, SIGNAL(triggered()), this, SLOT(loadObstacleLayout()));
     connect(actionRemove_Obstacles, SIGNAL(triggered()), SController, SLOT(removeObstacles()));
     connect(actionObstacle_Parameters, SIGNAL(triggered()), this, SLOT(showObstacleTool()));
 // terrain menu
@@ -69,6 +72,8 @@ m_wTool(this)
 	connect(&m_wTool, SIGNAL(editedWP(int)), SController, SLOT(editWaypoint(int)));
 	connect(&m_wTool, SIGNAL(resetWP()), SController, SLOT(resetWaypointStates()));
 
+	connect(glView, SIGNAL(outputText(QString)), textConsole, SLOT(append(QString)));
+	
 // server connections
 	//connect(&m_tcpServer, SIGNAL(newConnection()),this, SLOT(serverAcceptConnect()));
 	m_tcpSocket = NULL;
@@ -164,6 +169,8 @@ void MainGUI::openGround()
     QString filename = QFileDialog::getOpenFileName(this,tr("Open Terrain"), tr("/Users"),tr("Image File (*.png)"));
 	if(filename == NULL) return; // if cancel is pressed dont do anything
 	SController->openNewGround(filename);
+	// generate new obstacles
+	SController->generateObstacles();
 	labelTerrainFilename->setText(SController->getGround()->terrainFilename());
 	m_tTool.setScale(SController->getGround()->terrainScale());
 	menuRoverView->setEnabled(false);
@@ -176,10 +183,13 @@ void MainGUI::saveGround()
 
     if(!filename.endsWith(".png")) filename.append(".png");
 	SController->getGround()->saveTerrain(filename);
+	labelTerrainFilename->setText(SController->getGround()->terrainFilename());
 }
 void MainGUI::flattenGround()
 {
 	SController->flattenGround();
+	// generate new obstacles
+	SController->generateObstacles();
 	menuRoverView->setEnabled(false);
 }
 void MainGUI::rescaleGround()
@@ -203,6 +213,21 @@ void MainGUI::generateObstacles()
 	SController->m_maxObstYaw = m_oTool.maxOYaw();
 	SController->m_obstDensity = m_oTool.density();
 	SController->generateObstacles();
+}
+void MainGUI::saveObstacleLayout()
+{
+	QString filename = QFileDialog::getSaveFileName(this,"Save Obstacle Layout", "/Users");	// open a Save File dialog and select location and filename
+	if(filename == NULL) return; 															// if cancel is pressed dont do anything
+
+	if(!filename.endsWith(".txt")) filename.append(".txt");
+	SController->saveObstacles(filename);
+}
+void MainGUI::loadObstacleLayout()
+{
+	QString filename = QFileDialog::getOpenFileName(this,"Open Obstacle Layout", "/Users");
+	if(filename == NULL) return;
+	
+	SController->loadObstacles(filename);
 }
 void MainGUI::removeAllObstacles()
 {
@@ -371,8 +396,8 @@ void MainGUI::keyPressEvent(QKeyEvent *event)
                 if(event->modifiers() & Qt::ShiftModifier) sr2->panAngle -= 0.5;
                 else{
                     //m_oldSpeed = (sr2->leftSpeed>sr2->rightSpeed)? sr2->leftSpeed:sr2->rightSpeed;
-                    sr2->incRightSpeed(-0.1);
-                    sr2->incLeftSpeed(0.1);
+                    sr2->incRightSpeed(-REMOTETURNSENSITIVITY);
+                    sr2->incLeftSpeed(REMOTETURNSENSITIVITY);
                 }
                 break;
             }
@@ -381,8 +406,8 @@ void MainGUI::keyPressEvent(QKeyEvent *event)
                 if(event->modifiers() & Qt::ShiftModifier) sr2->panAngle += 0.5;
                 else{
                     //m_oldSpeed = (sr2->leftSpeed>sr2->rightSpeed)? sr2->leftSpeed:sr2->rightSpeed;
-                    sr2->incRightSpeed(0.1);
-                    sr2->incLeftSpeed(-0.1);
+                    sr2->incRightSpeed(REMOTETURNSENSITIVITY);
+                    sr2->incLeftSpeed(-REMOTETURNSENSITIVITY);
                 }
                 break;
             }
@@ -462,6 +487,10 @@ void MainGUI::updateGUI()
     labelCameraCrosshair->setText(QString("(%1 ,%2)").arg(glView->getCamera()->cameraDirection().x(),0,'f',1)
                                   .arg(glView->getCamera()->cameraDirection().y(),0,'f',1));
 }
+
+/////////////////////////////////////////
+// Save the World
+/////////////
 
 /////////////////////////////////////////
 // network functions

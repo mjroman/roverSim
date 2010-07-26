@@ -25,6 +25,7 @@ private:
     btVector3       m_worldSize;
     int             m_pixelx,m_pixely;
     QString         m_terrainFilename;
+	bool			m_terrainModified;
 
     btRigidBody             *m_planeBody;
     btRigidBody             *m_meshBody;
@@ -56,6 +57,7 @@ public:
     void terrainRescale(btVector3 scale);
     void terrainRaise(btVector3 dir, float amount, float area);
     void terrainLower(btVector3 dir, float amount, float area);
+	bool terrainBeenModified() { return m_terrainModified; }
     float terrainHeightAt(btVector3 pt);
     void renderGLObject();
 	void terrainFlatten();

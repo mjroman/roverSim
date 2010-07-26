@@ -118,6 +118,7 @@ public:
     btRigidBody* createRigidBody(float mass, btTransform trans, btCollisionShape* cShape);
     btRigidBody* placeShapeAt(btCollisionShape* bodyShape, btVector3 pos, float yaw, float massval);
     void placeObstacleShapeAt(btVector3 pos,float yaw, float massval);
+	void placeObstacleShapeAt(btTransform trans,float massval);
 };
 
 #endif // PHYSICSWORLD_H

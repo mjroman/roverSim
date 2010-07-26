@@ -52,20 +52,26 @@ public:
     void keyReleaseEvent(QKeyEvent *event);
 
 public slots:
-	void screenSize();
 	void showSimTool();
 	void showTerrainTool();
 	void showObstacleTool();
+	
 	void stepTimevals();
 	void simGravity();
+	
 	void openGround();
 	void saveGround();
 	void rescaleGround();
 	void flattenGround();
+	
 	void generateObstacles();
+	void saveObstacleLayout();
+	void loadObstacleLayout();
 	void removeAllObstacles();
+	
 	void newRover();
 	void waypointSetup();
+	
 	void cameraFreeView();
 	void cameraRoverCenter();
 	void cameraRoverFollow();
@@ -76,8 +82,9 @@ public slots:
 	void serverDisconnect();
 	void serverUpdate();
 
+	void screenSize();
     void closeEvent(QCloseEvent *event);
-    void updateGUI();
+	void updateGUI();
 };
 
 #endif // MainGUI_H

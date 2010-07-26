@@ -328,3 +328,40 @@ void wireSymmetricHull(Vertex* pts,int num)
 	}
 	glEnd();
 }
+
+void radarFan(float* center, float rad)
+{
+	int i;
+	static float j=1;
+	static float fade=0.1;
+
+	glDisable(GL_CULL_FACE);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glPushMatrix();
+	glTranslatef(center[0],center[1],center[2]);
+	glBegin(GL_TRIANGLE_FAN);
+	glNormal3f(0,0,1);
+	glColor4f(1,1,1,0.0);
+	glVertex3f(0,0,0);
+	glColor4f(0,1,0,fade);
+	for(i=0;i<=360;i+=5){
+				// if(i==j) glColor4f(1,1,0,0.3);
+				// else glColor4f(1,0,0,0.1);
+				//glVertex3f(m_detectRange*cos(DEGTORAD(i)),m_detectRange*sin(DEGTORAD(i)),0);
+		glVertex3f(j*cos(DEGTORAD(i)),j*sin(DEGTORAD(i)),0);
+	}
+	glEnd();
+	glPopMatrix();
+	glDisable(GL_BLEND);
+	glEnable(GL_CULL_FACE);
+
+	if(j>=rad) {
+		if(fade > 0) fade-=0.01;
+		else{
+			j=1;
+			fade=0.1;
+		}
+	}
+	else j += 1;
+}

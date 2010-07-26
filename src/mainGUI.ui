@@ -767,6 +767,8 @@
      <string>Obstacles</string>
     </property>
     <addaction name="actionRandomize_Obstacles"/>
+    <addaction name="actionLoad_ObstacleLayout"/>
+    <addaction name="actionSave_ObstacleLayout"/>
     <addaction name="actionRemove_Obstacles"/>
     <addaction name="actionObstacle_Parameters"/>
    </widget>
@@ -895,6 +897,22 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+F</string>
+   </property>
+  </action>
+  <action name="actionSave_ObstacleLayout">
+   <property name="text">
+    <string>Save Layout</string>
+   </property>
+   <property name="toolTip">
+    <string>Save Obstacle Layout</string>
+   </property>
+  </action>
+  <action name="actionLoad_ObstacleLayout">
+   <property name="text">
+    <string>Load Layout</string>
+   </property>
+   <property name="toolTip">
+    <string>Load Obstacle Layout</string>
    </property>
   </action>
  </widget>

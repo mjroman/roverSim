@@ -988,24 +988,4 @@ void cSpace::renderGLObject()
 	}
 	glEnable(GL_LIGHTING);
 
-// draws the range fan	
-	if(m_detectRange >= 0){
-		glDisable(GL_CULL_FACE);
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		glPushMatrix();
-		glTranslatef(m_centerPoint.x(),m_centerPoint.y(),m_centerPoint.z());
-		glBegin(GL_TRIANGLE_FAN);
-		glNormal3f(0,0,1);
-		glColor4f(1,1,1,0.0);
-		glVertex3f(0,0,0);
-		glColor4f(1,0,0,0.1);
-		for(i=0;i<=360;i+=5){
-			glVertex3f(m_detectRange*cos(DEGTORAD(i)),m_detectRange*sin(DEGTORAD(i)),0);
-		}
-		glEnd();
-		glPopMatrix();
-		glDisable(GL_BLEND);
-		glEnable(GL_CULL_FACE);
-	}
 }

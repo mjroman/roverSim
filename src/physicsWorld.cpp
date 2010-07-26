@@ -275,3 +275,10 @@ void physicsWorld::placeObstacleShapeAt(btVector3 pos,float yaw, float massval)
 	body->setDamping(0.5,0.75);
     m_obstacleObjects.push_back(body);
 }
+void physicsWorld::placeObstacleShapeAt(btTransform trans,float massval)
+{
+	// get the last collision shape that has been added to the shape array
+	btRigidBody* body = createRigidBody(massval, trans, m_obstacleShapes[m_obstacleShapes.size()-1]);
+	body->setDamping(0.5,0.75);
+	m_obstacleObjects.push_back(body);
+}
