@@ -169,9 +169,11 @@ void MainGUI::openGround()
     QString filename = QFileDialog::getOpenFileName(this,tr("Open Terrain"), tr("/Users"),tr("Image File (*.png)"));
 	if(filename == NULL) return; // if cancel is pressed dont do anything
 	SController->openNewGround(filename);
+	
 	// generate new obstacles
 	SController->generateObstacles();
-	labelTerrainFilename->setText(SController->getGround()->terrainFilename());
+	labelTerrainFilename->setText(SController->getGround()->terrainShortname());
+	labelTerrainFilename->setStatusTip(SController->getGround()->terrainFilename());
 	m_tTool.setScale(SController->getGround()->terrainScale());
 	menuRoverView->setEnabled(false);
 }
@@ -183,13 +185,14 @@ void MainGUI::saveGround()
 
     if(!filename.endsWith(".png")) filename.append(".png");
 	SController->getGround()->saveTerrain(filename);
-	labelTerrainFilename->setText(SController->getGround()->terrainFilename());
+	labelTerrainFilename->setText(SController->getGround()->terrainShortname());
 }
 void MainGUI::flattenGround()
 {
 	SController->flattenGround();
 	// generate new obstacles
 	SController->generateObstacles();
+	labelTerrainFilename->setText(SController->getGround()->terrainShortname());
 	menuRoverView->setEnabled(false);
 }
 void MainGUI::rescaleGround()
@@ -219,15 +222,16 @@ void MainGUI::saveObstacleLayout()
 	QString filename = QFileDialog::getSaveFileName(this,"Save Obstacle Layout", "/Users");	// open a Save File dialog and select location and filename
 	if(filename == NULL) return; 															// if cancel is pressed dont do anything
 
-	if(!filename.endsWith(".txt")) filename.append(".txt");
-	SController->saveObstacles(filename);
+	if(!filename.endsWith(".xml")) filename.append(".xml");
+	SController->saveObstaclesXML(filename);
 }
 void MainGUI::loadObstacleLayout()
 {
 	QString filename = QFileDialog::getOpenFileName(this,"Open Obstacle Layout", "/Users");
 	if(filename == NULL) return;
 	
-	SController->loadObstacles(filename);
+	SController->loadObstaclesXML(filename);
+	labelTerrainFilename->setText(SController->getGround()->terrainShortname());		// update the terrain name incase it changes
 }
 void MainGUI::removeAllObstacles()
 {

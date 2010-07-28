@@ -6,6 +6,7 @@ DESTDIR = build
 # QT-= gui to build project without gui library
 QT += opengl # add network, xml, xmlpatterns for more qt modules
 QT += network
+QT += xml
 
 TARGET = QtRoverSimulator
 CONFIG(debug, debug|release){

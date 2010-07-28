@@ -25,6 +25,7 @@ private:
     btVector3       m_worldSize;
     int             m_pixelx,m_pixely;
     QString         m_terrainFilename;
+	QString			m_terrainShortname;
 	bool			m_terrainModified;
 
     btRigidBody             *m_planeBody;
@@ -51,6 +52,7 @@ public:
 
     btVector3 terrainScale() { return m_terrainScale; }
     QString terrainFilename() { return m_terrainFilename; }
+	QString terrainShortname() { return m_terrainShortname; }
     float maxHeight() { return m_terrainMaxHeight; }
     float minHeight() { return m_terrainMinHeight; }
 

@@ -113,7 +113,8 @@ void simControl::openNewGround(QString filename)
 	configSpace = 0;
 	
 	ground->openTerrain(filename);
-	glView->printText("Terrain Loaded: " + filename);
+	QFileInfo terrainInfo(filename);
+	glView->printText("Terrain Loaded: " + terrainInfo.baseName());
 	// restore waypoint Z height
 	this->setWaypointGroundHeight();
 }
@@ -200,6 +201,196 @@ void simControl::generateObstacles()
     }
 }
 
+void simControl::removeObstacles()
+{
+	if(path) delete path;
+	path = 0;
+	if(configSpace) delete configSpace;
+	configSpace = 0;
+	
+	arena->deleteObstacleGroup();
+}
+
+void simControl::saveObstaclesXML(QString filename)
+{
+	QFile obstFile(filename); 
+	if (!obstFile.open(QIODevice::WriteOnly))												// open file
+		return;
+	
+	QFileInfo obstInfo(filename);
+	arena->idle();																			// pause the simulation so nothing moves while saving
+	btAlignedObjectArray<btCollisionObject*>* obstArray = arena->getObstacleObjectArray();	// get the obstacle array
+	
+	QDomDocument xmlDoc( "roverSimDoc" );
+	QDomElement root = xmlDoc.createElement( "obstacleLayout" );							// create a root element
+	xmlDoc.appendChild(root);
+	QString docInfo = "This XML document represents an obstacle layout for the RoverSim application";
+	root.appendChild(xmlDoc.createComment(docInfo));
+	
+	root.setAttribute( "terrain", ground->terrainFilename());								// add the terrain filename and obstacle quantity as attributes
+	root.setAttribute( "quantity", QString::number(obstArray->size()));
+	
+	for(int i=0; i<obstArray->size(); i++)
+	{
+		btRigidBody* body = btRigidBody::upcast(obstArray->at(i));
+		root.appendChild(rigidBodyToNode(xmlDoc,body));										// add each rigid body obstacle as children
+	}
+	
+	QTextStream stream(&obstFile);
+	stream << xmlDoc.toString();															// write the XML text to the file
+	
+	obstFile.close();																		// flush data and close file
+	glView->printText("Obstacle layout saved: " + obstInfo.baseName());
+	arena->toggleIdle();																	// resume the simulation
+}
+
+QDomElement simControl::vectorToNode(QDomDocument &doc, const btVector3 v)
+{
+	QDomElement vector = doc.createElement( "vector" );
+	
+	vector.setAttribute( "X", QString::number(v.x(),'g',12));
+	vector.setAttribute( "Y", QString::number(v.y(),'g',12));
+	vector.setAttribute( "Z", QString::number(v.z(),'g',12));
+	return vector;
+}
+QDomElement simControl::basisToNode(QDomDocument &doc, const btMatrix3x3 mx)
+{
+	QDomElement matrix = doc.createElement( "matrix" );
+	
+	for(int i=0;i<3;i++)
+		matrix.appendChild(vectorToNode(doc, mx.getRow(i)));
+	return matrix;
+}
+QDomElement simControl::transformToNode(QDomDocument &doc, const btTransform t)
+{
+	QDomElement trans = doc.createElement( "transform" );
+	
+	QDomElement origin = doc.createElement( "origin" );
+	origin.appendChild(vectorToNode(doc, t.getOrigin()));
+	trans.appendChild(origin);
+	
+	QDomElement rotate = doc.createElement( "rotation" );
+	rotate.appendChild(basisToNode(doc, t.getBasis()));
+	trans.appendChild(rotate);
+	return trans;
+}
+QDomElement simControl::rigidBodyToNode(QDomDocument &doc, const btRigidBody* body)
+{
+	QDomElement rigidBody = doc.createElement( "rigidBody" );
+	
+	rigidBody.setAttribute( "shape", QString::number(body->getCollisionShape()->getShapeType()));
+	rigidBody.setAttribute( "mass", QString::number(1.0/body->getInvMass(),'g',10));
+	
+	QDomElement size = doc.createElement( "size" );
+	const btBoxShape* boxShape = static_cast<const btBoxShape*>(body->getCollisionShape());
+	size.appendChild(vectorToNode(doc, boxShape->getHalfExtentsWithMargin()));
+	
+	rigidBody.appendChild(size);
+	rigidBody.appendChild(transformToNode(doc, body->getWorldTransform()));
+	return rigidBody;
+}
+
+void simControl::loadObstaclesXML(QString filename)
+{
+	QDomDocument xmlDoc( "roverSimDoc" );
+	QFile obstFile(filename);
+	QFileInfo obstInfo(filename);
+	if(!obstFile.open(QIODevice::ReadOnly))
+		return;
+	
+	if(!xmlDoc.setContent(&obstFile)){			// set the content of the file to an XML document
+		obstFile.close();
+		return;
+	}
+	obstFile.close();
+	
+	QDomElement root = xmlDoc.documentElement();
+	if(root.tagName() != "obstacleLayout"){
+		glView->printText("File is not an obstacle layout: " + obstInfo.baseName());
+	}
+	
+	this->removeObstacles();
+	
+	//int count = root.attribute( "quantity", "0").toInt();
+	QString	tName = root.attribute( "terrain", "NULL");
+	
+	if(tName != ground->terrainFilename()){			// if the terrain filename is different than what is loaded
+		int ret = QMessageBox::question(glView,		// ask the user if it should be loaded
+					"Load New Terrain?",
+		 			"The obstacle layout was built on terrain file: " + tName + "\n\nThis is different from what is currently loaded.\n\n" + 
+					"Do you want to load the new terrain?",
+					QMessageBox::Yes | QMessageBox::No,
+					QMessageBox::Yes);
+												
+		if(ret == QMessageBox::Yes)
+			this->openNewGround(tName);				// open the new ground
+	}
+	
+	QDomNode obst = root.firstChild();
+	while(!obst.isNull()){
+		QDomElement e = obst.toElement();
+		
+		if( !e.isNull() && e.tagName() == "rigidBody" ) elementToRigidBody(e);
+
+		obst = obst.nextSibling();
+	}
+	m_obstCount = arena->getObstacleObjectArray()->size();
+	glView->printText("Obstacle layout loaded: " + obstInfo.baseName());
+	glView->printText(QString("Count = %1").arg(m_obstCount));
+}
+
+btVector3 simControl::elementToVector(QDomElement element)
+{
+	btVector3 vect;
+	
+	vect.setX(element.attribute("X").toFloat());
+	vect.setY(element.attribute("Y").toFloat());
+	vect.setZ(element.attribute("Z").toFloat());
+	return vect;
+}
+btMatrix3x3 simControl::elementToMatrix(QDomElement element)
+{
+	btVector3 vx,vy,vz;
+	QDomElement vect = element.firstChildElement("vector");
+	vx = elementToVector(vect);
+	vect = vect.nextSiblingElement("vector");
+	vy = elementToVector(vect);
+	vect = vect.nextSiblingElement("vector");
+	vz = elementToVector(vect);
+	
+	btMatrix3x3 mx(vx.x(),vx.y(),vx.z(),vy.x(),vy.y(),vy.z(),vz.x(),vz.y(),vz.z());
+	return mx;
+}
+btTransform simControl::elementToTransform(QDomElement element)
+{
+	btTransform trans;
+	
+	trans.setIdentity();
+	QDomElement origin = element.firstChildElement("origin");
+	trans.setOrigin(elementToVector(origin.firstChildElement("vector")));
+	QDomElement rotate = element.firstChildElement("rotation");
+	trans.setBasis(elementToMatrix(rotate.firstChildElement("matrix")));
+	
+	return trans;
+}
+void simControl::elementToRigidBody(QDomElement element)
+{
+	float 		tempMass;
+	int			tempShape;
+	btVector3   tempSize;
+	btTransform	tempTrans;
+	
+	tempMass = element.attribute("mass", "1").toFloat();
+	tempShape = element.attribute("shape","0").toInt();
+	
+	QDomElement size = element.firstChildElement("size");
+	tempSize = elementToVector(size.firstChildElement("vector"));
+	tempTrans = elementToTransform(element.firstChildElement("transform"));
+	
+	arena->createObstacleShape(BOX_SHAPE_PROXYTYPE,tempSize);	// create the collision shape
+	arena->placeObstacleShapeAt(tempTrans,tempMass);			// create the dynamic rigid body and add it to the world
+}
+
 void simControl::saveObstacles(QString filename)
 {
 	QFile obstFile(filename); 
@@ -240,7 +431,6 @@ void simControl::saveObstacles(QString filename)
 	glView->printText("Obstacle layout: " + obstInfo.baseName() + " saved");
 	arena->toggleIdle();	// resume the simulation
 }
-
 void simControl::loadObstacles(QString filename)
 {
 	QFile obstFile(filename);
@@ -310,7 +500,6 @@ void simControl::loadObstacles(QString filename)
 	
 	obstFile.close();
 }
-
 bool simControl::fileParser(QTextStream* stream, QString word, void* value)
 {
 	QString header;
@@ -344,15 +533,7 @@ bool simControl::fileParser(QTextStream* stream, QString word, void* value)
 	return true;
 }
 
-void simControl::removeObstacles()
-{
-	if(path) delete path;
-	path = 0;
-	if(configSpace) delete configSpace;
-	configSpace = 0;
-	
-	arena->deleteObstacleGroup();
-}
+
 
 /////////////////////////////////////////
 // Obstacle pick and placement functions
@@ -472,7 +653,7 @@ void simControl::generatePath()
 		start += btVector3(0,0,0.01);
 		end = autoNav->getCurrentWaypoint().position;
 		end += btVector3(0,0,0.01);
-		configSpace = new cSpace(start,30,glView);
+		configSpace = new cSpace(start,0,glView);
 		path = new pathPlan(start, end, configSpace, glView);
 		//path->setColor(btVector3(1,0,0));
 	}

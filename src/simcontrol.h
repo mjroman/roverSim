@@ -5,6 +5,7 @@
 #include "physicsWorld.h"
 #include "utility/structures.h"
 #include <BulletCollision/CollisionDispatch/btCollisionWorld.h>
+#include <QDomNode>
 #include <QTextStream>
 
 class terrain;
@@ -32,6 +33,17 @@ class simControl : public QObject
 		simGLView		*glView;
 		QList<WayPoint>	waypointList;
 		pickValue		m_pickingObject;
+		
+		QDomElement vectorToNode(QDomDocument &doc, const btVector3 v);
+		QDomElement basisToNode(QDomDocument &doc, const btMatrix3x3 mx);
+		QDomElement transformToNode(QDomDocument &doc, const btTransform t);
+		QDomElement rigidBodyToNode(QDomDocument &doc, const btRigidBody* body);
+		
+		btVector3 elementToVector(QDomElement element);
+		btMatrix3x3 elementToMatrix(QDomElement element);
+		btTransform elementToTransform(QDomElement element);
+		void elementToRigidBody(QDomElement element);
+		
 		
 		bool fileParser(QTextStream* stream, QString word, void* value);
 		
@@ -79,9 +91,12 @@ class simControl : public QObject
 	public slots:
 	// obstacle control functions
 		void generateObstacles();
-		void saveObstacles(QString filename);
-		void loadObstacles(QString filename);
 		void removeObstacles();
+		void saveObstacles(QString filename);
+		void saveObstaclesXML(QString filename);
+		void loadObstacles(QString filename);
+		void loadObstaclesXML(QString filename);
+		
 		void pickObstacle(btVector3 camPos,btVector3 mousePos);
 		void moveObstacle(btVector3 camPos,btVector3 mousePos);
 		void dropObstacle();

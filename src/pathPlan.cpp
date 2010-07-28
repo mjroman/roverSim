@@ -534,6 +534,23 @@ void pathPlan::renderGLObject()
 	glVertex3fv(m_goalPoint.point.m_floats);
 	glEnd();
 	
+
+// draws the blue line on the base of the path
+	glBegin(GL_LINE_STRIP);
+	glColor3fv(m_colorPath.m_floats);
+	glNormal3f(0,0,1);
+	for(i = 0; i < m_pointPath.size(); ++i)
+	{
+		glVertex3fv(m_pointPath[i].point.m_floats);
+	}
+	glEnd();
+	
+// draws the range fan	
+	if(m_CS->getDetectRange() > 0){
+		btVector3 cc = m_CS->getCenterPoint() + btVector3(0,0,0.1);
+		radarFan(cc.m_floats,m_CS->getDetectRange());
+	}
+	
 // draws the path
 	glDisable(GL_CULL_FACE);
 	glEnable(GL_BLEND);
@@ -552,20 +569,5 @@ void pathPlan::renderGLObject()
 	glEnd();
 	glDisable(GL_BLEND);
 	glEnable(GL_CULL_FACE);
-
-// draws the blue line on the base of the path
-	glBegin(GL_LINE_STRIP);
-	glColor3fv(m_colorPath.m_floats);
-	glNormal3f(0,0,1);
-	for(i = 0; i < m_pointPath.size(); ++i)
-	{
-		glVertex3fv(m_pointPath[i].point.m_floats);
-	}
-	glEnd();
 	
-// draws the range fan	
-	if(m_CS->getDetectRange() >= 0){
-		btVector3 cc = m_CS->getCenterPoint() + btVector3(0,0,0.1);
-		radarFan(cc.m_floats,m_CS->getDetectRange());
-	}
 }

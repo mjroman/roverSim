@@ -451,13 +451,18 @@ void terrain::terrainFlatten()
 
 void terrain::openTerrain(QString filename)
 {
+	QFileInfo terrainInfo(filename);
 	this->terrainClear();
 	m_terrainFilename = filename;
 	m_terrainScale.setValue(1,1,1);
 	
 	if(filename != NULL && filename != "NULL" && terrainLoadFile()) 
+	{
+		m_terrainShortname = terrainInfo.baseName();
 		this->generateGround();  // if the image data is good create terrain
+	}
     else {
+		m_terrainShortname = "NULL";
 		m_terrainFilename = "NULL";
         this->terrainCreateMesh(NULL);
         this->generateGround();
@@ -467,6 +472,8 @@ void terrain::openTerrain(QString filename)
 
 void terrain::saveTerrain(QString filename)
 {
+	QFileInfo terrainInfo(filename);
+	m_terrainShortname = terrainInfo.baseName();
     m_terrainFilename = filename;
     QImage modTerrain(m_pixelx,m_pixely,QImage::Format_ARGB32);
 

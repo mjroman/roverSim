@@ -455,12 +455,15 @@
         </property>
         <property name="maximumSize">
          <size>
-          <width>16777215</width>
+          <width>260</width>
           <height>20</height>
          </size>
         </property>
         <property name="text">
          <string>fileName</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
         </property>
        </widget>
       </item>
