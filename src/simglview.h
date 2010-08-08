@@ -49,15 +49,16 @@ public:
 
     QSize sizeHint() const;
 	void printText(QString st);
-	void stopDrawing();
-	void startDrawing();
+	void toggleDrawing();
     camera* getCamera() { return m_eye; }
 	btVector3 getCameraPosition() { return m_eye->cameraPosition(); }
     void setViewAngle(float angle);
     float getViewAngle(){ return m_viewAngle; }
     GLuint getTexture(int n);
+
     void registerGLObject(simGLObject *obj);
     void unregisterGLObject(simGLObject *obj);
+
 	void setWaypointList(QList<WayPoint> *list) { WPlist = list; };
 	void toggleFog();
 	btVector3 mouseRayTo(QPoint mousePoint);

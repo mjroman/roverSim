@@ -33,6 +33,8 @@ m_detectRangeSq(range*range)
 
 	arena = physicsWorld::instance();
 	
+	drawCspace(false);
+	
 	generateCSpace();
 	groupOverlapCSpace();
 }
@@ -987,5 +989,12 @@ void cSpace::renderGLObject()
 		}
 	}
 	glEnable(GL_LIGHTING);
+}
 
+void cSpace::drawCspace(bool x)
+{
+	if(x)
+		m_view->registerGLObject(this);
+	else
+		m_view->unregisterGLObject(this);
 }

@@ -71,7 +71,7 @@ m_wTool(this)
 	connect(&m_wTool, SIGNAL(addedWP(WayPoint,int)), SController, SLOT(addWaypointAt(WayPoint,int)));
 	connect(&m_wTool, SIGNAL(editedWP(int)), SController, SLOT(editWaypoint(int)));
 	connect(&m_wTool, SIGNAL(resetWP()), SController, SLOT(resetWaypointStates()));
-
+// Text Console
 	connect(glView, SIGNAL(outputText(QString)), textConsole, SLOT(append(QString)));
 	
 // server connections
@@ -287,6 +287,11 @@ void MainGUI::keyPressEvent(QKeyEvent *event)
 			SController->orientObstacle();
 			return;
 		}
+		case 'C':
+		{
+			SController->toggleCspace();
+			return;
+		}
 		case 'F':
 		{
 			glView->toggleFog();
@@ -294,19 +299,11 @@ void MainGUI::keyPressEvent(QKeyEvent *event)
 		}
 		case 'P':
 		{
-			textConsole->append("stop drawing");
-			glView->stopDrawing();
-			return;
-		}
-		case 'O':
-		{
-			textConsole->append("start drawing");
-			glView->startDrawing();
+			glView->toggleDrawing();
 			return;
 		}
 		case 'S':
 		{
-			//textConsole->insertPlainText("C-Space created\n");
 			SController->generatePath();
 			return;
 		}

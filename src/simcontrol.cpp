@@ -19,7 +19,7 @@
 #define LAYOUTHEADER	"RoverSim Obstacle Layout File"
 
 simControl::simControl(simGLView* vw)
-	:	ground(NULL),sky(NULL),sr2(NULL),autoNav(NULL),configSpace(NULL),path(NULL),glView(vw),
+	:	ground(NULL),sky(NULL),sr2(NULL),autoNav(NULL),path(NULL),glView(vw),
 m_obstType(0),
 m_obstCount(50),
 m_dropHeight(5),
@@ -61,7 +61,6 @@ simControl::~simControl()
 	simTimer->stop();
 	delete simTimer;
 	if(path) delete path;
-	if(configSpace) delete configSpace;
 	if(autoNav) delete autoNav;
 	if(sr2) delete sr2;
 	if(sky) delete sky;
@@ -95,6 +94,10 @@ void simControl::stepTimevals(float tStep,float fixedtStep,int subSteps)
 void simControl::pauseSim()
 {
 	arena->toggleIdle();
+	if(arena->isIdle())
+		glView->printText("Simulation Paused");
+	else
+		glView->printText("Resumed Simulation");
 }
 void simControl::setGravity(btVector3 g)
 {
@@ -109,8 +112,6 @@ void simControl::openNewGround(QString filename)
 	this->removeRover();
 	if(path) delete path;
 	path = 0;
-	if(configSpace) delete configSpace;
-	configSpace = 0;
 	
 	ground->openTerrain(filename);
 	QFileInfo terrainInfo(filename);
@@ -205,12 +206,11 @@ void simControl::removeObstacles()
 {
 	if(path) delete path;
 	path = 0;
-	if(configSpace) delete configSpace;
-	configSpace = 0;
 	
 	arena->deleteObstacleGroup();
 }
 
+// XML file creation functions
 void simControl::saveObstaclesXML(QString filename)
 {
 	QFile obstFile(filename); 
@@ -391,6 +391,7 @@ void simControl::elementToRigidBody(QDomElement element)
 	arena->placeObstacleShapeAt(tempTrans,tempMass);			// create the dynamic rigid body and add it to the world
 }
 
+// old file creation functions
 void simControl::saveObstacles(QString filename)
 {
 	QFile obstFile(filename); 
@@ -644,7 +645,6 @@ void simControl::orientObstacle()
 void simControl::generatePath()
 {
 	btVector3 start,end;
-	if(configSpace) delete configSpace;
 	if(path) delete path;
 	
 	if(sr2 && waypointList.size() > 0){
@@ -653,17 +653,12 @@ void simControl::generatePath()
 		start += btVector3(0,0,0.01);
 		end = autoNav->getCurrentWaypoint().position;
 		end += btVector3(0,0,0.01);
-		configSpace = new cSpace(start,0,glView);
-		path = new pathPlan(start, end, configSpace, glView);
-		//path->setColor(btVector3(1,0,0));
+		path = new pathPlan(start, end, 5, 0, 0.25, false, glView);
+		path->setColor(btVector3(1,0,0));
 	}
 	else{
-		start.setValue(1,1,0);
-		end.setValue(40,40,0);
-		start.setZ(ground->terrainHeightAt(start));
-		end.setZ(ground->terrainHeightAt(end));
-		configSpace = new cSpace(start,0,glView);
-		path = new pathPlan(start, end, configSpace, glView);
+		if(!sr2) glView->printText("Create a New Rover (Ctrl-n) before a Path can be found");
+		if(waypointList.isEmpty()) glView->printText("Add a goal waypoint before a Path can be found");
 	}
 }
 
@@ -672,10 +667,15 @@ void simControl::testPath()
 	if(path) path->togglePathPoint();
 }
 
+void simControl::toggleCspace()
+{
+	if(path) path->toggleCspace();
+}
+
 /////////////////////////////////////////
 // Rover generation functions
 /////////////
-void simControl::newRover(QWidget* parent)
+void simControl::newRover(QWidget* parent, btVector3 start)
 {
 	if(autoNav) delete autoNav;
 	if(!ground) return;
@@ -684,7 +684,8 @@ void simControl::newRover(QWidget* parent)
 	this->setWaypointGroundHeight();
 	this->resetWaypointStates();
 	
-	sr2->placeRobotAt(btVector3(1,1,ground->terrainHeightAt(btVector3(1,1,0))));
+	start.setZ(ground->terrainHeightAt(btVector3(1,1,0)));
+	sr2->placeRobotAt(start);
 	autoNav = new autoCode(sr2, &waypointList, parent);
 	glView->setFocus(Qt::OtherFocusReason);
 }

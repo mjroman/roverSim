@@ -140,12 +140,6 @@ void physicsWorld::setGravity(btVector3 gv)
 		m_dynamicsWorld->getCollisionObjectArray()[i]->activate();
 }
 
-// toggles on and off the simulation
-void physicsWorld::toggleIdle(){
-	if (m_idle) m_idle = false;
-	else m_idle = true;
-}
-
 // Called to simulate a step in the physics world
 void physicsWorld::simulatStep(){
     ///step the simulation

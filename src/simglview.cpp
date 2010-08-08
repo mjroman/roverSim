@@ -55,13 +55,18 @@ void simGLView::printText(QString st)
 	emit outputText(st);
 }
 
-void simGLView::stopDrawing()
+void simGLView::toggleDrawing()
 {
-	m_timer->stop();
-}
-void simGLView::startDrawing()
-{
-	m_timer->start(100);
+	static bool x = false;
+	if(x){
+		m_timer->stop();
+		emit outputText("Drawing Paused");
+	}
+	else{
+		m_timer->start(100);
+		emit outputText("Resumed Drawing");
+	}
+	x = !x;
 }
 simGLView::~simGLView()
 {
@@ -78,7 +83,8 @@ simGLView::~simGLView()
 
 void simGLView::registerGLObject(simGLObject *obj)
 {
-    renderList.append(obj);
+	int x = renderList.indexOf(obj);
+    if(x == -1) renderList.append(obj);
 }
 
 void simGLView::unregisterGLObject(simGLObject *obj)

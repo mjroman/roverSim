@@ -59,5 +59,6 @@ public:
 	void compoundCSpace();
 	void mergeCSpace();
 	void renderGLObject();
+	void drawCspace(bool x = false);
 };
 #endif // CSPACE_H

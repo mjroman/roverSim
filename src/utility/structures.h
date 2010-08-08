@@ -3,6 +3,24 @@
 
 #include <LinearMath/btVector3.h>
 class btRigidBody;
+class btCollisionObject;
+
+typedef struct _rankPoint
+{
+	btCollisionObject* 	object;
+	btVector3			point;
+	float				rank;
+	int					corner;
+}rankPoint;
+
+typedef struct _goalPath
+{
+	QList<rankPoint>	points;
+	float				length;	// holds the path length to the goal that is shortest
+	int					time;	// holds the number of milliseconds for calculating the path
+	btVector3			color;
+	float				range;
+}goalPath;
 
 typedef struct _pickValue
 {

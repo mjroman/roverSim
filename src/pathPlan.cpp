@@ -4,42 +4,68 @@
 #include "utility/glshapes.h"
 #include <BulletCollision/CollisionDispatch/btCollisionObject.h>
 
-pathPlan::pathPlan(btVector3 start, btVector3 end, cSpace* space, simGLView* glView)
+pathPlan::pathPlan(btVector3 start, btVector3 end, float range, int breadth, float step, bool saveAll, simGLView* glView)
 :
 simGLObject(glView),
+m_CS(NULL),
+m_pathBreadth(breadth),
+m_dStep(step),
+m_range(range),
+m_saveAllPaths(saveAll),
 m_goalOccluded(NULL),
 m_linkCount(0),
 m_linkViewIndex(0)
-{
-	m_CS = space;
+{	
 	memset(&m_startPoint,0,sizeof(rankPoint));
 	memset(&m_midPoint,0,sizeof(rankPoint));
 	memset(&m_goalPoint,0,sizeof(rankPoint));
 	
 	m_startPoint.point = start;
-	m_midPoint.point = start;
 	m_goalPoint.point = end;
 	
-	m_pointPath << m_startPoint;
+	m_shortestGoalPath.color.m_floats[0] = 0.4;
+	m_shortestGoalPath.color.m_floats[1] = 0.9;
+	m_shortestGoalPath.color.m_floats[2] = 0.93;
+	m_shortestGoalPath.color.m_floats[3] = 0.45;
+	m_shortestGoalPath.range = m_range;
+	m_shortestGoalPath.length = 0;
+
+	// create callbacks to all the drawing methods, these are added to/removed from the display list
+	// make sure these remain in order to match with the enumeration
+	ACallback<pathPlan> drawCB(this, &pathPlan::drawDebugPath);	m_drawingList << drawCB;
+	drawCB.SetCallback(this,&pathPlan::drawCrowFlyLine); 		m_drawingList << drawCB;
+	drawCB.SetCallback(this,&pathPlan::drawSavedPaths);			m_drawingList << drawCB;
+	drawCB.SetCallback(this,&pathPlan::drawCurrentSearchPath);	m_drawingList << drawCB;
+	drawCB.SetCallback(this,&pathPlan::drawRangeFan);			m_drawingList << drawCB;
+	drawCB.SetCallback(this,&pathPlan::drawPathBaseLine);		m_drawingList << drawCB;
+	drawCB.SetCallback(this,&pathPlan::drawLightTrail);			m_drawingList << drawCB;
+
+	if(m_saveAllPaths) displaySavedPaths(true);
 	
-	m_goalDistance = start.distance(end);
+	displayPath(true);
+	m_displayList << &m_drawingList[PP_CURRENTSEARCH];	// turn on display of current search path
 	
-	m_colorPath.m_floats[0] = 0.4;
-	m_colorPath.m_floats[1] = 0.9;
-	m_colorPath.m_floats[2] = 0.93;
-	m_colorPath.m_floats[3] = 0.45;
+	this->generateCspace();
 	
-	for(int i=0; i < m_CS->m_ghostObjects.size(); i++)
-	{
-		// check if goal point is inside of a cspace object
-		if(m_CS->isPointInsideObject(m_goalPoint.point,m_CS->m_ghostObjects[i]))
-			m_goalOccluded = m_CS->m_ghostObjects[i];
+	QTime t;
+	t.start();
+	
+	if(m_range == 0) this->findPathA();		// if Gods eye find the shortest path
+	else 			 this->cycleToGoal();	// step forward on path until the goal is in range
+	
+	m_shortestGoalPath.time = t.elapsed();
+	
+	m_displayList.removeAll(&m_drawingList[PP_CURRENTSEARCH]);	// turn off search path drawing
+	
+	m_view->printText("Mapping Complete");
+	if(m_saveAllPaths) m_view->printText(QString("%1 paths found").arg(m_pathList.size()));
+	if(m_shortestGoalPath.length == 0)
+		m_view->printText("No paths to goal found");
+	else{
+		m_view->printText(QString("Crow Flies:%1   Shortest Length:%2   Efficiency:%3").arg(m_goalDistance).arg(m_shortestGoalPath.length).arg(m_goalDistance/m_shortestGoalPath.length));
+		displayLightTrail(true); 			// insert after the baseline of the path has been drawn
 	}
-	
-	if(findPathA())
-		m_view->printText("Mapping Complete");
-	else
-		m_view->printText("Incomplete map due to looping or local minima");
+	m_view->printText(QString("Search Time: %1 s").arg((float)m_shortestGoalPath.time/1000.0));
 }
 
 pathPlan::~pathPlan()
@@ -47,11 +73,87 @@ pathPlan::~pathPlan()
 	m_pointPath.clear();
 	contactPoints.clear();
 	hitPoints.clear();
+	for(int i = 0; i < m_pathList.size(); ++i)
+	{
+		m_pathList[i].points.clear();
+	}
+	m_pathList.clear();
+	m_shortestGoalPath.points.clear();
+	if(m_CS) delete m_CS;
+	m_CS = 0;
+}
+
+/////////////////////////////////////////
+// Generate a new Configuration Space to plan paths around
+/////////////
+void pathPlan::generateCspace()
+{
+	if(m_CS) delete m_CS;
+	m_CS = new cSpace(m_startPoint.point,m_range,m_view);					// create a new Configuration Space based on the start point
+	
+	for(int i=0; i < m_CS->m_ghostObjects.size(); i++)						// check if goal point is inside of a cspace object
+	{
+		if(m_CS->isPointInsideObject(m_goalPoint.point,m_CS->m_ghostObjects[i]))
+			m_goalOccluded = m_CS->m_ghostObjects[i];
+	}
+	
+	m_goalDistance = m_startPoint.point.distance(m_goalPoint.point);		// calculate the distance to the goal from the start point
+	m_midPoint = m_startPoint;												// reset all parameters due to new Cspace
+	m_pointPath.clear();
+	m_pointPath << m_startPoint;
+}
+
+// returns true if the goal is within sensor range of the robot
+bool pathPlan::isGoalInRange()
+{
+	if(m_range == 0) return true;
+	if(m_range <= m_goalDistance) return false;
+	else return true;
 }
 
 /////////////////////////////////////////
 // Path creation
 /////////////
+void pathPlan::cycleToGoal()
+{
+	int i;
+	QList<rankPoint> deltList;
+	
+	while( !this->isGoalInRange() )	// while the goal is not in range
+	{
+		this->findPathA();			// calculate the path to the goal
+		deltList << m_startPoint;	// add the current position of the begining of the path
+		
+		i=1;
+		float step = m_dStep;
+		float pdist = m_startPoint.point.distance(m_shortestGoalPath.points[i].point);
+		
+		while(step > pdist)
+		{
+			deltList << m_shortestGoalPath.points[i];
+			step -= pdist;
+			pdist = m_shortestGoalPath.points[i].point.distance(m_shortestGoalPath.points[i+1].point);
+			i++;
+		}
+		
+		btVector3 v = m_shortestGoalPath.points[i].point - m_shortestGoalPath.points[i-1].point;	// vector between i and i-1
+		m_startPoint.point = step * v.normalized() + m_shortestGoalPath.points[i-1].point;		
+		m_shortestGoalPath.length = 0;
+		m_shortestGoalPath.points.clear();
+		
+		this->generateCspace();
+	}
+
+	this->findPathA();
+	
+	for(i=0;i<deltList.size()-1;i++){
+		m_shortestGoalPath.length += deltList[i].point.distance(deltList[i+1].point);
+	}
+	m_shortestGoalPath.points = deltList + m_shortestGoalPath.points;	// prepend the delt position list
+	m_startPoint = m_shortestGoalPath.points[0];
+}
+
+
 // what is the difference in finding all the open paths and choosing the one with the lowest angle = miller way
 // and building a path from the initial intersected object an back calculating from the extremes? = my way
 /*
@@ -110,62 +212,96 @@ void pathPlan::constructRoadMap()
 
 
 /////////////////////////////////////////
-// first road map algorithm
+// first path planner algorithm DFSearch
 /////////////
-bool pathPlan::findPathA()
+bool pathPlan::findPathA(float length)
 {
-	btCollisionObject *objBlock = this->isRayBlocked(m_midPoint,m_goalPoint);
-	if(objBlock == NULL || objBlock == m_goalOccluded){		// check that the goal point is not occluded by the blocking object
-		m_pointPath << m_goalPoint;							// add the goal point to the path
-		
-		return true;										// no intersection all done
-	}
+	// exit conditions
+	// if(m_linkCount > 100) {									// incase of endless loop
+	// 	m_view->printText("path looping");
+	// 	return false;
+	// }
+	// m_linkCount++;
 	
-	if(m_linkCount > 100) {									// incase of endless loop
-		qDebug("looping");
+ 	if(m_shortestGoalPath.length != 0 && length > m_shortestGoalPath.length) 	// incase the new search path is farther than the shortest path
 		return false;
-	}
-	m_linkCount++;
 	
-	QList<rankPoint>	prospectPoints = getVisablePointsFrom(m_midPoint); 	// get all the visable points from the current location
+	btCollisionObject *objBlock = this->isRayBlocked(m_midPoint,m_goalPoint);	// is the ray blocked?
+	
+	if(objBlock == NULL || objBlock == m_goalOccluded){							// check that the goal point is not occluded by the blocking object
+		m_pointPath << m_goalPoint;												// add the goal point to the path
+		length += m_midPoint.point.distance(m_goalPoint.point);						
 
-	prospectPoints = this->prunePointsFrom(prospectPoints);					// remove points that are already in the point path
+		if(length < m_shortestGoalPath.length || m_shortestGoalPath.length == 0)	// check if a new shortest path has been found
+		{
+			m_shortestGoalPath.length = length;
+			m_shortestGoalPath.points = m_pointPath;								// save the new short path
+			if(m_saveAllPaths) m_pathList.push_front(m_shortestGoalPath);
+		}
+		else if(m_saveAllPaths)
+		{
+			goalPath newPath;
+			newPath.length = length;
+			newPath.points = m_pointPath;
+			newPath.color = btVector3(1,0,1);
+			newPath.range = m_range;
+			m_pathList.push_back(newPath);
+		}
+	//	m_view->updateGL();
+		return true;															// no intersection all done
+	}
 	
+	QList<rankPoint> prospectPoints = getVisablePointsFrom(m_midPoint); 		// get all the visable points from the current location
 	prospectPoints = this->progressAngleBasedRank(prospectPoints, m_midPoint);	// compute the ranks based on progress angle from start-goal vector
 	//prospectPoints = this->angleBasedRank(prospectPoints, m_midPoint); 		// compute the ranks based on angle to goal from midPoint
-	prospectPoints = this->quickSortRankLessthan(prospectPoints);			// sort the list with the smallest rank first to the goal
-	
+	prospectPoints = this->prunePointsFrom(prospectPoints);						// remove points that are already in the point path
+		
 	if(prospectPoints.isEmpty()) return false;
 	
 	int i=0;
-	while(i < prospectPoints.size())
+	btVector3 oldMidPoint = m_midPoint.point;
+	while(i < prospectPoints.size() && (m_pathBreadth == 0 || i < m_pathBreadth))
 	{
-		m_midPoint = prospectPoints[i];			// change the midPoint to the lowest rank point
-		
-		m_pointPath << m_midPoint;				// add the potential point to the global path list
+		float del = oldMidPoint.distance(prospectPoints[i].point);
+		m_midPoint = prospectPoints[i];											// change the midPoint to the lowest rank point
+		m_pointPath << m_midPoint;												// add the potential point to the global path list
+
 		m_view->updateGL();
-		if(this->findPathA()){					// if a path to the goal has been found
-			prospectPoints.clear();				// clear all the prospecive points and return true
-			return true;
-		}
-		else m_pointPath.removeLast();			// else remove the last midPoint and try the next
+		
+		if(this->findPathA(length+del)){										// recursive check for a path to the goal
+			m_pointPath.removeLast();											// remove the goal point from the global list
+			m_pointPath.removeLast();
+			break;																// don't need to do anymore looping since the goal is visible
+		}	
+		else m_pointPath.removeLast();											// else remove the last midPoint and try the next
+			
 		i++;
 	}
+	prospectPoints.clear();														// clear all the prospecive points
 	return false;
 }
 
 void pathPlan::togglePathPoint()
 {
-	if(m_linkViewIndex >= m_pointPath.size()) m_linkViewIndex=0;
+	if(m_shortestGoalPath.points.isEmpty()) return;
+	if(m_linkViewIndex >= m_shortestGoalPath.points.size()) m_linkViewIndex=-1;
+	
+	if(m_linkViewIndex == 0)
+		m_displayList << &m_drawingList[PP_DEBUG];			// turn on debug drawing
+	else if(m_linkViewIndex < 0){
+		m_displayList.removeAll(&m_drawingList[PP_DEBUG]);	// turn off debug drawing
+		m_linkViewIndex = 0;
+		return;
+	}
 	
 	hitPoints.clear();
 	contactPoints.clear();
 	
-	m_view->getCamera()->cameraSetDirection(m_pointPath[m_linkViewIndex].point); // set the camera view to the path point
+	m_view->getCamera()->cameraSetDirection(m_shortestGoalPath.points[m_linkViewIndex].point); // set the camera view to the path point
 
 	// get All Visable points
 		int i;
-		rankPoint here = m_pointPath[m_linkViewIndex];
+		rankPoint here = m_shortestGoalPath.points[m_linkViewIndex];
 		rankPoint leftMost;
 		rankPoint rightMost;	
 		QList<rankPoint> list;
@@ -208,7 +344,7 @@ void pathPlan::togglePathPoint()
 		contactPoints << list;
 	
 	//contactPoints = prunePointsFrom(contactPoints);
-		contactPoints = angleBasedRank(contactPoints, m_pointPath[m_linkViewIndex]);
+		contactPoints = angleBasedRank(contactPoints, m_shortestGoalPath.points[m_linkViewIndex]);
 		contactPoints = quickSortRankLessthan(contactPoints);
 
 		qDebug("_______________________");
@@ -216,11 +352,12 @@ void pathPlan::togglePathPoint()
 			qDebug("rank %f",contactPoints[i].rank);
 		}
 		
-		contactPoints.prepend(m_pointPath[m_linkViewIndex]);
+		contactPoints.prepend(m_shortestGoalPath.points[m_linkViewIndex]);
 	
 	//if(this->isRayBlocked(m_pointPath[m_linkViewIndex],m_goalPoint) == NULL) qDebug("Clear to GOAL");
 	m_linkViewIndex++;
 }
+
 
 // checks the ray between from and to, if it is clear NULL is returned else returns the object blocking
 //btCollisionObject* pathPlan::isVectorBlocked(rankPoint from,rankPoint to, btVector3* point)
@@ -399,22 +536,6 @@ QList<rankPoint> pathPlan::prunePointsFrom(QList<rankPoint> list)
 	return list;
 }
 
-// smooth the path by checking visibility back to start
-QList<rankPoint> pathPlan::smoothPath()
-{
-	// after the point is added check if you can see back to any other points
-		// if(m_pointPath.size() > 2)
-		// {
-		// 	for(i = 0; i < m_pointPath.size()-2; ++i)
-		// 	{
-		// 		if(this->isRayBlocked(m_pointPath[i],m_midPoint) == NULL){
-		// 			m_pointPath.swap(i+1,m_pointPath.size()-1);
-		// 			while(m_pointPath.size() > i+2){m_pointPath.removeLast();}
-		// 		}
-		// 	}
-		// }
-}
-
 // computes the rank of each point based on the angle between the goal and the pivot point
 QList<rankPoint> pathPlan::angleBasedRank(QList<rankPoint> list, rankPoint pivotPoint)
 {
@@ -424,20 +545,33 @@ QList<rankPoint> pathPlan::angleBasedRank(QList<rankPoint> list, rankPoint pivot
 	{
 		list[i].rank = (m_goalPoint.point - pivotPoint.point).angle(list[i].point - pivotPoint.point);
 	}
+	list = this->quickSortRankLessthan(list);	// sort the list with the smallest rank first to the goal
 	return list;
 }
 
 // computes the rank of each point based on the angle between the goal and the start point
 QList<rankPoint> pathPlan::progressAngleBasedRank(QList<rankPoint> list, rankPoint pivotPoint)
 {
+	int i;
 	// ranking can not use just the cross product or length of cross product, not enough info
 	// have to use the angle between the goal vector and the extreme point
-	for(int i = 0; i < list.size(); ++i)
+	for(i = 0; i < list.size(); ++i)
 	{
 		list[i].rank = (m_goalPoint.point - m_startPoint.point).angle(list[i].point - pivotPoint.point);
 		// remove any points where the angle from the midpoint is greater than 90deg to the start-goal vector
 	}
-	return list;
+	list = this->quickSortRankLessthan(list);	// sort the list with the smallest rank first to the goal
+	
+	QList<rankPoint> keepers;
+	for(i = 0; i < list.size(); ++i)			// to reduce unnecessary searching
+	{											// check for paths that search backwards or angles greater than 90 deg
+		if(list[i].rank > HALFPI) break;
+		else keepers << list[i];				// add all positive progress points
+	}
+	if(i == 0) keepers << list[0];				// if all paths are behind then only search the one behind
+	
+	list.clear();
+	return keepers;
 }
 
 // computes the rank of each point based on the distance from the pivot point
@@ -447,6 +581,7 @@ QList<rankPoint> pathPlan::rangeBasedRank(QList<rankPoint> list, rankPoint pivot
 	{
 		list[i].rank = list[i].point.distance(pivotPoint.point);
 	}
+	list = this->quickSortRankLessthan(list); 	// sort the list with the smallest rank first to the goal
 	return list;
 }
 
@@ -499,14 +634,42 @@ bool pathPlan::isNewLink(rankLink link)
 
 
 /////////////////////////////////////////
+// path display access functions
+/////////////
+void pathPlan::displayCrowFly(bool x)
+{
+	if(x) m_displayList.push_back(&m_drawingList[PP_CROWFLY] );	// insert after the baseline of the path has been drawn
+	else m_displayList.removeAll(&m_drawingList[PP_CROWFLY]);
+}
+void pathPlan::displaySavedPaths(bool x)
+{
+	if(x) m_displayList.push_back(&m_drawingList[PP_SAVEDPATHS] );	// insert after the baseline of the path has been drawn
+	else m_displayList.removeAll(&m_drawingList[PP_SAVEDPATHS]);
+}
+void pathPlan::displayPath(bool x)
+{
+	if(x) m_displayList.push_front( &m_drawingList[PP_BASELINE] );	// make sure the base line of the path is drawn first
+	else m_displayList.removeAll(&m_drawingList[PP_BASELINE]);
+}
+void pathPlan::displayLightTrail(bool x)
+{
+	if(x) m_displayList.insert(1, &m_drawingList[PP_LIGHTTRAIL] );	// insert after the baseline of the path has been drawn
+	else m_displayList.removeAll(&m_drawingList[PP_LIGHTTRAIL]);
+}
+void pathPlan::toggleCspace()
+{
+	if(!m_CS) return;
+	static bool x = true;
+	m_CS->drawCspace(x);
+	x = !x;
+}
+
+/////////////////////////////////////////
 // Draw the path's
 /////////////
-void pathPlan::renderGLObject()
+void pathPlan::drawDebugPath()				// draws test points and lines
 {
 	int i;
-
-	glLineWidth(1.);
-// draws test points and lines	
 	glLineWidth(2.0);
 	glBegin(GL_LINES);
 	glNormal3f(1,1,1);
@@ -524,8 +687,10 @@ void pathPlan::renderGLObject()
 	for(i=0;i<hitPoints.size();i++)
 		glVertex3fv(hitPoints[i].m_floats);
 	glEnd();
+}
 
-// draws the crow flies line
+void pathPlan::drawCrowFlyLine()			// draws a dark blue line from the start of the path to the goal, used for visual cues and user evaluation
+{
 	glBegin(GL_LINES);
 	glLineWidth(1.0);
 	glColor3f(0,0,1);
@@ -533,35 +698,66 @@ void pathPlan::renderGLObject()
 	glVertex3fv(m_startPoint.point.m_floats);
 	glVertex3fv(m_goalPoint.point.m_floats);
 	glEnd();
-	
+}
 
-// draws the blue line on the base of the path
+void pathPlan::drawSavedPaths()				// if all the paths are being saved draw them in purple
+{
+	for(int j=1; j < m_pathList.size(); j++){
+		glColor3fv(m_pathList[j].color.m_floats);
+		QList<rankPoint> pp = m_pathList[j].points;
+		glBegin(GL_LINE_STRIP);
+		for(int i = 0; i < pp.size(); ++i)
+		{
+			glVertex3fv(pp[i].point.m_floats);
+		}
+		glEnd();
+	}
+}
+
+void pathPlan::drawCurrentSearchPath()		// draws a yellow line indicating the current search path while looping
+{
+	// draws the yellow line on the base of the current search path
+	glLineWidth(4.0);
 	glBegin(GL_LINE_STRIP);
-	glColor3fv(m_colorPath.m_floats);
+	glColor3f(1,1,0);
 	glNormal3f(0,0,1);
-	for(i = 0; i < m_pointPath.size(); ++i)
+	for(int i = 0; i < m_pointPath.size(); ++i)
 	{
 		glVertex3fv(m_pointPath[i].point.m_floats);
 	}
 	glEnd();
-	
-// draws the range fan	
-	if(m_CS->getDetectRange() > 0){
-		btVector3 cc = m_CS->getCenterPoint() + btVector3(0,0,0.1);
-		radarFan(cc.m_floats,m_CS->getDetectRange());
+}
+
+void pathPlan::drawRangeFan()
+{
+	btVector3 cc = m_CS->getCenterPoint() + btVector3(0,0,0.1);
+	radarFan(cc.m_floats,m_range);
+}
+
+void pathPlan::drawPathBaseLine()			// draws the line on the base of the shortest path in m_colorPath color
+{
+	glLineWidth(1.0);
+	glNormal3f(0,0,1);
+	glColor3fv(m_shortestGoalPath.color.m_floats);
+	glBegin(GL_LINE_STRIP);
+	for(int i = 0; i < m_shortestGoalPath.points.size(); i++)
+	{
+		glVertex3fv(m_shortestGoalPath.points[i].point.m_floats);
 	}
-	
-// draws the path
+	glEnd();
+}
+
+void pathPlan::drawLightTrail()				// draws the path with a verticle haze
+{
 	glDisable(GL_CULL_FACE);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
 	glBegin(GL_QUAD_STRIP);
 	glNormal3f(0,0,1);
-	for(i = 0; i < m_pointPath.size(); ++i)
+	for(int i = 0; i < m_shortestGoalPath.points.size(); ++i)
 	{	
-		btVector3 t = m_pointPath[i].point;
-		glColor4fv(m_colorPath.m_floats);
+		btVector3 t = m_shortestGoalPath.points[i].point;
+		glColor4fv(m_shortestGoalPath.color.m_floats);
 		glVertex3f(t.x(),t.y(),t.z());
 		glColor4f(1,1,1,0.0);
 		glVertex3f(t.x(),t.y(),t.z()+1.5);
@@ -569,5 +765,12 @@ void pathPlan::renderGLObject()
 	glEnd();
 	glDisable(GL_BLEND);
 	glEnable(GL_CULL_FACE);
-	
+}
+
+void pathPlan::renderGLObject()
+{
+	for(int i = 0; i < m_displayList.size(); ++i)
+	{
+		m_displayList[i]->Execute();
+	}
 }

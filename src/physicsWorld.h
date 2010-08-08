@@ -93,7 +93,7 @@ public:
 
     btDynamicsWorld* getDynamicsWorld() { return m_dynamicsWorld; }
     bool isIdle() const { return m_idle; }
-	void toggleIdle();
+	void toggleIdle() { m_idle = !m_idle; }
 	void idle() { m_idle = true; }
 	
     bool canDraw() const { return m_draw; }
