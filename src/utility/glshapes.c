@@ -335,6 +335,7 @@ void radarFan(float* center, float rad)
 	static float j=1;
 	static float fade=0.1;
 
+	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -364,4 +365,5 @@ void radarFan(float* center, float rad)
 		}
 	}
 	else j += 1;
+	glEnable(GL_DEPTH_TEST);
 }

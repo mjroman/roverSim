@@ -47,6 +47,11 @@ simtool::simtool(QWidget *parent) : QWidget(parent)
     setLayout(layoutV);
 }
 
+simtool::~simtool()
+{
+	qDebug("deleting simtool");
+}
+
 void simtool::closeEvent(QCloseEvent *event)
 {
     emit paramUpdate();

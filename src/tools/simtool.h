@@ -23,7 +23,8 @@ public:
     QLabel      *subStepLabel;
 
     simtool(QWidget *parent = 0);
-
+	~simtool();
+	
     float getTimeStep();
     float getFixedTimeStep();
     int getSubSteps();

@@ -13,8 +13,8 @@ class SR2rover;
 class skydome;
 class simGLView;
 class autoCode;
+class pathTool;
 class cSpace;
-class pathPlan;
 
 
 class simControl : public QObject
@@ -26,7 +26,8 @@ class simControl : public QObject
 		skydome         *sky;
 		SR2rover		*sr2;
 		autoCode		*autoNav;
-		pathPlan		*path;
+		pathTool		*m_pTool;
+		cSpace			*m_CS;
 		QTimer          *simTimer;
 	    double          delTime;
 		simGLView		*glView;
@@ -106,17 +107,19 @@ class simControl : public QObject
 		
 		void openNewGround(QString filename);
 		void flattenGround();
+		
 		void setWaypointGroundHeight();
 		void addWaypointAt(WayPoint wp, int index);
 		void editWaypoint(int index);
 		void resetWaypointStates();
 		
-		void generatePath();
-		void testPath();
-		void toggleCspace();
+		void testCspace();
 		
 		void newRover(QWidget* parent, btVector3 start = btVector3(1,1,0));
 		void showNavTool();
+		
+	signals:
+		void obstaclesRemoved();
 		
 	public:
 		// redefintion of ray reslut callback to exclude the object that is being picked

@@ -49,7 +49,8 @@ SOURCES += main.cpp \
     src/skydome.cpp \
 	src/autoCode.cpp \
 	src/cSpace.cpp \
-	src/pathPlan.cpp
+	src/pathPlan.cpp \
+	src/tools/pathtool.cpp
 	
 HEADERS += src/mainGUI.h \
 	src/simcontrol.h \
@@ -74,13 +75,15 @@ HEADERS += src/mainGUI.h \
     src/skydome.h \
 	src/autoCode.h \
 	src/cSpace.h \
-	src/pathPlan.h
+	src/pathPlan.h \
+	src/tools/pathtool.h
 	
 FORMS += src/mainGUI.ui \
     src/tools/terraintool.ui \
     src/tools/obstacletool.ui \
 	src/tools/waypointtool.ui \
-	src/tools/navigationtool.ui
+	src/tools/navigationtool.ui \
+	src/tools/pathtool.ui
 	
 # Bullet 2.75 frameworks	
 #LIBS += -framework LinearMath \

@@ -381,7 +381,7 @@ void autoCode::stopAutonomous(RoverState rs)
 // GUI tool access functions
 /////////////
 void autoCode::updateTool()
-{	
+{
 	labelState->setText(RSmap[state]);
 	labelError->setText(REmap[error]);
 	labelWpID->setText(QString::number(currentWaypoint.uuid));
