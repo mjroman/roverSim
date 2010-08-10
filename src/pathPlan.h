@@ -61,13 +61,20 @@ class ACallback : public cCallback
 
 class pathPlan : public simGLObject
 {
+	Q_OBJECT
 private:
 	cSpace*										m_CS;				// the Configuration Space the path is calculated in
 	bool										m_displayCS;		// draws the Configuration Space or not	
 	
 	QList<rankPoint>							m_pointPath;		// global point containter, used while searching for a path
 	QList<goalPath>								m_pathList;			// contains all the paths if they have been saved
-	goalPath									m_GP;				// the shortest Goal Path 
+	goalPath									m_GP;				// the shortest Goal Path
+	
+	QColor										m_color;
+	float										m_range;			// holds the sensor range or distance, if 0 then Gods eye
+	float										m_step;				// the distance traveled on the path inbetween limited range path readings
+	int											m_breadth;			// holds the number of times the path forks at each midpoint
+	bool										m_saveOn;			// save all paths or just the shortest ones to the goal until complete
 	
 	rankPoint									m_startPoint;		// start point of the path
 	rankPoint									m_midPoint;
@@ -108,15 +115,35 @@ private:
 	void drawLightTrail();
 	
 public:
-	pathPlan(btVector3 start, btVector3 end, goalPath gp, simGLView* glView = NULL);
+	pathPlan(simGLView* glView = NULL);
 	~pathPlan();
+	
+	void goForGoal(btVector3 start, btVector3 end);
+	void reset();
 	
 	btVector3 getStartPoint() { return m_startPoint.point; }
 	btVector3 getGoalPoint() { return m_goalPoint.point; }
 	float getGoalDistance() { return m_goalDistance; }
 	goalPath* getShortestPath() { return &m_GP; }
 	
-	void setColor(btVector3 color) { m_GP.color = color; m_GP.color.m_floats[3] = 0.45; }
+	QColor getColor() { QColor c = m_color; c.setAlphaF(1.0); return c; }
+	float getRange() { return m_range; }
+	float getStep() { return m_step; }
+	int getBreadth() { return m_breadth; }
+	bool getSaveOn() { return m_saveOn; }
+	
+	void setColor(QColor color) { m_color = color; m_color.setAlphaF(0.45); }
+	void setRange(float r) { m_range = r; }
+	void setStep(float s) { m_step = s; }
+	void setBreadth(int b) { m_breadth = b; }
+	void setSaveOn(bool x) { m_saveOn = x; }
+
+	bool  m_displayCrowFly;
+	bool  m_displaySavedPaths;
+	bool  m_displayPath;
+	bool  m_displayLightTrail;
+
+public slots:	
 	void displayCrowFly(bool x);
 	void displaySavedPaths(bool x);
 	void displayCurrentSearch(bool x);

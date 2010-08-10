@@ -18,11 +18,7 @@ typedef struct _goalPath
 	QList<rankPoint>	points;
 	float				length;		// holds the path length to the goal that is shortest
 	int					time;		// holds the number of milliseconds for calculating the path
-	btVector3			color;
-	float				range;		// holds the sensor range or distance, if 0 then Gods eye
-	float				step;		// the distance traveled on the path inbetween limited range path readings
-	int					breadth;	// holds the number of times the path forks at each midpoint
-	bool				saveOn;		// save all paths or just the shortest ones to the goal until complete
+	float				efficiency;
 }goalPath;
 
 typedef struct _pickValue

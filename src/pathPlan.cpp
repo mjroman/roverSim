@@ -4,21 +4,21 @@
 #include "utility/glshapes.h"
 #include <BulletCollision/CollisionDispatch/btCollisionObject.h>
 
-pathPlan::pathPlan(btVector3 start, btVector3 end, goalPath gp, simGLView* glView)
+pathPlan::pathPlan(simGLView* glView)
 :
 simGLObject(glView),
 m_CS(NULL),
 m_displayCS(false),
-m_GP(gp),
+m_range(0),
+m_step(0.25),
+m_breadth(0),
+m_saveOn(false),
 m_goalOccluded(NULL),
 m_linkViewIndex(0)
 {
 	memset(&m_startPoint,0,sizeof(rankPoint));
 	memset(&m_midPoint,0,sizeof(rankPoint));
 	memset(&m_goalPoint,0,sizeof(rankPoint));
-	
-	m_startPoint.point = start;
-	m_goalPoint.point = end;
 	
 	// create callbacks to all the drawing methods, these are added to/removed from the display list
 	// make sure these remain in order to match with the enumeration
@@ -29,34 +29,15 @@ m_linkViewIndex(0)
 	drawCB.SetCallback(this,&pathPlan::drawRangeFan);			m_drawingList << drawCB;
 	drawCB.SetCallback(this,&pathPlan::drawPathBaseLine);		m_drawingList << drawCB;
 	drawCB.SetCallback(this,&pathPlan::drawLightTrail);			m_drawingList << drawCB;
-
-	if(m_GP.saveOn) displaySavedPaths(true);
 	
-	displayPath(true);										// turn on display of the path
-	displayCurrentSearch(true);								// turn on display of current search path
+	m_GP.length = 0;
+	m_GP.time = 0;
+	m_GP.efficiency = 0;
 	
-	this->generateCspace();
-	
-	QTime t;
-	t.start();												// start time of path calculation
-	
-	if(m_GP.range == 0) this->findPathA();					// if Gods eye find the shortest path
-	else this->cycleToGoal();								// step forward on path until the goal is in range
-	
-	m_GP.time = t.elapsed();								// get the elapsed time for the path generation
-	
-	displayCurrentSearch(false);							// turn off search path drawing
-	
-	m_view->printText("Mapping Complete");
-	if(m_GP.saveOn) m_view->printText(QString("%1 paths found").arg(m_pathList.size()));
-	if(m_GP.length == 0)
-		m_view->printText("No paths to goal found");
-	else{
-		m_view->printText(QString("Crow Flies:%1   Shortest Length:%2   Efficiency:%3").arg(m_goalDistance).arg(m_GP.length).arg(m_goalDistance/m_GP.length));
-		displayCrowFly(true);
-		displayLightTrail(true); 							// insert after the baseline of the path has been drawn
-	}
-	m_view->printText(QString("Search Time: %1 s").arg((float)m_GP.time/1000.0));
+	displayPath(true);
+	displayLightTrail(true);
+	displayCrowFly(false);
+	displaySavedPaths(false);
 }
 
 pathPlan::~pathPlan()
@@ -74,13 +55,54 @@ pathPlan::~pathPlan()
 	m_CS = 0;
 }
 
+void pathPlan::goForGoal(btVector3 start, btVector3 end)
+{	
+	m_startPoint.point = start;
+	m_goalPoint.point = end;
+	
+	displayCurrentSearch(true);
+	
+	this->generateCspace();
+	
+	QTime t;
+	t.start();												// start time of path calculation
+	
+	if(m_range == 0) this->findPathA();						// if Gods eye find the shortest path
+	else this->cycleToGoal();								// step forward on path until the goal is in range
+	
+	m_GP.time = t.elapsed();								// get the elapsed time for the path generation
+	
+	displayCurrentSearch(false);							// turn off search path drawing
+	
+	m_view->printText("Mapping Complete");
+	if(m_saveOn) m_view->printText(QString("%1 paths found").arg(m_pathList.size()));
+	if(m_GP.length == 0)
+		m_view->printText(QString("No paths to goal found for range %1").arg(m_range));
+	else{
+		m_GP.efficiency = m_goalDistance/m_GP.length;
+	}
+	m_view->printText(QString("Range %1 Search Time: %2 s").arg(m_range).arg((float)m_GP.time/1000.0));
+}
+
+void pathPlan::reset()
+{
+	if(m_CS) delete m_CS;
+	m_CS = 0;
+	m_pointPath.clear();
+	m_pathList.clear();
+	m_GP.points.clear();
+	m_GP.length = 0;
+	m_GP.time = 0;
+	m_GP.efficiency = 0;
+}
+
 /////////////////////////////////////////
 // Generate a new Configuration Space to plan paths around
 /////////////
 void pathPlan::generateCspace()
 {
 	if(m_CS) delete m_CS;
-	m_CS = new cSpace(m_startPoint.point,m_GP.range,m_view);					// create a new Configuration Space based on the start point
+	m_CS = new cSpace(m_startPoint.point,m_range,m_view);					// create a new Configuration Space based on the start point
 	
 	for(int i=0; i < m_CS->m_ghostObjects.size(); i++)						// check if goal point is inside of a cspace object
 	{
@@ -97,8 +119,8 @@ void pathPlan::generateCspace()
 // returns true if the goal is within sensor range of the robot
 bool pathPlan::isGoalInRange()
 {
-	if(m_GP.range == 0) return true;
-	if(m_GP.range <= m_goalDistance) return false;
+	if(m_range == 0) return true;
+	if(m_range <= m_goalDistance) return false;
 	else return true;
 }
 
@@ -117,7 +139,7 @@ void pathPlan::cycleToGoal()
 		deltList << m_startPoint;	// add the current position of the begining of the path
 		
 		i=1;
-		float step = m_GP.step;
+		float step = m_step;
 		float pdist = m_startPoint.point.distance(m_GP.points[i].point);
 		
 		while(step > pdist)
@@ -223,15 +245,13 @@ bool pathPlan::findPathA(float length)
 		{
 			m_GP.length = length;
 			m_GP.points = m_pointPath;								// save the new short path
-			if(m_GP.saveOn) m_pathList.push_front(m_GP);
+			if(m_saveOn) m_pathList.push_front(m_GP);
 		}
-		else if(m_GP.saveOn)
+		else if(m_saveOn)
 		{
 			goalPath newPath;
 			newPath.length = length;
 			newPath.points = m_pointPath;
-			newPath.color = btVector3(1,0,1);
-			newPath.range = m_GP.range;
 			m_pathList.push_back(newPath);
 		}
 	//	m_view->updateGL();
@@ -247,7 +267,7 @@ bool pathPlan::findPathA(float length)
 	
 	int i=0;
 	btVector3 oldMidPoint = m_midPoint.point;
-	while(i < prospectPoints.size() && (m_GP.breadth == 0 || i < m_GP.breadth))
+	while(i < prospectPoints.size() && (m_breadth == 0 || i < m_breadth))
 	{
 		float del = oldMidPoint.distance(prospectPoints[i].point);
 		m_midPoint = prospectPoints[i];											// change the midPoint to the lowest rank point
@@ -297,7 +317,7 @@ void pathPlan::togglePathPoint()
 		QList<rankPoint> list;
 
 		if(m_CS) delete m_CS;
-		m_CS = new cSpace(here.point,m_GP.range,m_view);					// create a new Configuration Space based on the start point
+		m_CS = new cSpace(here.point,m_range,m_view);					// create a new Configuration Space based on the start point
 		m_CS->drawCspace(m_displayCS);
 		
 	// gather all objects extreme vertices
@@ -632,11 +652,13 @@ bool pathPlan::isNewLink(rankLink link)
 /////////////
 void pathPlan::displayCrowFly(bool x)
 {
+	m_displayCrowFly = x;
 	if(x) m_displayList.push_front(&m_drawingList[PP_CROWFLY] );	// insert after the baseline of the path has been drawn
 	else m_displayList.removeAll(&m_drawingList[PP_CROWFLY]);
 }
 void pathPlan::displaySavedPaths(bool x)
 {
+	m_displaySavedPaths = x;
 	if(x) m_displayList.push_front(&m_drawingList[PP_SAVEDPATHS] );	// insert after the baseline of the path has been drawn
 	else m_displayList.removeAll(&m_drawingList[PP_SAVEDPATHS]);
 }
@@ -652,11 +674,13 @@ void pathPlan::displayRangeFan(bool x)
 }
 void pathPlan::displayPath(bool x)
 {
+	m_displayPath = x;
 	if(x) m_displayList.push_front( &m_drawingList[PP_BASELINE] );	// make sure the base line of the path is drawn first
 	else m_displayList.removeAll(&m_drawingList[PP_BASELINE]);
 }
 void pathPlan::displayLightTrail(bool x)
 {
+	m_displayLightTrail = x;
 	if(x) m_displayList.push_back( &m_drawingList[PP_LIGHTTRAIL] );	// insert after the baseline of the path has been drawn
 	else m_displayList.removeAll(&m_drawingList[PP_LIGHTTRAIL]);
 }
@@ -705,7 +729,7 @@ void pathPlan::drawCrowFlyLine()			// draws a dark blue line from the start of t
 void pathPlan::drawSavedPaths()				// if all the paths are being saved draw them in purple
 {
 	for(int j=1; j < m_pathList.size(); j++){
-		glColor3fv(m_pathList[j].color.m_floats);
+		glColor3f(0,1,1);
 		QList<rankPoint> pp = m_pathList[j].points;
 		glBegin(GL_LINE_STRIP);
 		for(int i = 0; i < pp.size(); ++i)
@@ -733,14 +757,14 @@ void pathPlan::drawCurrentSearchPath()		// draws a yellow line indicating the cu
 void pathPlan::drawRangeFan()
 {
 	btVector3 cc = m_CS->getCenterPoint() + btVector3(0,0,0.1);
-	radarFan(cc.m_floats,m_GP.range);
+	radarFan(cc.m_floats,m_range);
 }
 
-void pathPlan::drawPathBaseLine()			// draws the line on the base of the shortest path in m_colorPath color
+void pathPlan::drawPathBaseLine()			// draws the line on the base of the shortest path in m_color color
 {
 	glLineWidth(1.0);
 	glNormal3f(0,0,1);
-	glColor3fv(m_GP.color.m_floats);
+	glColor3f(m_color.redF(),m_color.greenF(),m_color.blueF());
 	glBegin(GL_LINE_STRIP);
 	for(int i = 0; i < m_GP.points.size(); i++)
 	{
@@ -759,9 +783,9 @@ void pathPlan::drawLightTrail()				// draws the path with a verticle haze
 	for(int i = 0; i < m_GP.points.size(); ++i)
 	{	
 		btVector3 t = m_GP.points[i].point;
-		glColor4fv(m_GP.color.m_floats);
+		glColor4f(m_color.redF(),m_color.greenF(),m_color.blueF(),m_color.alphaF());
 		glVertex3f(t.x(),t.y(),t.z());
-		glColor4f(1,1,1,0.0);
+		glColor4f(0,0,0,0);
 		glVertex3f(t.x(),t.y(),t.z()+1.5);
 	}
 	glEnd();
