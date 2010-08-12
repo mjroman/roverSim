@@ -289,6 +289,7 @@ void MainGUI::keyPressEvent(QKeyEvent *event)
 		}
 		case 'C':
 		{
+			SController->testCspace();
 			return;
 		}
 		case 'F':
@@ -314,11 +315,12 @@ void MainGUI::keyPressEvent(QKeyEvent *event)
         }
 		case 'X':
 		{
+			SController->showPathView(1);
 			return;
 		}
 		case 'Z':
 		{
-			SController->testCspace();
+			SController->showPathView(-1);
 			return;
 		}
         case '[':

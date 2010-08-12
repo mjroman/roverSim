@@ -49,16 +49,13 @@ cSpace::~cSpace()
 
 void cSpace::deleteGhostGroup()
 {
-	int i = m_ghostObjects.size();
+//	int i = m_ghostObjects.size();
 	arena->setDraw(false); // do not draw
  	arena->idle();// pause simulation
 	
-	while(i>0){
-		btCollisionObject* obj = m_ghostObjects[i-1];
-		arena->getDynamicsWorld()->removeCollisionObject(obj);
-		m_ghostObjects.pop_back();
-		i = m_ghostObjects.size();
-	}
+	for(int i=0;i<m_ghostObjects.size();i++ ) 
+		arena->getDynamicsWorld()->removeCollisionObject(m_ghostObjects[i]);
+	m_ghostObjects.clear();
 
 	m_ghostShapes.clear();
 	arena->resetBroadphaseSolver();
@@ -70,12 +67,12 @@ void cSpace::deleteGhostObject(btCollisionObject* obj)
 {
 	arena->setDraw(false); // do not draw
  	arena->idle();// pause simulation
-
-	arena->getDynamicsWorld()->removeCollisionObject(obj);
 	
 	btCollisionShape* shape = obj->getCollisionShape();
 	m_ghostShapes.remove(shape);
-	m_ghostObjects.remove(obj);
+	m_ghostObjects.removeOne(obj);
+	
+	arena->getDynamicsWorld()->removeCollisionObject(obj);
 	
 	arena->resetBroadphaseSolver();
 	arena->toggleIdle(); // unpause simulation
@@ -133,12 +130,9 @@ void cSpace::generateCSpace()
 
 btCollisionObject* cSpace::createGhostObject(btCollisionShape* cshape,btTransform bodyTrans)
 {
-	// create a new C-Space object
-	btGhostObject* ghostObj = new btGhostObject();
-	// place it over the object
-	ghostObj->setWorldTransform(bodyTrans);
-	// link the shape to the c-space object
-	ghostObj->setCollisionShape(cshape);
+	btGhostObject* ghostObj = new btGhostObject();									// create a new C-Space object
+	ghostObj->setWorldTransform(bodyTrans);											// place it over the object
+	ghostObj->setCollisionShape(cshape);											// link the shape to the c-space object
 	ghostObj->setCollisionFlags(btCollisionObject::CF_CUSTOM_MATERIAL_CALLBACK);
 	
 	m_ghostShapes.push_back(cshape);
@@ -146,7 +140,7 @@ btCollisionObject* cSpace::createGhostObject(btCollisionShape* cshape,btTransfor
 	
 	// add the object to the world
 	arena->getDynamicsWorld()->addCollisionObject(ghostObj,btBroadphaseProxy::SensorTrigger,btBroadphaseProxy::SensorTrigger);
-	return (btCollisionObject*)ghostObj;
+	return static_cast<btCollisionObject*>(ghostObj);
 }
 
 // creates a C-Space hull shape object based on the collision object
@@ -455,7 +449,7 @@ void cSpace::compoundCSpace()
 	// delete old base ghost objects that have been reshaped
 	for(i=0;i<oldObjectList.size();i++) {
 		arena->getDynamicsWorld()->removeCollisionObject(oldObjectList[i]);
-		m_ghostObjects.remove(oldObjectList[i]);
+		m_ghostObjects.removeOne(oldObjectList[i]);
 	}
 	arena->resetBroadphaseSolver();
 	arena->toggleIdle(); // unpause simulation

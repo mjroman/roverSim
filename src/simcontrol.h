@@ -117,9 +117,11 @@ class simControl : public QObject
 		
 		void newRover(QWidget* parent, btVector3 start = btVector3(1,1,0));
 		void showNavTool();
+		void showPathView(int dir);
 		
 	signals:
 		void obstaclesRemoved();
+		void pathView(int);
 		
 	public:
 		// redefintion of ray reslut callback to exclude the object that is being picked

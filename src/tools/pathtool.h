@@ -45,7 +45,6 @@ class pathEditDialog : public QDialog
 		QCheckBox 		*crowFlyCheckBox;
 		QCheckBox 		*saveDisplayCheckBox;
 		
-		QDialogButtonBox *buttonBox;
 		QPushButton		*doneButton;
 		QPushButton		*cancelButton;
 		
@@ -76,15 +75,22 @@ class pathTool : public QWidget, private Ui::pathtool
 		void on_buttonAdd_clicked();
 		void on_buttonDelete_clicked();
 		void on_buttonGenerate_clicked();
+		void processPath(int x);
 		void updateTool();
+		void setRowBackground(int row, QBrush stroke);
 		void tableDataChange(int row, int column);
 		void tableDataEdit(int row, int column);
+		void stepOnPath(int dir);
 		
+	signals:
+		void changeBackground(int,QBrush);
+		void computePaths(int);
+	
 	private:
 		robot				*rover;
 		simGLView			*view;
 		QList<pathPlan*>	pathList;
 		btVector3			goalPoint;
-		int					selectedPath;
+		int					m_selectedPath;
 };
 #endif //PATHTOOL_H

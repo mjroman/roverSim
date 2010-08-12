@@ -138,12 +138,14 @@ public:
 	void setBreadth(int b) { m_breadth = b; }
 	void setSaveOn(bool x) { m_saveOn = x; }
 
+	bool  m_displayDebug;
 	bool  m_displayCrowFly;
 	bool  m_displaySavedPaths;
 	bool  m_displayPath;
 	bool  m_displayLightTrail;
 
 public slots:	
+	void displayDebug(bool x);
 	void displayCrowFly(bool x);
 	void displaySavedPaths(bool x);
 	void displayCurrentSearch(bool x);
@@ -151,7 +153,8 @@ public slots:
 	void displayPath(bool x);
 	void displayLightTrail(bool x);
 	
-	void togglePathPoint();
+	void togglePathReset();
+	void togglePathPoint(int dir);
 	void toggleCspace();
 	void renderGLObject();
 };

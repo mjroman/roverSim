@@ -1,6 +1,9 @@
 #include "pathtool.h"
 #include "../robot.h"
 
+/////////////////////////////////////////
+// custom color combo box
+/////////////
 ColorListEditor::ColorListEditor(QWidget *widget) 
 : QComboBox(widget)
 {
@@ -26,6 +29,9 @@ void ColorListEditor::populateList()
 	}
 }
 
+/////////////////////////////////////////
+// Path editing custom dialog
+/////////////
 pathEditDialog::pathEditDialog(pathPlan *ph, QWidget *parent)
 : QDialog(parent), path(ph)
 {
@@ -45,21 +51,23 @@ pathEditDialog::pathEditDialog(pathPlan *ph, QWidget *parent)
 	
   	rangeLabel = new QLabel("Sensor Range");
 	inputLayout->addWidget(rangeLabel,1,0);
-	rangeLineEdit = new QLineEdit;
+	rangeLineEdit = new QLineEdit(this);
 	rangeLineEdit->setText(QString::number(path->getRange()));
 	rangeLineEdit->setAlignment(Qt::AlignHCenter);
+	this->setFocusProxy(rangeLineEdit);									// sets the range line edit as the focused item when the dialog is shown
+	rangeLineEdit->selectAll();
 	inputLayout->addWidget(rangeLineEdit,1,1);
 	
     stepLabel = new QLabel("Step Distance");
 	inputLayout->addWidget(stepLabel,2,0);
-	stepLineEdit = new QLineEdit;
+	stepLineEdit = new QLineEdit(this);
 	stepLineEdit->setText(QString::number(path->getStep()));
 	stepLineEdit->setAlignment(Qt::AlignHCenter);
 	inputLayout->addWidget(stepLineEdit,2,1);
 	
 	breadthLabel = new QLabel("Search Breadth");
 	inputLayout->addWidget(breadthLabel,3,0);
-	breadthLineEdit = new QLineEdit;
+	breadthLineEdit = new QLineEdit(this);
 	breadthLineEdit->setText(QString::number(path->getBreadth()));
 	breadthLineEdit->setAlignment(Qt::AlignHCenter);
 	inputLayout->addWidget(breadthLineEdit,3,1);
@@ -87,21 +95,20 @@ pathEditDialog::pathEditDialog(pathPlan *ph, QWidget *parent)
 	displayGroupBox->setLayout(displayLayout);
 
 	// Dialong button layout
-	buttonBox = new QDialogButtonBox(Qt::Vertical);
-	doneButton = new QPushButton("Done");
+	QVBoxLayout *buttonBox = new QVBoxLayout;
+	doneButton = new QPushButton("Accept");
 	doneButton->setMinimumWidth(80);
 	doneButton->setStyleSheet("QPushButton:default{background: green; border: 2px solid darkgreen; border-radius:10; color: white;} QPushButton:pressed{background: red; border: 2px solid darkred; border-radius:10;}");
 	doneButton->setDefault(true);
-	buttonBox->addButton(doneButton, QDialogButtonBox::AcceptRole);
+	buttonBox->addWidget(doneButton);
 	
 	cancelButton = new QPushButton("Cancel");
 	cancelButton->setMinimumWidth(80);
 	cancelButton->setStyleSheet("QPushButton:enabled{background: yellow; border: 2px solid white; border-radius:10; color: black;} QPushButton:pressed{background: white; border-color: yellow;}");
-	buttonBox->addButton(cancelButton, QDialogButtonBox::RejectRole);
+	buttonBox->addWidget(cancelButton);
 	
-	//connect(buttonBox,SIGNAL(),this,SLOT(done(int)));
-	connect(buttonBox,SIGNAL(accepted()),this,SLOT(acceptData()));
-	connect(buttonBox,SIGNAL(rejected()),this,SLOT(reject()));
+	connect(doneButton,SIGNAL(clicked()),this,SLOT(acceptData()));
+	connect(cancelButton,SIGNAL(clicked()),this,SLOT(reject()));
 	
 	connect(baselineCheckBox,SIGNAL(clicked(bool)),path,SLOT(displayPath(bool)));
 	connect(lightTrailCheckBox,SIGNAL(clicked(bool)),path,SLOT(displayLightTrail(bool)));
@@ -117,7 +124,7 @@ pathEditDialog::pathEditDialog(pathPlan *ph, QWidget *parent)
 	QHBoxLayout *mainLayout = new QHBoxLayout;
 	mainLayout->addLayout(inputLayout);
 	mainLayout->addWidget(displayGroupBox);
-	mainLayout->addWidget(buttonBox);
+	mainLayout->addLayout(buttonBox);
 	
 	this->setLayout(mainLayout);
 }
@@ -132,19 +139,28 @@ void pathEditDialog::acceptData()
 	this->accept();
 }
 
+/////////////////////////////////////////
+// Path creation main tool
+/////////////
 pathTool::pathTool(robot *bot, simGLView* glView, QWidget* parent)
 :
 QWidget(parent),
 rover(bot),
 view(glView),
-selectedPath(0)
+m_selectedPath(0)
 {
 	setupUi(this);
 	move(20,400);
 	setWindowFlags(Qt::Window | Qt::WindowStaysOnTopHint);
 	setWindowTitle("Path Creation");
 	
+	buttonDelete->setEnabled(false);
 	tableSetup();
+	
+	connect(this,SIGNAL(changeBackground(int,QBrush)),this,SLOT(setRowBackground(int,QBrush)));
+	connect(this,SIGNAL(computePaths(int)),this,SLOT(processPath(int)));
+	connect(pathTableWidget, SIGNAL(cellClicked(int,int)),this,SLOT(tableDataChange(int,int)));
+	connect(pathTableWidget, SIGNAL(cellDoubleClicked(int,int)),this,SLOT(tableDataEdit(int,int)));
 	show();
 }
 
@@ -165,11 +181,15 @@ void pathTool::removePaths()
 void pathTool::resetPaths()
 {
 	int i;
-	for(i=0; i<pathList.size(); i++) pathList[i]->reset();
+	for(i=0; i<pathList.size(); i++){
+		pathList[i]->reset();									// delete all old paths before creating new ones
+		emit changeBackground(i,QBrush(QColor(Qt::white)));
+	}
 }
 
 void pathTool::tableSetup()
 {
+	this->setUpdatesEnabled(true);
 	pathTableWidget->setColumnCount(5);
 	pathTableWidget->setRowCount(0);
 	pathTableWidget->showGrid();
@@ -194,9 +214,6 @@ void pathTool::tableSetup()
 	pathTableWidget->setColumnWidth(4,100);
 
 	this->setMaximumWidth(393);
-	
-	connect(pathTableWidget, SIGNAL(cellClicked(int,int)),this,SLOT(tableDataChange(int,int)));
-	connect(pathTableWidget, SIGNAL(cellDoubleClicked(int,int)),this,SLOT(tableDataEdit(int,int)));
 }
 
 // when the [+] button is pressed
@@ -212,13 +229,13 @@ void pathTool::on_buttonAdd_clicked()
 	
 	if(pathList.isEmpty()) buttonDelete->setEnabled(true);				// enable the delete button if the list is empty
 	
-	pathList.insert(selectedPath, path);								// add the new path to the list
-	pathTableWidget->insertRow(selectedPath);							// insert a new row into the table
+	pathList.insert(m_selectedPath, path);								// add the new path to the list
+	pathTableWidget->insertRow(m_selectedPath);							// insert a new row into the table
 
 	QTableWidgetItem* color = new QTableWidgetItem();					// add the color item
 	color->setData(Qt::DecorationRole,path->getColor());
 	color->setFlags(Qt::ItemIsEnabled);
-	pathTableWidget->setItem(selectedPath,0,color);
+	pathTableWidget->setItem(m_selectedPath,0,color);
 	
 	QTableWidgetItem* range = new QTableWidgetItem();					// add the range item
 	range->setData(Qt::DisplayRole,path->getRange());
@@ -227,45 +244,55 @@ void pathTool::on_buttonAdd_clicked()
 	range->setFont(ft);
 	range->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 	range->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
-	pathTableWidget->setItem(selectedPath,1,range);
+	pathTableWidget->setItem(m_selectedPath,1,range);
 	
 	QTableWidgetItem* length = new QTableWidgetItem("...");				// add the length item
 	length->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 	length->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
-	pathTableWidget->setItem(selectedPath,2,length);
+	pathTableWidget->setItem(m_selectedPath,2,length);
 	
 	QTableWidgetItem* stint = new QTableWidgetItem("...");				// add the time item
 	stint->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 	stint->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
-	pathTableWidget->setItem(selectedPath,3,stint);
+	pathTableWidget->setItem(m_selectedPath,3,stint);
 	
 	QTableWidgetItem* eff = new QTableWidgetItem("...");				// add the efficiency item
 	eff->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 	eff->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
-	pathTableWidget->setItem(selectedPath,4,eff);
+	pathTableWidget->setItem(m_selectedPath,4,eff);
 }
 
 // when the [-] button is pressed
 void pathTool::on_buttonDelete_clicked()
 {
-	if(selectedPath >= pathList.size()) selectedPath = pathList.size()-1;
-	delete pathList[selectedPath];
-	pathList.removeAt(selectedPath);
+	if(m_selectedPath >= pathList.size()) m_selectedPath = pathList.size()-1;
+	delete pathList[m_selectedPath];
+	pathList.removeAt(m_selectedPath);
 	
 	if(pathList.isEmpty()) buttonDelete->setEnabled(false);
-	pathTableWidget->removeRow(selectedPath);
+	pathTableWidget->removeRow(m_selectedPath);
 }
 
 void pathTool::on_buttonGenerate_clicked()
 {
-	int i;	
-	for(i=0; i<pathList.size(); i++) pathList[i]->reset();		// delete all old paths before creating new ones
+	resetPaths();
+	emit changeBackground(0,QBrush(QColor("lightcyan")));
+	emit computePaths(0);
+}
+
+void pathTool::processPath(int x)
+{
+	qApp->processEvents();
+	if(x >= pathList.size()) return;
 	
-	for(i=0; i<pathList.size(); i++)
-	{
-		pathList[i]->goForGoal(rover->position - btVector3(0,0,0.34),goalPoint);
-		updateTool();
-	}
+	pathList[x]->goForGoal(rover->position - btVector3(0,0,0.34),goalPoint);
+	updateTool();
+	
+	emit changeBackground(x,QBrush(QColor("aliceblue")));
+	x++;
+	emit changeBackground(x,QBrush(QColor("lightcyan")));
+
+	emit computePaths(x);
 }
 
 // update the data in the table, this is called after the paths are generated
@@ -309,17 +336,37 @@ void pathTool::updateTool()
 	}
 }
 
+void pathTool::setRowBackground(int row, QBrush stroke)
+{
+	if(row >= pathTableWidget->rowCount()) return;
+	for(int i=1;i<pathTableWidget->columnCount();i++){
+		QTableWidgetItem* item = pathTableWidget->item(row,i);
+		item->setBackground(stroke);
+	}
+}
+
 void pathTool::tableDataChange(int row, int column)
 {
-	selectedPath = row;
+	pathTableWidget->selectRow(row);
+	if(row == m_selectedPath) return;
+	if(m_selectedPath < pathList.size() && m_selectedPath >= 0)
+		pathList[m_selectedPath]->togglePathReset();
+	m_selectedPath = row;
 }
 
 void pathTool::tableDataEdit(int row, int column)
 {
-	selectedPath = row;
+	m_selectedPath = row;
 	
 	// bring up editing dialog box
 	pathEditDialog eDialog(pathList[row],this);
 	eDialog.exec();
 	updateTool();
+}
+
+void pathTool::stepOnPath(int dir)
+{
+	if(pathList.isEmpty()) return;
+	if(m_selectedPath < pathList.size() && m_selectedPath >= 0)
+		pathList[m_selectedPath]->togglePathPoint(dir);
 }

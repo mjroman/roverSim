@@ -38,6 +38,7 @@ m_linkViewIndex(0)
 	displayLightTrail(true);
 	displayCrowFly(false);
 	displaySavedPaths(false);
+	displayDebug(false);
 }
 
 pathPlan::~pathPlan()
@@ -56,7 +57,7 @@ pathPlan::~pathPlan()
 }
 
 void pathPlan::goForGoal(btVector3 start, btVector3 end)
-{	
+{
 	m_startPoint.point = start;
 	m_goalPoint.point = end;
 	
@@ -71,6 +72,10 @@ void pathPlan::goForGoal(btVector3 start, btVector3 end)
 	else this->cycleToGoal();								// step forward on path until the goal is in range
 	
 	m_GP.time = t.elapsed();								// get the elapsed time for the path generation
+	
+	if(m_CS) delete m_CS;									// delete the C Space to free up some memory
+	m_CS = 0;
+	m_pointPath.clear();
 	
 	displayCurrentSearch(false);							// turn off search path drawing
 	
@@ -88,7 +93,6 @@ void pathPlan::reset()
 {
 	if(m_CS) delete m_CS;
 	m_CS = 0;
-	m_pointPath.clear();
 	m_pathList.clear();
 	m_GP.points.clear();
 	m_GP.length = 0;
@@ -288,88 +292,53 @@ bool pathPlan::findPathA(float length)
 	return false;
 }
 
-void pathPlan::togglePathPoint()
+void pathPlan::togglePathReset()
+{
+	displayDebug(false);
+	if(m_CS) delete m_CS;
+	m_CS = 0;
+	hitPoints.clear();
+	contactPoints.clear();
+}
+
+// this is a debugging function used to see what paths are available from a given point on the path
+// calling this function repeatedly cycles throught the shortest path
+void pathPlan::togglePathPoint(int dir)
 {
 	if(m_GP.points.isEmpty()) return;
-	if(m_linkViewIndex >= m_GP.points.size()) m_linkViewIndex=-1;
-	
-	if(m_linkViewIndex == 0){
-		m_displayList.push_front( &m_drawingList[PP_DEBUG] );			// turn on debug drawing
-		displayRangeFan(true);
-	}
-	else if(m_linkViewIndex < 0){
-		m_displayList.removeAll( &m_drawingList[PP_DEBUG] );	// turn off debug drawing
-		displayRangeFan(false);
-		m_linkViewIndex = 0;
-		return;
-	}
-	
+
+	if(m_CS) delete m_CS;
+	m_CS = 0;
 	hitPoints.clear();
 	contactPoints.clear();
 	
-	m_view->getCamera()->cameraSetDirection(m_GP.points[m_linkViewIndex].point); // set the camera view to the path point
+	m_linkViewIndex += dir;
+	if(m_linkViewIndex >= m_GP.points.size()) m_linkViewIndex = 0;
+	else if(m_linkViewIndex < 0) m_linkViewIndex = m_GP.points.size()-1;
 
-	// get All Visable points
-		int i;
-		rankPoint here = m_GP.points[m_linkViewIndex];
-		rankPoint leftMost;
-		rankPoint rightMost;	
-		QList<rankPoint> list;
+	if(!m_displayDebug) displayDebug(true);								// turn on debug drawing
 
-		if(m_CS) delete m_CS;
-		m_CS = new cSpace(here.point,m_range,m_view);					// create a new Configuration Space based on the start point
-		m_CS->drawCspace(m_displayCS);
-		
-	// gather all objects extreme vertices
-		for(i = 0; i < m_CS->m_ghostObjects.size(); ++i)									// get all points from individual objects
-		{
-			this->getExtremes(m_CS->m_ghostObjects[i],here,&leftMost,&rightMost);			// get the far left and right points around the obstacle
-			if(m_CS->m_ghostObjects[i]->getUserPointer())	// check both extremes to make sure they are not inside of a grouped object
-			{
-				bool lState,rState;
-				lState = rState = false;
-				cSpace::overlapGroup* gp = static_cast<cSpace::overlapGroup*>(m_CS->m_ghostObjects[i]->getUserPointer());
-				for(int j=0;j<gp->list.size();j++)
-				{
-					if(gp->list[j] == m_CS->m_ghostObjects[i]) continue;				// skip the object the extremes are from
-					if(m_CS->isPointInsideObject(leftMost.point,gp->list[j])) lState = true;
-					if(m_CS->isPointInsideObject(rightMost.point,gp->list[j])) rState = true;
-				}
-				if(!lState) list << leftMost;
-				if(!rState) list << rightMost;
-			}
-			else list << leftMost << rightMost;
-		}
+// get All Visable points
+	rankPoint here = m_GP.points[m_linkViewIndex];
+	m_view->getCamera()->cameraSetDirection(here.point); // set the camera view to the path point
+	m_CS = new cSpace(here.point,m_range,m_view);					// create a new Configuration Space based on the start point
+	m_CS->drawCspace(true);
 
-	// begin Pruning points from the list
+// gather all objects extreme vertices
+	contactPoints = getVisablePointsFrom(here);
 
-		btVector3 pt;
-		i=0;
-		while(i < list.size()){
-			if(this->isRayBlocked(here,list[i],&pt)) {
-				hitPoints << pt;				
-				list.removeAt(i);
-			}
-			else{
-				i++;
-			}
-		}
-
-		contactPoints << list;
-	
 	//contactPoints = prunePointsFrom(contactPoints);
-		contactPoints = angleBasedRank(contactPoints, m_GP.points[m_linkViewIndex]);
-		contactPoints = quickSortRankLessthan(contactPoints);
+	contactPoints = angleBasedRank(contactPoints, m_GP.points[m_linkViewIndex]);
+	contactPoints = quickSortRankLessthan(contactPoints);
 
-		qDebug("_______________________");
-		for(int i=0;i<contactPoints.size();i++){
-			qDebug("rank %f",contactPoints[i].rank);
-		}
-		
-		contactPoints.prepend(m_GP.points[m_linkViewIndex]);
-	
+	// qDebug("_______________________");
+	// for(int i=0;i<contactPoints.size();i++){
+	// 	qDebug("rank %f",contactPoints[i].rank);
+	// }
+
+	contactPoints.prepend(m_GP.points[m_linkViewIndex]);	// push the point the current view is from for drawing
+
 	//if(this->isRayBlocked(m_pointPath[m_linkViewIndex],m_goalPoint) == NULL) qDebug("Clear to GOAL");
-	m_linkViewIndex++;
 }
 
 
@@ -444,10 +413,10 @@ void pathPlan::getExtremes(btCollisionObject* obj, rankPoint pivotPoint, rankPoi
 	float rightMax = 0;
 	QList<btVector3> ptList;
 	
-	btTransform objTrans = obj->getWorldTransform();	// the transform of the object being intersected
+	btTransform objTrans = obj->getWorldTransform();		// the transform of the object being intersected
 	ptList = m_CS->getTopShapePoints(obj);					// get all the top points of the obj
 
-	for(int i = 0; i < ptList.size(); ++i)	// cycle through all top points
+	for(int i = 0; i < ptList.size(); ++i)					// cycle through all top points
 	{
 		if(pivotPoint.object == obj && pivotPoint.corner == i) continue;	// ignore the point if it is equal to the pivot point
 		
@@ -494,14 +463,14 @@ QList<rankPoint> pathPlan::getVisablePointsFrom(rankPoint here)
 	{
 		this->getExtremes(m_CS->m_ghostObjects[i],here,&leftMost,&rightMost);			// get the far left and right points around the obstacle
 		
-		if(m_CS->m_ghostObjects[i]->getUserPointer())	// check both extremes to make sure they are not inside of a grouped object
+		if(m_CS->m_ghostObjects[i]->getUserPointer())					// check both extremes to make sure they are not inside of a grouped object
 		{
 			bool lState,rState;
 			lState = rState = false;
 			cSpace::overlapGroup* gp = static_cast<cSpace::overlapGroup*>(m_CS->m_ghostObjects[i]->getUserPointer());
 			for(int j=0;j<gp->list.size();j++)
 			{
-				if(gp->list[j] == m_CS->m_ghostObjects[i]) continue;				// skip the object the extremes are from
+				if(gp->list[j] == m_CS->m_ghostObjects[i]) continue;					// skip the object the extremes are from
 				if(m_CS->isPointInsideObject(leftMost.point,gp->list[j])) lState = true;
 				if(m_CS->isPointInsideObject(rightMost.point,gp->list[j])) rState = true;
 			}
@@ -511,10 +480,10 @@ QList<rankPoint> pathPlan::getVisablePointsFrom(rankPoint here)
 		else list << leftMost << rightMost;
 	}
 
-// begin Pruning points from the list
+																						// begin Pruning points from the list
 	i=0;
 	while(i < list.size()){
-		if(this->isRayBlocked(here,list[i])) 				// remove all remaining points that are blocked
+		if(this->isRayBlocked(here,list[i])) 											// remove all remaining points that are blocked
 			list.removeAt(i);
 		else
 			i++;	
@@ -650,6 +619,13 @@ bool pathPlan::isNewLink(rankLink link)
 /////////////////////////////////////////
 // path display access functions
 /////////////
+void pathPlan::displayDebug(bool x)
+{
+	m_displayDebug = x;
+	if(x) m_displayList.push_front( &m_drawingList[PP_DEBUG] );
+	else m_displayList.removeAll( &m_drawingList[PP_DEBUG] );
+	if(m_range) displayRangeFan(x);	
+}
 void pathPlan::displayCrowFly(bool x)
 {
 	m_displayCrowFly = x;

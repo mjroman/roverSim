@@ -70,7 +70,7 @@ background: green;
  border-radius:10;
 color: white;}
 
-QPushButton:checked{
+QPushButton:pressed{
 background: red;
 border: 2px solid darkred;
 border-radius:10;

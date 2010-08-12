@@ -667,6 +667,7 @@ void simControl::newRover(QWidget* parent, btVector3 start)
 	m_pTool = new pathTool(sr2, glView, parent);
 	m_pTool->setGoalPoint(autoNav->getCurrentWaypoint().position + btVector3(0,0,0.01));
 	connect(this, SIGNAL(obstaclesRemoved()), m_pTool, SLOT(resetPaths()));
+	connect(this, SIGNAL(pathView(int)),m_pTool, SLOT(stepOnPath(int)));
 	glView->setFocus(Qt::OtherFocusReason);
 }
 bool simControl::removeRover()
@@ -686,6 +687,10 @@ bool simControl::removeRover()
 void simControl::showNavTool()
 {
 	if(autoNav) autoNav->show();
+}
+void simControl::showPathView(int dir)
+{
+	emit pathView(dir);
 }
 
 /////////////////////////////////////////
