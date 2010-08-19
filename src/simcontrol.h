@@ -14,6 +14,7 @@ class skydome;
 class simGLView;
 class autoCode;
 class pathTool;
+class pathPlan;
 class cSpace;
 
 
@@ -27,6 +28,7 @@ class simControl : public QObject
 		SR2rover		*sr2;
 		autoCode		*autoNav;
 		pathTool		*m_pTool;
+		pathPlan		*path;
 		cSpace			*m_CS;
 		QTimer          *simTimer;
 	    double          delTime;
@@ -114,6 +116,7 @@ class simControl : public QObject
 		void resetWaypointStates();
 		
 		void testCspace();
+		void testPath();
 		
 		void newRover(QWidget* parent, btVector3 start = btVector3(1,1,0));
 		void showNavTool();

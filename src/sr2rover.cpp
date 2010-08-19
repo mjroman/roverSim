@@ -571,10 +571,10 @@ void SR2rover::renderGLObject()
             glBindTexture(GL_TEXTURE_2D, m_view->getTexture(1));
             glBegin(GL_QUADS);
             glNormal3f(0,1,0);
-            glTexCoord2d(0,1); glVertex3f(0.07,0.013,0.04);
-            glTexCoord2d(1,1); glVertex3f(-0.07,0.013,0.04);
-            glTexCoord2d(1,0.55); glVertex3f(-0.07,0.013,-0.04);
-            glTexCoord2d(0,0.55); glVertex3f(0.07,0.013,-0.04);
+            glTexCoord2d(1,1); glVertex3f(0.07,0.013,0.04);
+			glTexCoord2d(1,0.54); glVertex3f(0.07,0.013,-0.04);
+			glTexCoord2d(0,0.54); glVertex3f(-0.07,0.013,-0.04);
+            glTexCoord2d(0,1); glVertex3f(-0.07,0.013,0.04);  
             glEnd();
             glDisable(GL_TEXTURE_2D);
 
@@ -582,9 +582,9 @@ void SR2rover::renderGLObject()
             glBegin(GL_QUADS);
             glNormal3f(0,-1,0);
             glVertex3f(0.07,0.012,0.04);
+			glVertex3f(-0.07,0.012,0.04);
+			glVertex3f(-0.07,0.012,-0.04);
             glVertex3f(0.07,0.012,-0.04);
-            glVertex3f(-0.07,0.012,-0.04);
-            glVertex3f(-0.07,0.012,0.04);
             glEnd();
             box(0.06,0.0125,0.03);
         }

@@ -345,7 +345,7 @@ void radarFan(float* center, float rad)
 	glNormal3f(0,0,1);
 	glColor4f(1,1,1,0.0);
 	glVertex3f(0,0,0);
-	glColor4f(0,1,0,fade);
+	glColor4f(0,0.5,1.0,fade);
 	for(i=0;i<=360;i+=5){
 				// if(i==j) glColor4f(1,1,0,0.3);
 				// else glColor4f(1,0,0,0.1);

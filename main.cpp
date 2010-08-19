@@ -4,11 +4,10 @@
 
 int main(int argc, char *argv[])
 {
-    Q_INIT_RESOURCE(images);
-
 	physicsWorld::initialize(100,100,20,5);
 
     QApplication a(argc, argv);
+	Q_INIT_RESOURCE(resource);
 	
     MainGUI sim;
     sim.show();

@@ -28,6 +28,7 @@ m_minObstYaw(0),
 m_maxObstYaw(45),
 m_obstDensity(5)
 {
+	path = 0;
 	m_CS = 0;
 	qDebug("simControl startup");
    	arena = physicsWorld::instance(); // get the physics world object
@@ -60,6 +61,7 @@ m_obstDensity(5)
 
 simControl::~simControl()
 {
+	if(path) delete path;
 	if(m_CS) delete m_CS;
 	simTimer->stop();
 	delete simTimer;
@@ -650,6 +652,17 @@ void simControl::testCspace()
 		m_CS->drawCspace(true);
 	}
 }
+
+void simControl::testPath()
+{
+	if(path) delete path;
+	path = 0;
+	if(sr2){
+		path = new pathPlan(glView);
+		path->goForGoal(sr2->position - btVector3(0,0,0.34),autoNav->getCurrentWaypoint().position + btVector3(0,0,0.01));
+	}
+}
+
 /////////////////////////////////////////
 // Rover generation functions
 /////////////

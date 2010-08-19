@@ -5,4 +5,4 @@ then
 	qmake 
 fi
 
-make && open build/QtRoverSimulator_debug.app
+make -s && open build/QtRoverSimulator_debug.app

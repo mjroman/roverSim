@@ -44,6 +44,7 @@ class pathEditDialog : public QDialog
 		QCheckBox 		*lightTrailCheckBox;
 		QCheckBox 		*crowFlyCheckBox;
 		QCheckBox 		*saveDisplayCheckBox;
+		QCheckBox		*cspaceDisplayCheckBox;
 		
 		QPushButton		*doneButton;
 		QPushButton		*cancelButton;
@@ -92,5 +93,6 @@ class pathTool : public QWidget, private Ui::pathtool
 		QList<pathPlan*>	pathList;
 		btVector3			goalPoint;
 		int					m_selectedPath;
+		QSound				m_foundSound;
 };
 #endif //PATHTOOL_H

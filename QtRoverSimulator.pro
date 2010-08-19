@@ -96,5 +96,5 @@ LIBS += -L/usr/local \
 		-lBulletCollision \
 		-lLinearMath	
 		
-RESOURCES += images.qrc
+RESOURCES += resource.qrc
 RC_FILE = redrobot.icns

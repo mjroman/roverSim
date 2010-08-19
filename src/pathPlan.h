@@ -64,7 +64,6 @@ class pathPlan : public simGLObject
 	Q_OBJECT
 private:
 	cSpace*										m_CS;				// the Configuration Space the path is calculated in
-	bool										m_displayCS;		// draws the Configuration Space or not	
 	
 	QList<rankPoint>							m_pointPath;		// global point containter, used while searching for a path
 	QList<goalPath>								m_pathList;			// contains all the paths if they have been saved
@@ -81,7 +80,9 @@ private:
 	rankPoint									m_goalPoint;		// calculate a path to this point
 	float										m_goalDistance;		// straight line distance to the goal from the start
 	btCollisionObject*							m_goalOccluded;		// hold the object the goal is inside if the goal is occluded
-	
+	float										m_loopThreshold;	// the threshold for exiting a looping path when searching at limited ranges
+	bool 										m_looping;
+		
 	QList< ACallback<pathPlan> >				m_drawingList;		// holds all drawing callbacks
 	QList< ACallback<pathPlan>* >				m_displayList;		// holds a pointer to the objects that should be currently drawn
 	
@@ -131,9 +132,10 @@ public:
 	float getStep() { return m_step; }
 	int getBreadth() { return m_breadth; }
 	bool getSaveOn() { return m_saveOn; }
+	bool isLooping() { return m_looping; }
 	
 	void setColor(QColor color) { m_color = color; m_color.setAlphaF(0.45); }
-	void setRange(float r) { m_range = r; }
+	void setRange(float r) { m_range = fabs(r); }
 	void setStep(float s) { m_step = s; }
 	void setBreadth(int b) { m_breadth = b; }
 	void setSaveOn(bool x) { m_saveOn = x; }
@@ -143,7 +145,8 @@ public:
 	bool  m_displaySavedPaths;
 	bool  m_displayPath;
 	bool  m_displayLightTrail;
-
+	bool  m_displayCS;
+	
 public slots:	
 	void displayDebug(bool x);
 	void displayCrowFly(bool x);
@@ -152,10 +155,10 @@ public slots:
 	void displayRangeFan(bool x);
 	void displayPath(bool x);
 	void displayLightTrail(bool x);
+	void displayCspace(bool x);
 	
 	void togglePathReset();
 	void togglePathPoint(int dir);
-	void toggleCspace();
 	void renderGLObject();
 };
 #endif // PATHPLAN_H

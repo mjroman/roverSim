@@ -1,0 +1,13 @@
+<RCC>
+    <qresource prefix="/textures">
+        <file alias="pancam.png">src/textures/pancam.png</file>
+        <file alias="solarPanel.png">src/textures/solarPanel.png</file>
+        <file>src/textures/spark.png</file>
+        <file>src/textures/mud.png</file>
+        <file>src/textures/defaultTerrain.png</file>
+    </qresource>
+    <qresource prefix="/images">
+        <file>src/images/redrobot.icns</file>
+        <file>src/images/RedSatellite.icns</file>
+    </qresource>
+</RCC>

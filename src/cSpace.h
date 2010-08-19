@@ -20,21 +20,15 @@ public:
 		QList<btCollisionObject*> list;
 	};
 	
-	QList<btCollisionObject*>	m_ghostObjects;
-	
 	cSpace(btVector3 center, float range, simGLView* glView = NULL);
 	~cSpace();
 	
 	void setCenterPoint(btVector3 center) { m_centerPoint = center; }
 	void setDetectRange(float range) { m_detectRange = range; m_detectRangeSq = range*range; }
-
+	
 	btVector3 getCenterPoint() { return m_centerPoint; }
 	float getDetectRange() { return m_detectRange; }
-	
-	void deleteGhostGroup();
-	
-	void generateCSpace();
-	void groupOverlapCSpace();
+	QList<btCollisionObject*>* getGhostList() { return &m_ghostObjects; }
 	
 	// utility functions
 	bool isPointInsidePoly(btVector3 pt,QList<btVector3> ls);
@@ -53,11 +47,17 @@ private:
 	btVector3									m_centerPoint;
 	float										m_detectRange;
 	float										m_detectRangeSq;
-	btAlignedObjectArray<btCollisionShape*>		m_ghostShapes;
+	
+	QList<btCollisionShape*>					m_ghostShapes;
+	QList<btCollisionObject*>					m_ghostObjects;
 	QList<overlapGroup>							m_ghostGroups;
 	btVector3 									m_vertices[8];
 
+	void deleteGhostGroup();
 	void deleteGhostObject(btCollisionObject* obj);
+	void generateCSpace();
+	void groupOverlapCSpace();
+	
 	btCollisionObject* createGhostObject(btCollisionShape* cshape,btTransform bodyTrans);
 	btCollisionObject* createGhostShape(btCollisionObject* bodyObj);
 	btCollisionObject* createGhostHull(btTransform bodyTrans, QList<btVector3> list);

@@ -1,5 +1,6 @@
 #include "pathtool.h"
 #include "../robot.h"
+#include <QSound>
 
 /////////////////////////////////////////
 // custom color combo box
@@ -92,6 +93,9 @@ pathEditDialog::pathEditDialog(pathPlan *ph, QWidget *parent)
 	saveDisplayCheckBox = new QCheckBox("Saved Paths");
 	displayLayout->addWidget(saveDisplayCheckBox);
 	
+	cspaceDisplayCheckBox = new QCheckBox("Config Space");
+	displayLayout->addWidget(cspaceDisplayCheckBox);
+	
 	displayGroupBox->setLayout(displayLayout);
 
 	// Dialong button layout
@@ -114,11 +118,13 @@ pathEditDialog::pathEditDialog(pathPlan *ph, QWidget *parent)
 	connect(lightTrailCheckBox,SIGNAL(clicked(bool)),path,SLOT(displayLightTrail(bool)));
 	connect(crowFlyCheckBox,SIGNAL(clicked(bool)),path,SLOT(displayCrowFly(bool)));
 	connect(saveDisplayCheckBox,SIGNAL(clicked(bool)),path,SLOT(displaySavedPaths(bool)));
+	connect(cspaceDisplayCheckBox,SIGNAL(clicked(bool)),path,SLOT(displayCspace(bool)));
 	
 	baselineCheckBox->setChecked(path->m_displayPath);
 	lightTrailCheckBox->setChecked(path->m_displayLightTrail);
 	crowFlyCheckBox->setChecked(path->m_displayCrowFly);
 	saveDisplayCheckBox->setChecked(path->m_displaySavedPaths);
+	cspaceDisplayCheckBox->setChecked(path->m_displayCS);
 	
 	// Main window layout
 	QHBoxLayout *mainLayout = new QHBoxLayout;
@@ -147,7 +153,8 @@ pathTool::pathTool(robot *bot, simGLView* glView, QWidget* parent)
 QWidget(parent),
 rover(bot),
 view(glView),
-m_selectedPath(0)
+m_selectedPath(0),
+m_foundSound("/Users/mattroman/Documents/code/roverSim/src/sounds/singleBeep2.wav")
 {
 	setupUi(this);
 	move(20,400);
@@ -230,6 +237,7 @@ void pathTool::on_buttonAdd_clicked()
 	if(pathList.isEmpty()) buttonDelete->setEnabled(true);				// enable the delete button if the list is empty
 	
 	pathList.insert(m_selectedPath, path);								// add the new path to the list
+	
 	pathTableWidget->insertRow(m_selectedPath);							// insert a new row into the table
 
 	QTableWidgetItem* color = new QTableWidgetItem();					// add the color item
@@ -238,9 +246,15 @@ void pathTool::on_buttonAdd_clicked()
 	pathTableWidget->setItem(m_selectedPath,0,color);
 	
 	QTableWidgetItem* range = new QTableWidgetItem();					// add the range item
-	range->setData(Qt::DisplayRole,path->getRange());
 	QFont ft = range->font();
-	ft.setPointSize(12);
+	if(path->getRange() == 0) {
+		range->setData(Qt::DisplayRole,QString::fromWCharArray(L"\x221e"));
+		ft.setPointSize(18);
+	}
+	else {
+		range->setData(Qt::DisplayRole,path->getRange());
+		ft.setPointSize(12);
+	}
 	range->setFont(ft);
 	range->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 	range->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
@@ -276,21 +290,29 @@ void pathTool::on_buttonDelete_clicked()
 void pathTool::on_buttonGenerate_clicked()
 {
 	resetPaths();
-	emit changeBackground(0,QBrush(QColor("lightcyan")));
+	emit changeBackground(0,QBrush(QColor("springgreen")));
 	emit computePaths(0);
 }
 
 void pathTool::processPath(int x)
 {
 	qApp->processEvents();
-	if(x >= pathList.size()) return;
+	if(x >= pathList.size()){
+		QSound::play("/Users/mattroman/Documents/code/roverSim/src/sounds/singleBell.wav");
+		return;
+	}
 	
+	if(x != 0) m_foundSound.play();
+
 	pathList[x]->goForGoal(rover->position - btVector3(0,0,0.34),goalPoint);
 	updateTool();
 	
-	emit changeBackground(x,QBrush(QColor("aliceblue")));
+	if(pathList[x]->isLooping())
+		emit changeBackground(x,QBrush(QColor(Qt::yellow)));
+	else
+		emit changeBackground(x,QBrush(QColor("lightsteelblue")));
 	x++;
-	emit changeBackground(x,QBrush(QColor("lightcyan")));
+	emit changeBackground(x,QBrush(QColor("springgreen")));
 
 	emit computePaths(x);
 }
@@ -311,7 +333,9 @@ void pathTool::updateTool()
 				}
 				case 1:
 				{
-					item->setData(Qt::DisplayRole,pathList[i]->getRange());
+					float r = pathList[i]->getRange();
+					if(r == 0)	item->setData(Qt::DisplayRole,QString::fromWCharArray(L"\x221e"));
+					else item->setData(Qt::DisplayRole,r);
 					break;
 				}
 				case 2:
@@ -349,7 +373,7 @@ void pathTool::tableDataChange(int row, int column)
 {
 	pathTableWidget->selectRow(row);
 	if(row == m_selectedPath) return;
-	if(m_selectedPath < pathList.size() && m_selectedPath >= 0)
+	if(m_selectedPath < pathList.size())
 		pathList[m_selectedPath]->togglePathReset();
 	m_selectedPath = row;
 }

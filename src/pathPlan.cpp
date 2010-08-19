@@ -8,18 +8,14 @@ pathPlan::pathPlan(simGLView* glView)
 :
 simGLObject(glView),
 m_CS(NULL),
-m_displayCS(false),
 m_range(0),
 m_step(0.25),
 m_breadth(0),
 m_saveOn(false),
 m_goalOccluded(NULL),
+m_looping(false),
 m_linkViewIndex(0)
-{
-	memset(&m_startPoint,0,sizeof(rankPoint));
-	memset(&m_midPoint,0,sizeof(rankPoint));
-	memset(&m_goalPoint,0,sizeof(rankPoint));
-	
+{	
 	// create callbacks to all the drawing methods, these are added to/removed from the display list
 	// make sure these remain in order to match with the enumeration
 	ACallback<pathPlan> drawCB(this, &pathPlan::drawDebugPath);	m_drawingList << drawCB;
@@ -30,6 +26,8 @@ m_linkViewIndex(0)
 	drawCB.SetCallback(this,&pathPlan::drawPathBaseLine);		m_drawingList << drawCB;
 	drawCB.SetCallback(this,&pathPlan::drawLightTrail);			m_drawingList << drawCB;
 	
+	m_loopThreshold = SQ(m_step*0.25);	// set looping to 1/4 of a step distance
+	
 	m_GP.length = 0;
 	m_GP.time = 0;
 	m_GP.efficiency = 0;
@@ -39,6 +37,7 @@ m_linkViewIndex(0)
 	displayCrowFly(false);
 	displaySavedPaths(false);
 	displayDebug(false);
+	displayCspace(false);
 }
 
 pathPlan::~pathPlan()
@@ -56,14 +55,29 @@ pathPlan::~pathPlan()
 	m_CS = 0;
 }
 
+void pathPlan::reset()
+{
+	togglePathReset();
+	m_pathList.clear();
+	m_GP.points.clear();
+	m_GP.length = 0;
+	m_GP.time = 0;
+	m_GP.efficiency = 0;
+	m_looping = false;
+}
+
 void pathPlan::goForGoal(btVector3 start, btVector3 end)
 {
+	memset(&m_startPoint,0,sizeof(rankPoint));
+	memset(&m_midPoint,0,sizeof(rankPoint));
+	memset(&m_goalPoint,0,sizeof(rankPoint));
+	
 	m_startPoint.point = start;
 	m_goalPoint.point = end;
 	
-	displayCurrentSearch(true);
+	displayCurrentSearch(true);								// turn on drawing the yellow search lines
 	
-	this->generateCspace();
+	this->generateCspace();									// create the C-Space to compute the path in
 	
 	QTime t;
 	t.start();												// start time of path calculation
@@ -73,15 +87,15 @@ void pathPlan::goForGoal(btVector3 start, btVector3 end)
 	
 	m_GP.time = t.elapsed();								// get the elapsed time for the path generation
 	
-	if(m_CS) delete m_CS;									// delete the C Space to free up some memory
+	if(m_CS) delete m_CS;									// delete the C Space to free up some memory since it is not needed
 	m_CS = 0;
-	m_pointPath.clear();
+	m_pointPath.clear();									// clear out the construction point path
 	
 	displayCurrentSearch(false);							// turn off search path drawing
 	
 	m_view->printText("Mapping Complete");
 	if(m_saveOn) m_view->printText(QString("%1 paths found").arg(m_pathList.size()));
-	if(m_GP.length == 0)
+	if(m_GP.length == 0 || m_looping)
 		m_view->printText(QString("No paths to goal found for range %1").arg(m_range));
 	else{
 		m_GP.efficiency = m_goalDistance/m_GP.length;
@@ -89,16 +103,6 @@ void pathPlan::goForGoal(btVector3 start, btVector3 end)
 	m_view->printText(QString("Range %1 Search Time: %2 s").arg(m_range).arg((float)m_GP.time/1000.0));
 }
 
-void pathPlan::reset()
-{
-	if(m_CS) delete m_CS;
-	m_CS = 0;
-	m_pathList.clear();
-	m_GP.points.clear();
-	m_GP.length = 0;
-	m_GP.time = 0;
-	m_GP.efficiency = 0;
-}
 
 /////////////////////////////////////////
 // Generate a new Configuration Space to plan paths around
@@ -107,14 +111,19 @@ void pathPlan::generateCspace()
 {
 	if(m_CS) delete m_CS;
 	m_CS = new cSpace(m_startPoint.point,m_range,m_view);					// create a new Configuration Space based on the start point
-	
-	for(int i=0; i < m_CS->m_ghostObjects.size(); i++)						// check if goal point is inside of a cspace object
-	{
-		if(m_CS->isPointInsideObject(m_goalPoint.point,m_CS->m_ghostObjects[i]))
-			m_goalOccluded = m_CS->m_ghostObjects[i];
-	}
+	m_CS->drawCspace(m_displayCS);
 	
 	m_goalDistance = m_startPoint.point.distance(m_goalPoint.point);		// calculate the distance to the goal from the start point
+	
+	if(isGoalInRange()){
+		QList<btCollisionObject*>* ghostList = m_CS->getGhostList();
+		for(int i=0; i < ghostList->size(); i++)						// check if goal point is inside of a cspace object
+		{
+			if(m_CS->isPointInsideObject(m_goalPoint.point,ghostList->at(i)))
+				m_goalOccluded = ghostList->at(i);
+		}
+	}
+	
 	m_midPoint = m_startPoint;												// reset all parameters due to new Cspace
 	m_pointPath.clear();
 	m_pointPath << m_startPoint;
@@ -136,30 +145,43 @@ void pathPlan::cycleToGoal()
 	int i;
 	QList<rankPoint> deltList;
 	
-	while( !this->isGoalInRange() )	// while the goal is not in range
+	while( !this->isGoalInRange() )												// while the goal is not in range
 	{
-		this->findPathA();			// calculate the path to the goal
-		if(m_GP.points.size() <= 1) break;
-		deltList << m_startPoint;	// add the current position of the begining of the path
+		this->findPathA();														// calculate the path to the goal
+		if(m_GP.points.size() <= 1) break;										// if only 1 point is in the path list or it is empty then no path is found
+		deltList << m_startPoint;												// add the current position of the begining of the path
 		
 		i=1;
 		float step = m_step;
-		float pdist = m_startPoint.point.distance(m_GP.points[i].point);
+		float pdist = m_GP.points[0].point.distance(m_GP.points[i].point);		// find the distance to the first point on the path
 		
-		while(step > pdist)
+		while(step > pdist)														// while the step distance is longer than the distance to the next point
 		{
-			deltList << m_GP.points[i];
+			deltList << m_GP.points[i];											// add that point to the overall path
 			step -= pdist;
 			pdist = m_GP.points[i].point.distance(m_GP.points[i+1].point);
 			i++;
 		}
-		
-		btVector3 v = m_GP.points[i].point - m_GP.points[i-1].point;	// vector between i and i-1
+
+		btVector3 v = m_GP.points[i].point - m_GP.points[i-1].point;			// vector between i and i-1
+	
+		memset(&m_startPoint,0,sizeof(rankPoint));								// create a new start point
 		m_startPoint.point = step * v.normalized() + m_GP.points[i-1].point;		
+	
 		m_GP.length = 0;
 		m_GP.points.clear();
 		
 		this->generateCspace();
+		
+		//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		// check for looping conditions
+		int j = deltList.size()-2;			// exclude the last point to eliminate a corner point added during a step
+		while(j>0 && j>deltList.size()-6)	// check the last 4 points to see if the path is in a loop
+		{
+			if(m_startPoint.point.distance2(deltList[j].point) < m_loopThreshold) m_looping = true;
+			j--;
+		}
+		if(m_looping) break;
 	}
 
 	this->findPathA();
@@ -245,10 +267,10 @@ bool pathPlan::findPathA(float length)
 		m_pointPath << m_goalPoint;												// add the goal point to the path
 		length += goalDist;						
 
-		if(length < m_GP.length || m_GP.length == 0)	// check if a new shortest path has been found
+		if(length < m_GP.length || m_GP.length == 0)							// check if a new shortest path has been found
 		{
 			m_GP.length = length;
-			m_GP.points = m_pointPath;								// save the new short path
+			m_GP.points = m_pointPath;											// save the new short path
 			if(m_saveOn) m_pathList.push_front(m_GP);
 		}
 		else if(m_saveOn)
@@ -258,13 +280,12 @@ bool pathPlan::findPathA(float length)
 			newPath.points = m_pointPath;
 			m_pathList.push_back(newPath);
 		}
-	//	m_view->updateGL();
 		return true;															// no intersection all done
 	}
 	
 	QList<rankPoint> prospectPoints = getVisablePointsFrom(m_midPoint); 		// get all the visable points from the current location
 	//prospectPoints = this->progressAngleBasedRank(prospectPoints, m_midPoint);	// compute the ranks based on progress angle from start-goal vector
-	prospectPoints = this->angleBasedRank(prospectPoints, m_midPoint); 		// compute the ranks based on angle to goal from midPoint
+	prospectPoints = this->angleBasedRank(prospectPoints, m_midPoint); 			// compute the ranks based on angle to goal from midPoint
 	prospectPoints = this->prunePointsFrom(prospectPoints);						// remove points that are already in the point path
 		
 	if(prospectPoints.isEmpty()) return false;
@@ -320,7 +341,7 @@ void pathPlan::togglePathPoint(int dir)
 
 // get All Visable points
 	rankPoint here = m_GP.points[m_linkViewIndex];
-	m_view->getCamera()->cameraSetDirection(here.point); // set the camera view to the path point
+	m_view->getCamera()->cameraSetDirection(here.point); 			// set the camera view to the path point
 	m_CS = new cSpace(here.point,m_range,m_view);					// create a new Configuration Space based on the start point
 	m_CS->drawCspace(true);
 
@@ -347,11 +368,12 @@ void pathPlan::togglePathPoint(int dir)
 btCollisionObject* pathPlan::isRayBlocked(rankPoint from,rankPoint to, btVector3* point)
 {
 	QList<rankPoint> hitList;
+	QList<btCollisionObject*>* ghostList = m_CS->getGhostList();
 	
-	for(int i=0;i<m_CS->m_ghostObjects.size();i++){
+	for(int i=0;i<ghostList->size();i++){
 		int k;
 		rankPoint rp;
-		rp.object = m_CS->m_ghostObjects[i];
+		rp.object = ghostList->at(i);
 		
 		if(rp.object == to.object && rp.object == from.object) continue; // checking the edge of an object should be ignored
 		
@@ -457,20 +479,21 @@ QList<rankPoint> pathPlan::getVisablePointsFrom(rankPoint here)
 	rankPoint leftMost;
 	rankPoint rightMost;
 	QList<rankPoint> list;
-	
+	QList<btCollisionObject*>* ghostList = m_CS->getGhostList();
+
 // gather all objects extreme vertices
-	for(i = 0; i < m_CS->m_ghostObjects.size(); ++i)									// get all points from individual objects
+	for(i = 0; i < ghostList->size(); ++i)										// get all points from individual objects
 	{
-		this->getExtremes(m_CS->m_ghostObjects[i],here,&leftMost,&rightMost);			// get the far left and right points around the obstacle
+		this->getExtremes(ghostList->at(i),here,&leftMost,&rightMost);			// get the far left and right points around the obstacle
 		
-		if(m_CS->m_ghostObjects[i]->getUserPointer())					// check both extremes to make sure they are not inside of a grouped object
+		if(ghostList->at(i)->getUserPointer())									// check both extremes to make sure they are not inside of a grouped object
 		{
 			bool lState,rState;
 			lState = rState = false;
-			cSpace::overlapGroup* gp = static_cast<cSpace::overlapGroup*>(m_CS->m_ghostObjects[i]->getUserPointer());
+			cSpace::overlapGroup* gp = static_cast<cSpace::overlapGroup*>(ghostList->at(i)->getUserPointer());
 			for(int j=0;j<gp->list.size();j++)
 			{
-				if(gp->list[j] == m_CS->m_ghostObjects[i]) continue;					// skip the object the extremes are from
+				if(gp->list[j] == ghostList->at(i)) continue;					// skip the object the extremes are from
 				if(m_CS->isPointInsideObject(leftMost.point,gp->list[j])) lState = true;
 				if(m_CS->isPointInsideObject(rightMost.point,gp->list[j])) rState = true;
 			}
@@ -480,10 +503,10 @@ QList<rankPoint> pathPlan::getVisablePointsFrom(rankPoint here)
 		else list << leftMost << rightMost;
 	}
 
-																						// begin Pruning points from the list
+// begin Pruning points from the list
 	i=0;
 	while(i < list.size()){
-		if(this->isRayBlocked(here,list[i])) 											// remove all remaining points that are blocked
+		if(this->isRayBlocked(here,list[i])) 					// remove all remaining points that are blocked
 			list.removeAt(i);
 		else
 			i++;	
@@ -660,9 +683,9 @@ void pathPlan::displayLightTrail(bool x)
 	if(x) m_displayList.push_back( &m_drawingList[PP_LIGHTTRAIL] );	// insert after the baseline of the path has been drawn
 	else m_displayList.removeAll(&m_drawingList[PP_LIGHTTRAIL]);
 }
-void pathPlan::toggleCspace()
+void pathPlan::displayCspace(bool x)
 {
-	m_displayCS = !m_displayCS;
+	m_displayCS = x;
 	if(m_CS) m_CS->drawCspace(m_displayCS);
 }
 

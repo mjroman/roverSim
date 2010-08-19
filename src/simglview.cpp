@@ -97,8 +97,8 @@ void simGLView::loadTextures()
 {
 	//m_textureList << this->bindTexture(QPixmap(QString("/Users/mattroman/Documents/code/roverSim/src/textures/domePan1.png")),GL_TEXTURE_2D,GL_RGBA);
 	m_textureList << this->bindTexture(QPixmap(QString("/Users/mattroman/Documents/code/roverSim/src/textures/skydome3.bmp")),GL_TEXTURE_2D,GL_RGBA);
-    m_textureList << this->bindTexture(QPixmap(QString(":/textures/src/textures/pancam.png")),GL_TEXTURE_2D,GL_RGBA);
-    m_textureList << this->bindTexture(QPixmap(QString(":/textures/src/textures/solarPanel2.png")),GL_TEXTURE_2D,GL_RGBA);
+    m_textureList << this->bindTexture(QPixmap(QString(":/textures/pancam.png")),GL_TEXTURE_2D,GL_RGBA);
+    m_textureList << this->bindTexture(QPixmap(QString(":/textures/solarPanel.png")),GL_TEXTURE_2D,GL_RGBA);
 	m_textureList << this->bindTexture(QPixmap(QString(":/textures/src/textures/spark.png")),GL_TEXTURE_2D,GL_RGBA);
 	m_textureList << this->bindTexture(QPixmap(QString(":/textures/src/textures/mud.png")),GL_TEXTURE_2D,GL_RGBA);
 	
@@ -355,7 +355,7 @@ void simGLView::drawObstacles()
 	btAlignedObjectArray<btCollisionObject*> *obstacleArray;
 	obstacleArray = arena->getObstacleObjectArray();
 	
-	glColor3f(1.0f,0.0f,0.0f);
+	//glColor3f(1.0f,0.0f,0.0f);
     //glColor3f(0.02f,0.52f,0.51f);	// tron blue
 	//glColor3f(0.1f,0.0f,0.5f); // dark blue
 	//glColor3f(0.7,0.0,0.7);	// dark purple
@@ -363,6 +363,9 @@ void simGLView::drawObstacles()
     //glMaterialfv(GL_FRONT, GL_EMISSION, obstacleEmission);
     for(int i=0; i < obstacleArray->size(); i++){
         btCollisionObject*	colisObject = obstacleArray->at(i);
+		
+		if(colisObject->isActive()) glColor3f(0.02f,0.52f,0.51f);	// tron blue
+		else glColor3f(1.0f,0.0f,0.0f);	// red
 		
 		// test colisobject if rigid body
 		btRigidBody* body = btRigidBody::upcast(colisObject);

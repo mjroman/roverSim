@@ -289,7 +289,7 @@ void MainGUI::keyPressEvent(QKeyEvent *event)
 		}
 		case 'C':
 		{
-			SController->testCspace();
+			//SController->testCspace();
 			return;
 		}
 		case 'F':
