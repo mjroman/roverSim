@@ -13,7 +13,7 @@ QDialog(parent)
 	updateButton->setMinimumWidth(80);
 	updateButton->setMinimumHeight(20);
 	updateButton->setDefault(true);
-    updateButton->setStyleSheet("QPushButton:default{background: red; border: 2px solid darkred; border-radius:10; color: white;} QPushButton:pressed{background: white; border-color: red;}");
+    updateButton->setStyleSheet("QPushButton:default{background: red; border: 2px solid white; border-radius:10; color: black;} QPushButton:pressed{background: white; border-color: red;}");
 	
 	cancelButton = new QPushButton("Cancel");
 	cancelButton->setMinimumWidth(80);
@@ -44,11 +44,11 @@ QDialog(parent)
     layoutH->addWidget(subStepLine);
 
 	QHBoxLayout *buttonLayoutH = new QHBoxLayout;
-	//QSpacerItem *space = new QSpacerItem(100,10);
-	//buttonLayoutH->addItem(space);
+	buttonLayoutH->addSpacing(40);
 	buttonLayoutH->addWidget(updateButton);
+	buttonLayoutH->addSpacing(40);
 	buttonLayoutH->addWidget(cancelButton);
-	//buttonLayoutH->addItem(space);
+	buttonLayoutH->addSpacing(40);
 	
     QVBoxLayout *layoutV = new QVBoxLayout;
     layoutV->addLayout(layoutH);
