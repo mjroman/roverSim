@@ -121,8 +121,7 @@ void MainGUI::screenSize()
 void MainGUI::showSimTiming()
 {
 	simtool sDialog(this);
-	if(sDialog.exec() == QDialog::Accepted)
-		SController->stepTimevals(sDialog.step,sDialog.fixedStep,sDialog.subStep);
+	if(sDialog.exec() == QDialog::Accepted) SController->stepTimevals(sDialog.step,sDialog.fixedStep,sDialog.subStep);
 }
 void MainGUI::showTerrainTool()
 {

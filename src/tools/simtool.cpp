@@ -11,29 +11,29 @@ QDialog(parent)
 
     updateButton = new QPushButton("&Update");
 	updateButton->setMinimumWidth(80);
-    updateButton->setStyleSheet(QString("background: red; color:white; border:2px solid rgb(169, 2, 6); border-radius:10px;"));
+	updateButton->setMinimumHeight(20);
+	updateButton->setDefault(true);
+    updateButton->setStyleSheet("QPushButton:default{background: red; border: 2px solid darkred; border-radius:10; color: white;} QPushButton:pressed{background: white; border-color: red;}");
 	
 	cancelButton = new QPushButton("Cancel");
 	cancelButton->setMinimumWidth(80);
+	cancelButton->setMinimumHeight(20);
 	cancelButton->setStyleSheet("QPushButton:enabled{background: yellow; border: 2px solid white; border-radius:10; color: black;} QPushButton:pressed{background: white; border-color: yellow;}");
-
-    timeStepLabel = new QLabel(this);									// time step
-    timeStepLabel->setText(QString("Time step:"));
-    timeStepLine = new QLineEdit;
+		
+    timeStepLine = new QLineEdit;										// time step
     timeStepLine->setText(QString::number(arena->simTimeStep));
     timeStepLine->setFixedWidth(80);
-
+	timeStepLabel = new QLabel("Time step:");
+	
     fixedStepLine = new QLineEdit;										// fixed step
     fixedStepLine->setText(QString::number(arena->simFixedTimeStep));
     fixedStepLine->setFixedWidth(80);
-    fixedStepLabel = new QLabel(this);
-    fixedStepLabel->setText(QString("Fixed step:"));
+    fixedStepLabel = new QLabel("Fixed step:");
 
     subStepLine = new QLineEdit;										// sub step
     subStepLine->setText(QString::number(arena->simSubSteps));
     subStepLine->setFixedWidth(80);
-    subStepLabel = new QLabel(this);
-    subStepLabel->setText(QString("Sub step:"));
+    subStepLabel = new QLabel("Sub step:");
 
     QHBoxLayout *layoutH = new QHBoxLayout;								// add items to the layout
     layoutH->addWidget(timeStepLabel);
@@ -44,11 +44,11 @@ QDialog(parent)
     layoutH->addWidget(subStepLine);
 
 	QHBoxLayout *buttonLayoutH = new QHBoxLayout;
-	QSpacerItem *space = new QSpacerItem(100,10);
-	buttonLayoutH->addItem(space);
+	//QSpacerItem *space = new QSpacerItem(100,10);
+	//buttonLayoutH->addItem(space);
 	buttonLayoutH->addWidget(updateButton);
 	buttonLayoutH->addWidget(cancelButton);
-	buttonLayoutH->addItem(space);
+	//buttonLayoutH->addItem(space);
 	
     QVBoxLayout *layoutV = new QVBoxLayout;
     layoutV->addLayout(layoutH);
