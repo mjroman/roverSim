@@ -4,31 +4,12 @@
 #include <QtGui>
 #include <QSettings>
 #include "ui_obstacletool.h"
+#include "utility/structures.h"
 
-typedef struct _obstParam {
-	QString name;
-	QVariant stuff;
-}obstParam;
-
-class obstacleTool : public QWidget, private Ui::obstacleTool {
+class obstacleTool : public QWidget, private Ui::obstacleTool 
+{
 	Q_OBJECT
-	private:
-		QSettings 			obstSettings;
-		
-		void initSettingsNames();
-		void initSettings();
-		void getSettings();
-		void setSettings();
-		
-	protected:
-		obstParam	obstShape;
-		obstParam	obstCount;
-		obstParam	obstMinLength,obstMinWidth,obstMinHeight;
-		obstParam	obstMaxLength,obstMaxWidth,obstMaxHeight;
-		obstParam	obstMinYaw,obstMaxYaw;
-		obstParam	obstDensity;
-		obstParam	obstDropHeight;
-		
+
 	public:
 		obstacleTool(QWidget *parent = 0);
 		~obstacleTool();
@@ -51,13 +32,29 @@ class obstacleTool : public QWidget, private Ui::obstacleTool {
 		float dropHeight(){ return obstDropHeight.stuff.toFloat(); }
 
 	public slots:
-		void raise();
+		void show();
 		void on_ButtonGenerate_clicked(bool checked=false);
-		void on_ButtonCancel_clicked();
 		void updateLabels(int index);
 
 	signals:
 		void regenerateObstacles();
+		
+	protected:
+		settingParam	obstShape;
+		settingParam	obstCount;
+		settingParam	obstMinLength,obstMinWidth,obstMinHeight;
+		settingParam	obstMaxLength,obstMaxWidth,obstMaxHeight;
+		settingParam	obstMinYaw,obstMaxYaw;
+		settingParam	obstDensity;
+		settingParam	obstDropHeight;
+		
+	private:
+		QSettings 			obstSettings;
+		
+		void initSettingsNames();
+		void defaultSettings();
+		void getSettings();
+		void setSettings();
 };
 
 #endif // OBSTACLETOOL_H

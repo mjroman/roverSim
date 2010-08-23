@@ -51,8 +51,6 @@ private:
 
 protected:
 	btAlignedObjectArray<ShapeCache*>			m_obstacleCaches;
-    btAlignedObjectArray<btCollisionShape*>     m_obstacleShapes;
-	btAlignedObjectArray<btCollisionObject*>	m_obstacleObjects;
 
     btBroadphaseInterface*						m_broadphase;
     btCollisionDispatcher*						m_dispatcher;
@@ -68,12 +66,6 @@ public:
     float   simTimeStep;
     float   simFixedTimeStep;
     int     simSubSteps;
-
-	btAlignedObjectArray<btCollisionObject*>* getObstacleObjectArray() { return &m_obstacleObjects; }
-	bool isObstacle(btCollisionObject* obj) { 
-		if(m_obstacleObjects.findLinearSearch(obj) < m_obstacleObjects.size()) return true;
-		else return false;
-		}
 
     static physicsWorld *initialize(float x, float y, float z, float boundary) {
         if(!m_pWorld){
@@ -102,7 +94,6 @@ public:
     btVector3 worldSize() { return m_worldSize; }
     float worldBoundary() { return m_worldBoundary; }
 
-	void deleteObstacleGroup();
     void resetBroadphaseSolver();
     void setGravity(btVector3 gv);
     
@@ -111,14 +102,10 @@ public:
 
 	void hullCache(btConvexShape* shape,btAlignedObjectArray<ShapeCache*>* cacheArray);
     btCollisionShape* createShape(int shapeTyp, btVector3 lwh);
-    void createObstacleShape(int shapeTyp, btVector3 lwh);
 	void createHullObstacleShape(btVector3* pts,int numPoints);
-	void addObstacleShape(btCollisionShape* shape){ m_obstacleShapes.push_back(shape); }
 
     btRigidBody* createRigidBody(float mass, btTransform trans, btCollisionShape* cShape);
     btRigidBody* placeShapeAt(btCollisionShape* bodyShape, btVector3 pos, float yaw, float massval);
-    void placeObstacleShapeAt(btVector3 pos,float yaw, float massval);
-	void placeObstacleShapeAt(btTransform trans,float massval);
 };
 
 #endif // PHYSICSWORLD_H

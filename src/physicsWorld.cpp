@@ -55,41 +55,11 @@ simSubSteps(15)
 
 physicsWorld::~physicsWorld()
 {
-    qDebug("deleting physics");
-	
-    //remove the rigidbodies from the dynamics world and delete them
-	deleteObstacleGroup();
-	
     delete m_dynamicsWorld;
     delete m_solver;
     delete m_broadphase;
     delete m_dispatcher;
     delete m_collisionConfiguration;
-}
-
-void physicsWorld::deleteObstacleGroup()
-{
-	int i = m_obstacleObjects.size();
-	m_draw = false; // do not draw
-    m_idle = true; // pause simulation
-	
-	while(i>0){
-		btCollisionObject* obj = m_obstacleObjects[i-1];
-		m_dynamicsWorld->removeCollisionObject(obj);
-		m_obstacleObjects.pop_back();
-		i = m_obstacleObjects.size();
-	}
-
-	for(i=0;i<m_obstacleCaches.size();i++)
-	{
-		m_obstacleCaches[i]->~ShapeCache();
-		btAlignedFree(m_obstacleCaches[i]);
-	}
-	m_obstacleCaches.clear();
-	m_obstacleShapes.clear();
-	resetBroadphaseSolver();
-	m_idle = false; // unpause simulation
-    m_draw = true; // draw obstacles
 }
 
 void physicsWorld::resetBroadphaseSolver()
@@ -104,9 +74,6 @@ void physicsWorld::resetBroadphaseSolver()
 // to the new size and resets the solver.
 void physicsWorld::resetWorld()
 {
-    //remove the rigidbodies from the dynamics world and delete them
-	deleteObstacleGroup();
-	
     // Rebuild the broadphase volume
     //int maxProxies = 5000;
     btVector3 worldAabbMin(-m_worldBoundary,-m_worldBoundary,-m_worldBoundary);
@@ -250,29 +217,8 @@ btRigidBody* physicsWorld::placeShapeAt(btCollisionShape* bodyShape, btVector3 p
 /////////////////////////////////////////
 // Obstacle rigid body creation functions
 /////////////
-void physicsWorld::createObstacleShape(int shapeTyp, btVector3 lwh)
-{
-    // adds the new shape to the obstacle array
-    m_obstacleShapes.push_back(createShape(shapeTyp,lwh));
-}
 void physicsWorld::createHullObstacleShape(btVector3* pts, int numPoints)
 {
 	btConvexHullShape* shape = new btConvexHullShape((btScalar*)pts,numPoints);
 	hullCache((btConvexShape*) shape, &m_obstacleCaches);
-	// adds the new shape to the obstacle array
-	m_obstacleShapes.push_back((btCollisionShape*) shape);
-}
-void physicsWorld::placeObstacleShapeAt(btVector3 pos,float yaw, float massval)
-{
-    // get the last collision shape that has been added to the shape array
-	btRigidBody* body = placeShapeAt(m_obstacleShapes[m_obstacleShapes.size()-1],pos,yaw,massval);
-	body->setDamping(0.5,0.75);
-    m_obstacleObjects.push_back(body);
-}
-void physicsWorld::placeObstacleShapeAt(btTransform trans,float massval)
-{
-	// get the last collision shape that has been added to the shape array
-	btRigidBody* body = createRigidBody(massval, trans, m_obstacleShapes[m_obstacleShapes.size()-1]);
-	body->setDamping(0.5,0.75);
-	m_obstacleObjects.push_back(body);
 }

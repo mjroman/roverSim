@@ -5,6 +5,8 @@
 #include "simglobject.h"
 #include "physicsWorld.h"
 
+class obstacles;
+
 // typedef struct _overlapGroup
 // {
 // 	int index;
@@ -20,7 +22,7 @@ public:
 		QList<btCollisionObject*> list;
 	};
 	
-	cSpace(btVector3 center, float range, simGLView* glView = NULL);
+	cSpace(btVector3 center, float range, obstacles *obs, simGLView* glView = NULL);
 	~cSpace();
 	
 	void setCenterPoint(btVector3 center) { m_centerPoint = center; }
@@ -44,6 +46,7 @@ public:
 	
 private:
 	physicsWorld								*arena;
+	obstacles									*m_blocks;
 	btVector3									m_centerPoint;
 	float										m_detectRange;
 	float										m_detectRangeSq;

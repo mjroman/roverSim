@@ -5,7 +5,7 @@ waypointTool::waypointTool(QWidget *parent)
 QWidget(parent)
 {
 	setupUi(this);
-	move(25,380);
+	move(20,350);
 	QWidget::setWindowFlags(Qt::Window | Qt::WindowStaysOnTopHint);
 	setWindowTitle("Waypoint Editor");
 	
@@ -20,6 +20,17 @@ QWidget(parent)
 
 waypointTool::~waypointTool()
 {
+}
+
+void waypointTool::show()
+{
+	QPropertyAnimation *anim = new QPropertyAnimation(this,"pos");
+	anim->setDuration(1000);
+	anim->setStartValue(QPoint(pos().x(),pos().y()-25));
+	anim->setEndValue(pos());
+	anim->setEasingCurve(QEasingCurve::OutElastic);
+	anim->start();
+	QWidget::show();
 }
 
 void waypointTool::raiseWaypointEditor(QList<WayPoint>* list)

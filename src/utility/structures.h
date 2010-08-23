@@ -1,10 +1,14 @@
 #ifndef STRUCTURES_H
 #define STRUCTURES_H
 
+#include <QVariant>
 #include <LinearMath/btVector3.h>
 class btRigidBody;
 class btCollisionObject;
 
+/////////////////////////////////////////
+// Path planning structures
+/////////////
 typedef struct _rankPoint
 {
 	btCollisionObject* 	object;
@@ -21,6 +25,9 @@ typedef struct _goalPath
 	float				efficiency;
 }goalPath;
 
+/////////////////////////////////////////
+// object mouse picking structure
+/////////////
 typedef struct _pickValue
 {
 	btRigidBody*	rigidbody;
@@ -29,6 +36,17 @@ typedef struct _pickValue
 	float			dropHeight;
 }pickValue;
 
+/////////////////////////////////////////
+// Settings parameter structure
+/////////////
+typedef struct _settingParam {
+	QString name;
+	QVariant stuff;
+}settingParam;
+
+/////////////////////////////////////////
+// Rover Waypoint Structures
+/////////////
 typedef	enum _WPstate{
 	WPstateNew = 0, // to be visited
 	WPstateOld = 1, // visited

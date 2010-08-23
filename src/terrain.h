@@ -12,6 +12,7 @@ class   btBvhTriangleMeshShape;
 
 class terrain : public simGLObject
 {
+	Q_OBJECT
 private:
     Vertex          *m_terrainVerts;
     Vertex          *m_terrainColors;
@@ -65,6 +66,9 @@ public:
 	void terrainFlatten();
 	void openTerrain(QString filename);
     void saveTerrain(QString filename);
+
+signals:
+	void newTerrain();
 };
 
 #endif // TERRAIN_H

@@ -23,7 +23,7 @@ heading(0)
 	GPSposition.lat.dd = 35.21002;
 	GPSposition.lon.dd = 97.44330;
 	
-	arena = physicsWorld::instance(); // get the physics world object	
+	arena = physicsWorld::instance(); // get the physics world object
 	
 	// add a few default views
 }

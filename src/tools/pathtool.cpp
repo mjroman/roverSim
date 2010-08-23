@@ -1,5 +1,7 @@
 #include "pathtool.h"
 #include "../robot.h"
+#include "../obstacles.h"
+#include "../pathPlan.h"
 #include <QSound>
 
 /////////////////////////////////////////
@@ -148,16 +150,18 @@ void pathEditDialog::acceptData()
 /////////////////////////////////////////
 // Path creation main tool
 /////////////
-pathTool::pathTool(robot *bot, simGLView* glView, QWidget* parent)
+pathTool::pathTool(robot *bot, obstacles *obs, simGLView* glView)
 :
-QWidget(parent),
+QWidget(glView->parentWidget()),
 rover(bot),
+blocks(obs),
 view(glView),
 m_selectedPath(0),
 m_foundSound("/Users/mattroman/Documents/code/roverSim/src/sounds/singleBeep2.wav")
 {
 	setupUi(this);
-	move(20,400);
+	move(20,540);
+	resize(300,150);
 	setWindowFlags(Qt::Window | Qt::WindowStaysOnTopHint);
 	setWindowTitle("Path Creation");
 	
@@ -167,13 +171,24 @@ m_foundSound("/Users/mattroman/Documents/code/roverSim/src/sounds/singleBeep2.wa
 	connect(this,SIGNAL(changeBackground(int,QBrush)),this,SLOT(setRowBackground(int,QBrush)));
 	connect(this,SIGNAL(computePaths(int)),this,SLOT(processPath(int)));
 	connect(pathTableWidget, SIGNAL(cellClicked(int,int)),this,SLOT(tableDataChange(int,int)));
-	connect(pathTableWidget, SIGNAL(cellDoubleClicked(int,int)),this,SLOT(tableDataEdit(int,int)));
+	connect(pathTableWidget, SIGNAL(cellDoubleClicked(int,int)),this,SLOT(tableDataEdit(int,int)));	
 	show();
 }
 
 pathTool::~pathTool()
 {
 	removePaths();
+}
+
+void pathTool::show()
+{
+	QPropertyAnimation *anim = new QPropertyAnimation(this,"pos");
+	anim->setDuration(1000);
+	anim->setStartValue(QPoint(pos().x(),pos().y()-25));
+	anim->setEndValue(pos());
+	anim->setEasingCurve(QEasingCurve::OutElastic);
+	anim->start();
+	QWidget::show();
 }
 
 void pathTool::removePaths()
@@ -227,7 +242,7 @@ void pathTool::tableSetup()
 void pathTool::on_buttonAdd_clicked()
 {
 	// execute a dialog here to create a new path
-	pathPlan *path = new pathPlan(view);
+	pathPlan *path = new pathPlan(blocks,view);
 	pathEditDialog eDialog(path,this);
 	if(eDialog.exec() == QDialog::Rejected){
 		delete path;
@@ -290,6 +305,9 @@ void pathTool::on_buttonDelete_clicked()
 void pathTool::on_buttonGenerate_clicked()
 {
 	resetPaths();
+	if(checkBoxSave->isChecked()){
+		
+	}
 	emit changeBackground(0,QBrush(QColor("springgreen")));
 	emit computePaths(0);
 }

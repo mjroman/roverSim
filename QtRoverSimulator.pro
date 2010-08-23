@@ -37,14 +37,15 @@ SOURCES += main.cpp \
     src/utility/rngs.c \
     src/utility/definitions.c \
     src/terrain.cpp \
+	src/obstacles.cpp \
 	src/robot.cpp \
     src/sr2rover.cpp \
     src/laserscanner.cpp \
     src/utility/glshapes.c \
 	src/utility/glparticle.cpp \
     src/tools/terraintool.cpp \
+	src/tools/obstacletool.cpp \
     src/tools/simtool.cpp \
-    src/tools/obstacletool.cpp \
 	src/tools/waypointtool.cpp \
     src/skydome.cpp \
 	src/autoCode.cpp \
@@ -62,6 +63,7 @@ HEADERS += src/mainGUI.h \
     src/utility/definitions.h \
 	src/utility/structures.h \
     src/terrain.h \
+	src/obstacles.h \
 	src/robot.h \
     src/sr2rover.h \
     src/laserscanner.h \
@@ -69,8 +71,8 @@ HEADERS += src/mainGUI.h \
     src/utility/glshapes.h \
 	src/utility/glparticle.h \
     src/tools/terraintool.h \
+	src/tools/obstacletool.h \
     src/tools/simtool.h \
-    src/tools/obstacletool.h \
 	src/tools/waypointtool.h \
     src/skydome.h \
 	src/autoCode.h \

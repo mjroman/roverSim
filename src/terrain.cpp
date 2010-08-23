@@ -35,7 +35,6 @@ m_terrainModified(false)
 
 terrain::~terrain()
 {
-    qDebug("deleting terrain");
     terrainClear();
 }
 
@@ -341,6 +340,7 @@ void terrain::terrainRescale(btVector3 scale)
     arena->setWorldSize(m_worldSize);
 
     this->terrainRefresh();
+	emit newTerrain();
 }
 
 // if the terrain mesh is edited it must be refit to the physics world
@@ -447,6 +447,7 @@ void terrain::terrainFlatten()
 {
 	this->terrainClear();
 	this->openTerrain(NULL);
+	emit newTerrain();
 }
 
 void terrain::openTerrain(QString filename)
@@ -467,7 +468,11 @@ void terrain::openTerrain(QString filename)
         this->terrainCreateMesh(NULL);
         this->generateGround();
     }
+
+	m_view->printText("Terrain Loaded: " + terrainInfo.baseName());
+	
 	m_terrainModified = false;
+	emit newTerrain();
 }
 
 void terrain::saveTerrain(QString filename)

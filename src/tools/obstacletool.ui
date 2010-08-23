@@ -74,6 +74,9 @@
        <property name="alignment">
         <set>Qt::AlignCenter</set>
        </property>
+       <property name="singleStep">
+        <number>25</number>
+       </property>
       </widget>
      </item>
     </layout>

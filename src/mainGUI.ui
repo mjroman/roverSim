@@ -753,6 +753,7 @@
     <addaction name="actionNew_Rover"/>
     <addaction name="menuRoverView"/>
     <addaction name="actionShow_Rover_Info"/>
+    <addaction name="actionShow_Path_Info"/>
     <addaction name="separator"/>
     <addaction name="actionShow_Waypoint_Editor"/>
    </widget>
@@ -916,6 +917,11 @@
    </property>
    <property name="toolTip">
     <string>Load Obstacle Layout</string>
+   </property>
+  </action>
+  <action name="actionShow_Path_Info">
+   <property name="text">
+    <string>Show Path Info</string>
    </property>
   </action>
  </widget>

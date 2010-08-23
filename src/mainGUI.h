@@ -7,7 +7,6 @@
 #include <QDataStream>
 #include "simcontrol.h"
 #include "ui_mainGUI.h"
-#include "tools/obstacletool.h"
 #include "tools/simtool.h"
 #include "tools/terraintool.h"
 #include "tools/waypointtool.h"
@@ -36,7 +35,6 @@ private:
 	
 	simControl		*SController;
 	
-    obstacleTool    m_oTool;
     simtool         m_simTool;
     terrainTool     m_tTool;
 	waypointTool	m_wTool;
@@ -63,11 +61,6 @@ public slots:
 	void saveGround();
 	void rescaleGround();
 	void flattenGround();
-	
-	void generateObstacles();
-	void saveObstacleLayout();
-	void loadObstacleLayout();
-	void removeAllObstacles();
 	
 	void newRover();
 	void waypointSetup();

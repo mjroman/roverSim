@@ -1,4 +1,5 @@
 #include "cSpace.h"
+#include "obstacles.h"
 #include "utility/glshapes.h"
 #include "utility/definitions.h"
 #include <BulletCollision/CollisionDispatch/btCollisionObject.h>
@@ -15,9 +16,10 @@
 
 #define SPACEMARGIN	0.5
 
-cSpace::cSpace(btVector3 center, float range, simGLView* glView)
+cSpace::cSpace(btVector3 center, float range, obstacles *obs, simGLView* glView)
 :
 simGLObject(glView),
+m_blocks(obs),
 m_centerPoint(center),
 m_detectRange(range),
 m_detectRangeSq(range*range)
@@ -92,13 +94,12 @@ void cSpace::generateCSpace()
 	int i;
 	QList<btVector3> top;
 	btVector3 cc = m_centerPoint * btVector3(1,1,0);
-	btAlignedObjectArray<btCollisionObject*>* obstArray = arena->getObstacleObjectArray();
 	
 	deleteGhostGroup();
 	
 	// create CSpace by using the obstacle shape and growing it by SPACEMARGIN or about the rover's radius
-	for(i=0;i<obstArray->size();i++){											// loop through all obstacle rigid bodies
-		btCollisionObject* colisObject = obstArray->at(i);
+	for(i=0;i<m_blocks->getObstacles()->size();i++){											// loop through all obstacle rigid bodies
+		btCollisionObject* colisObject = m_blocks->getObstacles()->at(i);
 		
 		if(colisObject->isActive()) continue;									// check if object is in-active
 	

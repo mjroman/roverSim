@@ -25,7 +25,8 @@ lastBlockedDirection(0),
 simSettings(QSettings::IniFormat,QSettings::UserScope,"OUengineering","Rover_Sim")
 {
 	setupUi(this);
-	move(20,55);
+	move(20,25);
+	resize(281,300);
 	setWindowFlags(Qt::Window | Qt::WindowStaysOnTopHint);
 	setWindowTitle("Navigation Info.");
 	
@@ -44,11 +45,22 @@ simSettings(QSettings::IniFormat,QSettings::UserScope,"OUengineering","Rover_Sim
 	currentWaypoint = WPlist->first();
 	
 	stopAutonomous(RSInTeleopMode);
-	show();
+	hide();
 }
 
 autoCode::~autoCode()
 {
+}
+
+void autoCode::show()
+{
+	QPropertyAnimation *anim = new QPropertyAnimation(this,"pos");
+	anim->setDuration(1000);
+	anim->setStartValue(QPoint(pos().x(),pos().y()-25));
+	anim->setEndValue(pos());
+	anim->setEasingCurve(QEasingCurve::OutElastic);
+	anim->start();
+	QWidget::show();
 }
 
 void autoCode::callForHelp(RoverError errCode)
@@ -502,7 +514,7 @@ void autoCode::tableSetup()
 	
 	for(int i = 0; i < Plist.size(); ++i)
 	{
-		navParam* np = Plist[i];
+		settingParam* np = Plist[i];
 		item = new QTableWidgetItem((*np).name);
 		QFont ft = item->font();
 		ft.setPointSize(10);
@@ -523,7 +535,7 @@ void autoCode::tableSetup()
 void autoCode::tableDataChange(int row, int column)
 {
 	QTableWidgetItem* item = paramTableWidget->item(row,column);
-	navParam* np = Plist[row];
+	settingParam* np = Plist[row];
 
 	if((*np).name.endsWith("ANGLE")){
 		(*np).stuff.setValue(DEGTORAD(item->data(Qt::EditRole).toFloat()));

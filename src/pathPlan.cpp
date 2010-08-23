@@ -1,12 +1,14 @@
 #include "pathPlan.h"
 #include "cSpace.h"
+#include "obstacles.h"
 #include "utility/definitions.h"
 #include "utility/glshapes.h"
 #include <BulletCollision/CollisionDispatch/btCollisionObject.h>
 
-pathPlan::pathPlan(simGLView* glView)
+pathPlan::pathPlan(obstacles *obs,simGLView* glView)
 :
 simGLObject(glView),
+m_blocks(obs),
 m_CS(NULL),
 m_range(0),
 m_step(0.25),
@@ -110,14 +112,14 @@ void pathPlan::goForGoal(btVector3 start, btVector3 end)
 void pathPlan::generateCspace()
 {
 	if(m_CS) delete m_CS;
-	m_CS = new cSpace(m_startPoint.point,m_range,m_view);					// create a new Configuration Space based on the start point
+	m_CS = new cSpace(m_startPoint.point,m_range,m_blocks,m_view);		// create a new Configuration Space based on the start point
 	m_CS->drawCspace(m_displayCS);
 	
 	m_goalDistance = m_startPoint.point.distance(m_goalPoint.point);		// calculate the distance to the goal from the start point
 	
 	if(isGoalInRange()){
 		QList<btCollisionObject*>* ghostList = m_CS->getGhostList();
-		for(int i=0; i < ghostList->size(); i++)						// check if goal point is inside of a cspace object
+		for(int i=0; i < ghostList->size(); i++)							// check if goal point is inside of a cspace object
 		{
 			if(m_CS->isPointInsideObject(m_goalPoint.point,ghostList->at(i)))
 				m_goalOccluded = ghostList->at(i);
@@ -342,7 +344,7 @@ void pathPlan::togglePathPoint(int dir)
 // get All Visable points
 	rankPoint here = m_GP.points[m_linkViewIndex];
 	m_view->getCamera()->cameraSetDirection(here.point); 			// set the camera view to the path point
-	m_CS = new cSpace(here.point,m_range,m_view);					// create a new Configuration Space based on the start point
+	m_CS = new cSpace(here.point,m_range,m_blocks,m_view);					// create a new Configuration Space based on the start point
 	m_CS->drawCspace(true);
 
 // gather all objects extreme vertices

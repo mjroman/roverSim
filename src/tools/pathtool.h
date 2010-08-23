@@ -4,11 +4,12 @@
 #include <QtGui>
 #include <QComboBox>
 #include "ui_pathtool.h"
-#include "../pathPlan.h"
 #include "../utility/structures.h"
 
 class simGLView;
 class robot;
+class obstacles;
+class pathPlan;
 
 class ColorListEditor : public QComboBox
 {
@@ -64,13 +65,14 @@ class pathTool : public QWidget, private Ui::pathtool
 {
 	Q_OBJECT
 	public:
-		pathTool(robot *bot, simGLView* glView = NULL, QWidget* parent = 0);
+		pathTool(robot *bot, obstacles *obs, simGLView* glView = NULL);
 		~pathTool();
 		
 		void tableSetup();
 		void setGoalPoint(btVector3 goal) { goalPoint = goal; }
 		
 	public slots:
+		void show();
 		void removePaths();
 		void resetPaths();
 		void on_buttonAdd_clicked();
@@ -89,6 +91,7 @@ class pathTool : public QWidget, private Ui::pathtool
 	
 	private:
 		robot				*rover;
+		obstacles			*blocks;
 		simGLView			*view;
 		QList<pathPlan*>	pathList;
 		btVector3			goalPoint;

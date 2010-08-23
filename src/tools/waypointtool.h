@@ -14,6 +14,7 @@ class waypointTool : public QWidget, private Ui::waypointtool
 		void updateComboWaypointList();
 
 	public slots:
+		void show();
 		void on_buttonAdd_clicked();
 		void on_buttonDelete_clicked();
 		void on_comboWpSelect_activated(int index);

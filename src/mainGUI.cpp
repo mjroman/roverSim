@@ -1,6 +1,7 @@
 #include "mainGUI.h"
 #include "camera.h"
 #include "terrain.h"
+#include "obstacles.h"
 #include "sr2rover.h"
 #include "autoCode.h"
 #include "utility/definitions.h"
@@ -8,12 +9,10 @@
 MainGUI::MainGUI(QWidget *parent)
 :
 QMainWindow(parent),
-m_oTool(this),
 m_simTool(this),
 m_tTool(this),
 m_wTool(this)
 {
-    qDebug("UI setup");
     setupUi(this);
 	move(240,22);
     resize(1200,700);
@@ -23,7 +22,6 @@ m_wTool(this)
 	QCoreApplication::setOrganizationDomain("i-borg.engr.ou.edu");
 	QCoreApplication::setApplicationName("Rover_Sim");
 	
-    m_oTool.close();
     m_simTool.close();
     m_tTool.close();
 	m_wTool.close();
@@ -39,7 +37,9 @@ m_wTool(this)
 	connect(actionNew_Rover, SIGNAL(triggered()), this, SLOT(newRover()));
 	connect(actionShow_Waypoint_Editor, SIGNAL(triggered()), this, SLOT(waypointSetup()));
 	connect(actionShow_Rover_Info, SIGNAL(triggered()), SController, SLOT(showNavTool()));
+	connect(actionShow_Path_Info, SIGNAL(triggered()), SController, SLOT(showPathTool()));
 	actionShow_Rover_Info->setEnabled(false);
+	actionShow_Path_Info->setEnabled(false);
 // setup the rover view menu
 	connect(actionFree_View, SIGNAL(triggered()), this, SLOT(cameraFreeView()));
 	connect(actionRover_Center, SIGNAL(triggered()), this, SLOT(cameraRoverCenter()));
@@ -48,10 +48,10 @@ m_wTool(this)
 	connect(actionRover_PanCam, SIGNAL(triggered()), this, SLOT(cameraRoverPanCam()));
 	menuRoverView->setEnabled(false);
 // obstacles menu
-    connect(actionRandomize_Obstacles, SIGNAL(triggered()), SController, SLOT(generateObstacles()));
-	connect(actionSave_ObstacleLayout, SIGNAL(triggered()), this, SLOT(saveObstacleLayout()));
-	connect(actionLoad_ObstacleLayout, SIGNAL(triggered()), this, SLOT(loadObstacleLayout()));
-    connect(actionRemove_Obstacles, SIGNAL(triggered()), SController, SLOT(removeObstacles()));
+    connect(actionRandomize_Obstacles, SIGNAL(triggered()), SController->getBlocks(), SLOT(generate()));
+	connect(actionRemove_Obstacles, SIGNAL(triggered()), SController->getBlocks(), SLOT(eliminate()));
+	connect(actionSave_ObstacleLayout, SIGNAL(triggered()), SController->getBlocks(), SLOT(saveLayout()));
+	connect(actionLoad_ObstacleLayout, SIGNAL(triggered()), SController->getBlocks(), SLOT(loadLayout()));
     connect(actionObstacle_Parameters, SIGNAL(triggered()), this, SLOT(showObstacleTool()));
 // terrain menu
     connect(actionOpen_Terrain, SIGNAL(triggered()), this, SLOT(openGround()));
@@ -61,8 +61,6 @@ m_wTool(this)
 
     // tool bar Simulation timing
     connect(&m_simTool, SIGNAL(paramUpdate()), this, SLOT(stepTimevals()));
-    // tool bar obstacle generation button signal
-    connect(&m_oTool, SIGNAL(regenerateObstacles()), this, SLOT(generateObstacles()));
     // tool bar terrain gravity update
     connect(&m_tTool, SIGNAL(gravityUpdate()), this, SLOT(simGravity()));
     // tool bar terrain scale update
@@ -123,7 +121,7 @@ void MainGUI::screenSize()
 void MainGUI::showSimTool()
 {
 	m_tTool.hide();
-	m_oTool.hide();
+	SController->getBlocks()->hideTool();
 	if(m_simTool.isVisible())
 		m_simTool.hide();
 	else
@@ -131,7 +129,7 @@ void MainGUI::showSimTool()
 }
 void MainGUI::showTerrainTool()
 {
-	m_oTool.hide();
+	SController->getBlocks()->hideTool();
 	m_simTool.hide();
 	if(m_tTool.isVisible())
 		m_tTool.hide();
@@ -142,10 +140,8 @@ void MainGUI::showObstacleTool()
 {
 	m_simTool.hide();
 	m_tTool.hide();
-	if(m_oTool.isVisible())
-		m_oTool.hide();
-	else
-		m_oTool.show();
+	
+	SController->getBlocks()->showTool();
 }
 
 /////////////////////////////////////////
@@ -170,8 +166,6 @@ void MainGUI::openGround()
 	if(filename == NULL) return; // if cancel is pressed dont do anything
 	SController->openNewGround(filename);
 	
-	// generate new obstacles
-	SController->generateObstacles();
 	labelTerrainFilename->setText(SController->getGround()->terrainShortname());
 	labelTerrainFilename->setStatusTip(SController->getGround()->terrainFilename());
 	m_tTool.setScale(SController->getGround()->terrainScale());
@@ -190,8 +184,7 @@ void MainGUI::saveGround()
 void MainGUI::flattenGround()
 {
 	SController->flattenGround();
-	// generate new obstacles
-	SController->generateObstacles();
+
 	labelTerrainFilename->setText(SController->getGround()->terrainShortname());
 	menuRoverView->setEnabled(false);
 }
@@ -203,48 +196,11 @@ void MainGUI::rescaleGround()
 }
 
 /////////////////////////////////////////
-// Obstacle generation functions
-/////////////
-void MainGUI::generateObstacles()
-{
-	SController->m_obstType = m_oTool.obstacleType();
-	SController->m_obstCount = m_oTool.obstacleCount();
-	SController->m_dropHeight = m_oTool.dropHeight();
-	SController->m_minObstSize = btVector3(m_oTool.minOLength(),m_oTool.minOWidth(),m_oTool.minOHeight());
-	SController->m_maxObstSize = btVector3(m_oTool.maxOLength(),m_oTool.maxOWidth(),m_oTool.maxOHeight());
-	SController->m_minObstYaw = m_oTool.minOYaw();
-	SController->m_maxObstYaw = m_oTool.maxOYaw();
-	SController->m_obstDensity = m_oTool.density();
-	SController->generateObstacles();
-}
-void MainGUI::saveObstacleLayout()
-{
-	QString filename = QFileDialog::getSaveFileName(this,"Save Obstacle Layout", "/Users");	// open a Save File dialog and select location and filename
-	if(filename == NULL) return; 															// if cancel is pressed dont do anything
-
-	if(!filename.endsWith(".xml")) filename.append(".xml");
-	SController->saveObstaclesXML(filename);
-}
-void MainGUI::loadObstacleLayout()
-{
-	QString filename = QFileDialog::getOpenFileName(this,"Open Obstacle Layout", "/Users");
-	if(filename == NULL) return;
-	
-	SController->loadObstaclesXML(filename);
-	labelTerrainFilename->setText(SController->getGround()->terrainShortname());		// update the terrain name incase it changes
-}
-void MainGUI::removeAllObstacles()
-{
-    m_oTool.setObstacleCount(0);
-	SController->removeObstacles();
-}
-
-/////////////////////////////////////////
 // Rover creation and destruction
 /////////////
 void MainGUI::newRover()
 {
-	bool state = (SController->getRover() == 0) ? true : false;
+	bool state = (SController->getRover() == 0) ? true : false;			// if there is no rover then create a new one
 	
 	if(state){
 		SController->newRover(this);
@@ -257,6 +213,7 @@ void MainGUI::newRover()
 		
 	menuRoverView->setEnabled(state);
 	actionShow_Rover_Info->setEnabled(state);
+	actionShow_Path_Info->setEnabled(state);
 }
 
 void MainGUI::waypointSetup()
@@ -284,12 +241,11 @@ void MainGUI::keyPressEvent(QKeyEvent *event)
         }
 		case 'A':
 		{
-			SController->orientObstacle();
+			SController->getBlocks()->orientObstacle();
 			return;
 		}
 		case 'C':
 		{
-			//SController->testCspace();
 			return;
 		}
 		case 'F':

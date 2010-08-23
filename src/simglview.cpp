@@ -179,7 +179,6 @@ void simGLView::paintGL()
         glLightfv(GL_LIGHT1, GL_DIFFUSE, lightOne);
         glLightfv(GL_LIGHT1, GL_POSITION, lightOnePos);
 
-		drawObstacles();
 		drawWaypoints();
 		
         for(int i=0;i<renderList.size();i++)
@@ -346,131 +345,6 @@ void simGLView::drawPlane(btScalar constant,const btVector3 normal)
     glVertex3f(pt1.getX(),pt1.getY(),pt1.getZ());
     glVertex3f(pt2.getX(),pt2.getY(),pt2.getZ());
     glEnd();
-}
-
-// draws all the obstacles in the world in Red
-void simGLView::drawObstacles()
-{
-    btScalar	glm[16];
-	btAlignedObjectArray<btCollisionObject*> *obstacleArray;
-	obstacleArray = arena->getObstacleObjectArray();
-	
-	//glColor3f(1.0f,0.0f,0.0f);
-    //glColor3f(0.02f,0.52f,0.51f);	// tron blue
-	//glColor3f(0.1f,0.0f,0.5f); // dark blue
-	//glColor3f(0.7,0.0,0.7);	// dark purple
-    //glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
-    //glMaterialfv(GL_FRONT, GL_EMISSION, obstacleEmission);
-    for(int i=0; i < obstacleArray->size(); i++){
-        btCollisionObject*	colisObject = obstacleArray->at(i);
-		
-		if(colisObject->isActive()) glColor3f(0.02f,0.52f,0.51f);	// tron blue
-		else glColor3f(1.0f,0.0f,0.0f);	// red
-		
-		// test colisobject if rigid body
-		btRigidBody* body = btRigidBody::upcast(colisObject);
-
-		if(body && body->getMotionState())
-		{
-			btDefaultMotionState* objMotionState = (btDefaultMotionState*)body->getMotionState();
-			objMotionState->m_graphicsWorldTrans.getOpenGLMatrix(glm);
-		}
-		else
-			colisObject->getWorldTransform().getOpenGLMatrix(glm);
-
-        btCollisionShape* colisShape = colisObject->getCollisionShape();
-		
-        glPushMatrix();
-        glMultMatrixf(glm);
-
-		switch (colisShape->getShapeType()) {
-			case BOX_SHAPE_PROXYTYPE: 
-			{
-				const btBoxShape* boxShape = static_cast<const btBoxShape*>(colisShape);
-				btVector3 halfDims = boxShape->getHalfExtentsWithMargin();
-				box(halfDims.x(),halfDims.y(),halfDims.z());
-				break;
-			}
-			case SPHERE_SHAPE_PROXYTYPE:
-			{
-				const btSphereShape* sphereShape = static_cast<const btSphereShape*>(colisShape);
-				float radius = sphereShape->getMargin();//radius doesn't include the margin, so draw with margin
-				sphere(radius,10,10);
-				break;
-			}
-			case CONE_SHAPE_PROXYTYPE:
-			{
-				const btConeShape* coneShape = static_cast<const btConeShape*>(colisShape);
-				//int upIndex = coneShape->getConeUpIndex();
-				float radius = coneShape->getRadius();//+coneShape->getMargin();
-				float height = coneShape->getHeight();//+coneShape->getMargin();
-				cone(radius, height, 20);
-				break;
-			}
-			case CYLINDER_SHAPE_PROXYTYPE:
-			{
-				const btCylinderShape* cylShape = static_cast<const btCylinderShape*>(colisShape);
-				btVector3 halfDims = cylShape->getHalfExtentsWithMargin();
-				cylinder(halfDims.y(),halfDims.x(),10);
-				break;
-			}
-			case STATIC_PLANE_PROXYTYPE:
-			{
-				const btStaticPlaneShape* staticPlaneShape = static_cast<const btStaticPlaneShape*>(colisShape);
-				btScalar planeConst = staticPlaneShape->getPlaneConstant();
-				btVector3 planeNormal = staticPlaneShape->getPlaneNormal();
-				drawPlane(planeConst, planeNormal);
-				break;
-			}
-			default:		
-				if (colisShape->isConvex())
-				{
-					ShapeCache* sc = (ShapeCache*)colisShape->getUserPointer();
-					if(!sc) break;
-					btShapeHull* hull = &sc->m_shapehull;
-					
-					if (hull->numTriangles() > 0)
-					{
-						int index = 0;
-						const unsigned int* idx = hull->getIndexPointer();
-						const btVector3* vtx = hull->getVertexPointer();
-
-						glBegin (GL_TRIANGLES);
-
-						for (int i = 0; i < hull->numTriangles (); i++)
-						{
-							int i1 = index++;
-							int i2 = index++;
-							int i3 = index++;
-							btAssert(i1 < hull->numIndices () &&
-								i2 < hull->numIndices () &&
-								i3 < hull->numIndices ());
-
-							int index1 = idx[i1];
-							int index2 = idx[i2];
-							int index3 = idx[i3];
-							btAssert(index1 < hull->numVertices () &&
-								index2 < hull->numVertices () &&
-								index3 < hull->numVertices ());
-
-							btVector3 v1 = vtx[index1];
-							btVector3 v2 = vtx[index2];
-							btVector3 v3 = vtx[index3];
-							btVector3 normal = (v2-v1).cross(v3-v1);
-							normal.normalize ();
-							glNormal3f(normal.getX(),normal.getY(),normal.getZ());
-							glVertex3f (v1.x(), v1.y(), v1.z());
-							glVertex3f (v2.x(), v2.y(), v2.z());
-							glVertex3f (v3.x(), v3.y(), v3.z());
-
-						}
-						glEnd ();
-					}
-				}
-				break;
-        }	
-        glPopMatrix();
-    }	
 }
 
 void simGLView::drawWaypoints()

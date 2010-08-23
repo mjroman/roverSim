@@ -7,6 +7,7 @@
 
 class btCollisionObject;
 class cSpace;
+class obstacles;
 
 typedef enum _PathDisplay
 {
@@ -63,6 +64,7 @@ class pathPlan : public simGLObject
 {
 	Q_OBJECT
 private:
+	obstacles*									m_blocks;
 	cSpace*										m_CS;				// the Configuration Space the path is calculated in
 	
 	QList<rankPoint>							m_pointPath;		// global point containter, used while searching for a path
@@ -116,7 +118,7 @@ private:
 	void drawLightTrail();
 	
 public:
-	pathPlan(simGLView* glView = NULL);
+	pathPlan(obstacles *obs, simGLView* glView = NULL);
 	~pathPlan();
 	
 	void goForGoal(btVector3 start, btVector3 end);

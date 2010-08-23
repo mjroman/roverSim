@@ -12,42 +12,35 @@ obstSettings(QSettings::IniFormat,QSettings::UserScope,"OUengineering","Rover_Si
 	
 	this->initSettingsNames();
 	
-	if(!QFile::exists(obstSettings.fileName())) initSettings();
-	else if(!obstSettings.childGroups().contains(OBSTSHAPEGROUP)) initSettings();
+	if(!QFile::exists(obstSettings.fileName())) defaultSettings();						// no settings file exitst
+	else if(!obstSettings.childGroups().contains(OBSTSHAPEGROUP)) defaultSettings();		// no obstacle settings in the file exits
 	
 	this->getSettings();
 	
-    connect(ComboShapeType, SIGNAL(currentIndexChanged(int)), this, SLOT(updateLabels(int)));
-	
-    ComboShapeType->addItem("Box",0);
-    ComboShapeType->addItem("Sphere",0);
-    ComboShapeType->addItem("Cone",0);
-    ComboShapeType->addItem("Cylinder",0);
+    ComboShapeType->addItem("Box");
+    ComboShapeType->addItem("Sphere");
+    ComboShapeType->addItem("Cone");
+    ComboShapeType->addItem("Cylinder");
 	
     SpinBoxObstCount->setRange(0,5000);
+	SpinBoxObstCount->setSingleStep(25);
     SpinBoxObstCount->setValue(obstCount.stuff.toInt());
-	
-    LineEditMinLength->setText(QString::number(obstMinLength.stuff.toFloat()));
-    LineEditMinWidth->setText(QString::number(obstMinWidth.stuff.toFloat()));
-    LineEditMinHeight->setText(QString::number(obstMinHeight.stuff.toFloat()));
-    LineEditMaxLength->setText(QString::number(obstMaxLength.stuff.toFloat()));
-    LineEditMaxWidth->setText(QString::number(obstMaxWidth.stuff.toFloat()));
-    LineEditMaxHeight->setText(QString::number(obstMaxHeight.stuff.toFloat()));
-    LineEditMinYaw->setText(QString::number(obstMinYaw.stuff.toFloat()));
-    LineEditMaxYaw->setText(QString::number(obstMaxYaw.stuff.toFloat()));
-	LineEditDropHeight->setText(QString::number(obstDropHeight.stuff.toFloat()));
-    LineEditDensity->setText(QString::number(obstDensity.stuff.toFloat()));
-    updateLabels(obstShape.stuff.toInt());
+
+	updateLabels(obstShape.stuff.toInt());
+
+ 	connect(ComboShapeType, SIGNAL(currentIndexChanged(int)), this, SLOT(updateLabels(int)));
+	connect(ButtonCancel, SIGNAL(clicked()), this, SLOT(hide()));
+	hide();
 }
 
 obstacleTool::~obstacleTool()
 {
 }
 
-void obstacleTool::raise()
+void obstacleTool::show()
 {
-    show();
-    SpinBoxObstCount->setValue(obstCount.stuff.toInt());
+	updateLabels(obstShape.stuff.toInt());
+	QWidget::show();
 }
 
 void obstacleTool::updateLabels(int index)
@@ -102,26 +95,33 @@ void obstacleTool::updateLabels(int index)
             LineEditMaxYaw->show();
             break;
     }
+
+	LineEditMinLength->setText(QString::number(obstMinLength.stuff.toFloat()));
+    LineEditMinWidth->setText(QString::number(obstMinWidth.stuff.toFloat()));
+    LineEditMinHeight->setText(QString::number(obstMinHeight.stuff.toFloat()));
+    LineEditMaxLength->setText(QString::number(obstMaxLength.stuff.toFloat()));
+    LineEditMaxWidth->setText(QString::number(obstMaxWidth.stuff.toFloat()));
+    LineEditMaxHeight->setText(QString::number(obstMaxHeight.stuff.toFloat()));
+    LineEditMinYaw->setText(QString::number(obstMinYaw.stuff.toFloat()));
+    LineEditMaxYaw->setText(QString::number(obstMaxYaw.stuff.toFloat()));
+	LineEditDropHeight->setText(QString::number(obstDropHeight.stuff.toFloat()));
+    LineEditDensity->setText(QString::number(obstDensity.stuff.toFloat()));
 }
 
 void obstacleTool::on_ButtonGenerate_clicked(bool)
 {
-	obstShape.stuff.setValue(ComboShapeType->currentIndex());
-    obstCount.stuff.setValue(SpinBoxObstCount->value());
-    // get minimum sizes from tool
-    obstMinLength.stuff.setValue(LineEditMinLength->text().toFloat());
+	obstShape.stuff.setValue(ComboShapeType->currentIndex());				// get shape type
+    obstCount.stuff.setValue(SpinBoxObstCount->value());					// get obstacle count
+    obstDropHeight.stuff.setValue(LineEditDropHeight->text().toFloat());	// get drop height
+    obstDensity.stuff.setValue(LineEditDensity->text().toFloat());			// get density
+    
+    obstMinLength.stuff.setValue(LineEditMinLength->text().toFloat());		// get minimum sizes
     obstMinWidth.stuff.setValue(LineEditMinWidth->text().toFloat());
     obstMinHeight.stuff.setValue(LineEditMinHeight->text().toFloat());
     obstMinYaw.stuff.setValue(LineEditMinYaw->text().toFloat());
-    // get drop height
-    obstDropHeight.stuff.setValue(LineEditDropHeight->text().toFloat());
-    // get density
-    obstDensity.stuff.setValue(LineEditDensity->text().toFloat());
 	
-    // get maximum sizes from tool and make sure they are
-    // greater than the minimum sizes
-	obstMaxLength.stuff.setValue(LineEditMaxLength->text().toFloat());
-    if(obstMinLength.stuff.toFloat() > obstMaxLength.stuff.toFloat()){
+	obstMaxLength.stuff.setValue(LineEditMaxLength->text().toFloat());		// get maximum sizes from tool and make sure they are
+    if(obstMinLength.stuff.toFloat() > obstMaxLength.stuff.toFloat()){		// greater than the minimum sizes
         obstMaxLength.stuff = obstMinLength.stuff;
         LineEditMaxLength->setText(QString::number(obstMaxLength.stuff.toFloat()));
     }
@@ -146,12 +146,7 @@ void obstacleTool::on_ButtonGenerate_clicked(bool)
 
 	this->setSettings();
     emit regenerateObstacles();
-    close();
-}
-
-void obstacleTool::on_ButtonCancel_clicked()
-{
-	close();
+    hide();
 }
 
 /////////////////////////////////////////
@@ -196,7 +191,7 @@ void obstacleTool::setSettings()
 	obstSettings.sync();
 }
 
-void obstacleTool::initSettings()
+void obstacleTool::defaultSettings()
 {
 	obstSettings.beginGroup(OBSTSHAPEGROUP); // open a new group in the settings file
 	obstSettings.setValue(obstShape.name,0);

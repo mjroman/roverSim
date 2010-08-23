@@ -3,11 +3,9 @@
 
 #include <QWidget>
 
-QT_BEGIN_NAMESPACE
 class QPushButton;
 class QLineEdit;
 class QLabel;
-QT_END_NAMESPACE
 
 class simtool : public QWidget
 {

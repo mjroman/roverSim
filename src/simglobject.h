@@ -1,12 +1,10 @@
 #ifndef SIMGLOBJECT_H
 #define SIMGLOBJECT_H
 
-#include <QObject>
 #include "simGLView.h";
 
 class simGLObject : public QObject
 {
-	Q_OBJECT
 protected:
     simGLView      *m_view;
 

@@ -8,11 +8,6 @@
 #include "laserscanner.h"
 #include "utility/structures.h"
 
-typedef struct _navParam {
-	QString name;
-	QVariant stuff;
-}navParam;
-
 class autoCode : public QWidget, private Ui::navigationtool
 {
 	Q_OBJECT
@@ -22,6 +17,7 @@ class autoCode : public QWidget, private Ui::navigationtool
 		WayPoint getCurrentWaypoint() { return currentWaypoint; }
 		
 	public slots:
+		void show();
 		void goAutonomous();
 		void stopAutonomous(RoverState rs);
 		void moveToWaypoint();
@@ -31,26 +27,26 @@ class autoCode : public QWidget, private Ui::navigationtool
 		void tableDataChange(int row, int column);
 			
 	protected:
-		navParam 	MAXPITCH;
-		navParam  	MAXROLL;
-		navParam   	ROVERCRUISESPEED;
-		navParam	POINTTURNSPEED;
-		navParam	POINTTURNANGLE;
-		navParam 	TURNACCURACYLIMIT;
-		navParam	TURNMULTIPLIER;	
-		navParam	TURNFACTOR;
-		navParam 	GOPASTDISTANCE;
-		navParam	CLOSEENOUGH;
-		navParam 	BODYDIST;	
-		navParam	BODYTOOCLOSE;
-		navParam 	PANELOBSTACLEMAX;
-		navParam	PROFILEOBSTACLEMAX;	
-		navParam	PITCHDOWNIGNOREDISTOBSTACLES;
-		navParam	PATHEFFICIENCY;
+		settingParam 	MAXPITCH;
+		settingParam  	MAXROLL;
+		settingParam   	ROVERCRUISESPEED;
+		settingParam	POINTTURNSPEED;
+		settingParam	POINTTURNANGLE;
+		settingParam 	TURNACCURACYLIMIT;
+		settingParam	TURNMULTIPLIER;	
+		settingParam	TURNFACTOR;
+		settingParam 	GOPASTDISTANCE;
+		settingParam	CLOSEENOUGH;
+		settingParam 	BODYDIST;	
+		settingParam	BODYTOOCLOSE;
+		settingParam 	PANELOBSTACLEMAX;
+		settingParam	PROFILEOBSTACLEMAX;	
+		settingParam	PITCHDOWNIGNOREDISTOBSTACLES;
+		settingParam	PATHEFFICIENCY;
 
 	private:
 		SR2rover 			*sr2;
-		QList<navParam*>	Plist;
+		QList<settingParam*>	Plist;
 		bool				running;
 		RoverState 			state;
 		RoverError			error;
