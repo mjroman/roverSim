@@ -35,6 +35,7 @@ ground(gnd)
 
 obstacles::~obstacles()
 {
+	qDebug("deleting obstacles");
 	this->eliminate();
 	delete oTool;
 }

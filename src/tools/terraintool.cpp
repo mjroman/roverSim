@@ -50,7 +50,7 @@ void terrainTool::setGravity()
     m_gravity.setX(lineEdit_GX->text().toFloat());
     m_gravity.setY(lineEdit_GY->text().toFloat());
     m_gravity.setZ(lineEdit_GZ->text().toFloat());
-    emit gravityUpdate();
+    emit gravityUpdate(m_gravity);
 }
 
 void terrainTool::setScale(btVector3 scale)
@@ -68,7 +68,7 @@ void terrainTool::rescale()
     m_scale.setY(lineEdit_ScaleLength->text().toFloat());
     m_scale.setZ(lineEdit_ScaleHeight->text().toFloat());
 	
-    emit scaleUpdate();
+    emit scaleUpdate(m_scale);
 }
 
 void terrainTool::setToolProps()

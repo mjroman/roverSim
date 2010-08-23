@@ -70,14 +70,14 @@ void simGLView::toggleDrawing()
 }
 simGLView::~simGLView()
 {
+	qDebug("deleting glView");
 	m_timer->stop();
 	delete m_timer;
-	
-    int i=0;
-    for(i=0;i<3;i++) this->deleteTexture(m_textureList[i]);
+
+    for(int i=0;i<m_textureList.size();i++) this->deleteTexture(m_textureList[i]);
 	m_textureList.clear();
+	
     delete m_eye;
-    qDebug("deleting glView");
 	qDebug("#################################################################");
 }
 

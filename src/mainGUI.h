@@ -7,7 +7,6 @@
 #include <QDataStream>
 #include "simcontrol.h"
 #include "ui_mainGUI.h"
-#include "tools/simtool.h"
 #include "tools/terraintool.h"
 #include "tools/waypointtool.h"
 
@@ -35,7 +34,6 @@ private:
 	
 	simControl		*SController;
 	
-    simtool         m_simTool;
     terrainTool     m_tTool;
 	waypointTool	m_wTool;
 
@@ -50,17 +48,11 @@ public:
     void keyReleaseEvent(QKeyEvent *event);
 
 public slots:
-	void showSimTool();
+	void showSimTiming();
 	void showTerrainTool();
 	void showObstacleTool();
 	
-	void stepTimevals();
-	void simGravity();
-	
-	void openGround();
-	void saveGround();
-	void rescaleGround();
-	void flattenGround();
+	void terrainChanged();
 	
 	void newRover();
 	void waypointSetup();

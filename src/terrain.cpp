@@ -35,6 +35,7 @@ m_terrainModified(false)
 
 terrain::~terrain()
 {
+	qDebug("deleting Terrain");
     terrainClear();
 }
 
@@ -320,29 +321,6 @@ float terrain::terrainHeightAt(btVector3 pt)
     return avgHeight/4;
 }
 
-void terrain::terrainRescale(btVector3 scale)
-{
-    m_worldSize *= scale;
-    m_terrainMaxHeight *= scale.z();
-    m_terrainMinHeight *= scale.z();
-
-    for(int i=0;i<m_terrainVertexCount;i++){
-        m_terrainVerts[i].x *= scale.x();
-        m_terrainVerts[i].y *= scale.y();
-        m_terrainVerts[i].z *= scale.z();
-    }
-    buildNormals();
-
-	m_terrainScale.setX(m_terrainScale.x() * scale.x());
-	m_terrainScale.setY(m_terrainScale.y() * scale.y());
-	m_terrainScale.setZ(m_terrainScale.z() * scale.z());
-	qDebug("new Scale %f,%f,%f",m_terrainScale.x(),m_terrainScale.y(),m_terrainScale.z());
-    arena->setWorldSize(m_worldSize);
-
-    this->terrainRefresh();
-	emit newTerrain();
-}
-
 // if the terrain mesh is edited it must be refit to the physics world
 void terrain::terrainRefresh()
 {
@@ -443,15 +421,17 @@ void terrain::generateGround()
     m_meshBody->setCollisionFlags(m_meshBody->getCollisionFlags() | btCollisionObject::CF_STATIC_OBJECT);
 }
 
-void terrain::terrainFlatten()
-{
-	this->terrainClear();
-	this->openTerrain(NULL);
-	emit newTerrain();
-}
-
+/////////////////////////////////////////
+// Terrain file slots
+/////////////
 void terrain::openTerrain(QString filename)
 {
+	if(filename == NULL){
+	// open an Open File dialog to look for a PNG image to represent a height map
+    	filename = QFileDialog::getOpenFileName(m_view->parentWidget(),tr("Open Terrain"), tr("/Users"),tr("Image File (*.png)"));
+		if(filename == NULL) return; // if cancel is pressed dont do anything
+	}
+	
 	QFileInfo terrainInfo(filename);
 	this->terrainClear();
 	m_terrainFilename = filename;
@@ -475,8 +455,14 @@ void terrain::openTerrain(QString filename)
 	emit newTerrain();
 }
 
-void terrain::saveTerrain(QString filename)
+void terrain::saveTerrain()
 {
+	// open a Save File dialog and select location and filename
+	QString filename = QFileDialog::getSaveFileName(m_view->parentWidget(),tr("Save Terrain PNG"), tr("/Users"),tr("Image File (*.png)"));
+	if(filename == NULL) return; // if cancel is pressed dont do anything
+
+    if(!filename.endsWith(".png")) filename.append(".png");
+
 	QFileInfo terrainInfo(filename);
 	m_terrainShortname = terrainInfo.baseName();
     m_terrainFilename = filename;
@@ -495,3 +481,34 @@ void terrain::saveTerrain(QString filename)
     modTerrain.save(m_terrainFilename,"png");
 	m_terrainModified = false;
 }
+
+void terrain::rescaleTerrain(btVector3 scale)
+{
+    m_worldSize *= scale;
+    m_terrainMaxHeight *= scale.z();
+    m_terrainMinHeight *= scale.z();
+
+    for(int i=0;i<m_terrainVertexCount;i++){
+        m_terrainVerts[i].x *= scale.x();
+        m_terrainVerts[i].y *= scale.y();
+        m_terrainVerts[i].z *= scale.z();
+    }
+    buildNormals();
+
+	m_terrainScale.setX(m_terrainScale.x() * scale.x());
+	m_terrainScale.setY(m_terrainScale.y() * scale.y());
+	m_terrainScale.setZ(m_terrainScale.z() * scale.z());
+	qDebug("new Scale %f,%f,%f",m_terrainScale.x(),m_terrainScale.y(),m_terrainScale.z());
+    arena->setWorldSize(m_worldSize);
+
+    this->terrainRefresh();
+	emit newTerrain();
+}
+
+void terrain::flattenTerrain()
+{
+	this->terrainClear();
+	this->openTerrain("NULL");
+	emit newTerrain();
+}
+

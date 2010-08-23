@@ -29,7 +29,7 @@ glView(vw)
    	arena = physicsWorld::instance(); // get the physics world object
 	
 	//ground = new terrain(QString(":/textures/src/textures/defaultTerrain.png"), glView);
-	ground = new terrain(NULL, glView);
+	ground = new terrain("NULL", glView);
 	
 	blocks = new obstacles(ground,glView);
 	
@@ -45,7 +45,7 @@ glView(vw)
     connect(simTimer, SIGNAL(timeout()), this, SLOT(stepSim()));
     this->startSimTimer(10);
 
-	//connect(ground,SIGNAL(newTerrain()),blocks,SLOT(generate()));
+	connect(ground,SIGNAL(newTerrain()),blocks,SLOT(eliminate()));
 	connect(ground,SIGNAL(newTerrain()),this,SLOT(removeRover()));
 	connect(ground,SIGNAL(newTerrain()),this,SLOT(setWaypointGroundHeight()));
 	blocks->generate();
@@ -55,11 +55,12 @@ simControl::~simControl()
 {
 	simTimer->stop();
 	delete simTimer;
+	
 	this->removeRover();
+	
 	if(sky) delete sky;
 	if(blocks) delete blocks;
 	if(ground) delete ground;
-	qDebug("deleting simControl");
 }
 
 /////////////////////////////////////////
@@ -99,30 +100,10 @@ void simControl::setGravity(btVector3 g)
 }
 
 /////////////////////////////////////////
-// Terrain access functions
-/////////////
-void simControl::openNewGround(QString filename)
-{
-	//this->removeRover();
-	ground->openTerrain(filename);
-}
-void simControl::flattenGround()
-{
-	//this->removeRover();
-	ground->terrainFlatten();
-}
-void simControl::rescaleGround(btVector3 scale)
-{
-	//this->removeRover();
-	ground->terrainRescale(scale);
-}
-
-/////////////////////////////////////////
 // Rover generation functions, includes AutoNavigation and PathPlanning Tools
 /////////////
 void simControl::newRover(QWidget* parent, btVector3 start)
 {
-	if(!ground) return;
 	if(!sr2) sr2 = new SR2rover(glView);
 	
 	this->resetWaypointStates();

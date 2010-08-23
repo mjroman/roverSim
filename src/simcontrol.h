@@ -36,16 +36,13 @@ class simControl : public QObject
 		~simControl();
 		
 		// simulation control functions
-		void setGravity(btVector3 g);
 		void startSimTimer(int msec);
 		void stopSimTimer();
 		
-		void stepTimevals(float tStep,float fixedtStep,int subSteps);
 		void pauseSim();
 	
 		// terrain control functions
 		terrain* getGround() { return ground; }
-		void rescaleGround(btVector3 scale);
 		
 		// obstacles setting functions
 		obstacles* getBlocks() { return blocks; }
@@ -63,9 +60,8 @@ class simControl : public QObject
 		
 	public slots:
 		void stepSim();
-		
-		void openNewGround(QString filename);
-		void flattenGround();
+		void stepTimevals(float tStep,float fixedtStep,int subSteps);
+		void setGravity(btVector3 g);
 		
 		void setWaypointGroundHeight();
 		void addWaypointAt(WayPoint wp, int index);

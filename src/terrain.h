@@ -57,15 +57,18 @@ public:
     float maxHeight() { return m_terrainMaxHeight; }
     float minHeight() { return m_terrainMinHeight; }
 
-    void terrainRescale(btVector3 scale);
+    
     void terrainRaise(btVector3 dir, float amount, float area);
     void terrainLower(btVector3 dir, float amount, float area);
 	bool terrainBeenModified() { return m_terrainModified; }
     float terrainHeightAt(btVector3 pt);
     void renderGLObject();
-	void terrainFlatten();
-	void openTerrain(QString filename);
-    void saveTerrain(QString filename);
+
+public slots:
+	void openTerrain(QString filename = NULL);
+    void saveTerrain();
+	void rescaleTerrain(btVector3 scale);
+	void flattenTerrain();
 
 signals:
 	void newTerrain();

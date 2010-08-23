@@ -5,11 +5,11 @@
 #include "sr2rover.h"
 #include "autoCode.h"
 #include "utility/definitions.h"
+#include "tools/simtool.h"
 
 MainGUI::MainGUI(QWidget *parent)
 :
 QMainWindow(parent),
-m_simTool(this),
 m_tTool(this),
 m_wTool(this)
 {
@@ -22,17 +22,18 @@ m_wTool(this)
 	QCoreApplication::setOrganizationDomain("i-borg.engr.ou.edu");
 	QCoreApplication::setApplicationName("Rover_Sim");
 	
-    m_simTool.close();
-    m_tTool.close();
-	m_wTool.close();
+    m_tTool.hide();
+	m_wTool.hide();
 
 	SController = new simControl(glView);
 	
     // menu bar connections
 // view menu
 	connect(actionFullScreen, SIGNAL(triggered()), this, SLOT(screenSize()));
+
 // world menu
-    connect(actionSim_Timing, SIGNAL(triggered()), this, SLOT(showSimTool()));
+    connect(actionSim_Timing, SIGNAL(triggered()), this, SLOT(showSimTiming()));
+
 // rover menu
 	connect(actionNew_Rover, SIGNAL(triggered()), this, SLOT(newRover()));
 	connect(actionShow_Waypoint_Editor, SIGNAL(triggered()), this, SLOT(waypointSetup()));
@@ -40,6 +41,7 @@ m_wTool(this)
 	connect(actionShow_Path_Info, SIGNAL(triggered()), SController, SLOT(showPathTool()));
 	actionShow_Rover_Info->setEnabled(false);
 	actionShow_Path_Info->setEnabled(false);
+
 // setup the rover view menu
 	connect(actionFree_View, SIGNAL(triggered()), this, SLOT(cameraFreeView()));
 	connect(actionRover_Center, SIGNAL(triggered()), this, SLOT(cameraRoverCenter()));
@@ -47,24 +49,25 @@ m_wTool(this)
 	connect(actionRover_View, SIGNAL(triggered()), this, SLOT(cameraRoverView()));
 	connect(actionRover_PanCam, SIGNAL(triggered()), this, SLOT(cameraRoverPanCam()));
 	menuRoverView->setEnabled(false);
+
 // obstacles menu
     connect(actionRandomize_Obstacles, SIGNAL(triggered()), SController->getBlocks(), SLOT(generate()));
 	connect(actionRemove_Obstacles, SIGNAL(triggered()), SController->getBlocks(), SLOT(eliminate()));
 	connect(actionSave_ObstacleLayout, SIGNAL(triggered()), SController->getBlocks(), SLOT(saveLayout()));
 	connect(actionLoad_ObstacleLayout, SIGNAL(triggered()), SController->getBlocks(), SLOT(loadLayout()));
     connect(actionObstacle_Parameters, SIGNAL(triggered()), this, SLOT(showObstacleTool()));
-// terrain menu
-    connect(actionOpen_Terrain, SIGNAL(triggered()), this, SLOT(openGround()));
-    connect(actionSave_Terrain, SIGNAL(triggered()), this, SLOT(saveGround()));
-    connect(actionFlatten_Terrain, SIGNAL(triggered()), this, SLOT(flattenGround()));
-   	connect(actionTerrain_Parameters, SIGNAL(triggered()), this, SLOT(showTerrainTool()));
 
-    // tool bar Simulation timing
-    connect(&m_simTool, SIGNAL(paramUpdate()), this, SLOT(stepTimevals()));
+// terrain menu
+    connect(actionOpen_Terrain, SIGNAL(triggered()), SController->getGround(), SLOT(openTerrain()));
+    connect(actionSave_Terrain, SIGNAL(triggered()), SController->getGround(), SLOT(saveTerrain()));
+    connect(actionFlatten_Terrain, SIGNAL(triggered()), SController->getGround(), SLOT(flattenTerrain()));
+   	connect(actionTerrain_Parameters, SIGNAL(triggered()), this, SLOT(showTerrainTool()));
+	connect(SController->getGround(), SIGNAL(newTerrain()), this, SLOT(terrainChanged()));
+
     // tool bar terrain gravity update
-    connect(&m_tTool, SIGNAL(gravityUpdate()), this, SLOT(simGravity()));
+    connect(&m_tTool, SIGNAL(gravityUpdate(btVector3)), SController, SLOT(setGravity(btVector3)));
     // tool bar terrain scale update
-    connect(&m_tTool, SIGNAL(scaleUpdate()), this, SLOT(rescaleGround()));
+    connect(&m_tTool, SIGNAL(scaleUpdate(btVector3)), SController->getGround(), SLOT(rescaleTerrain(btVector3)));
 	// tool bar add waypoint update
 	connect(&m_wTool, SIGNAL(addedWP(WayPoint,int)), SController, SLOT(addWaypointAt(WayPoint,int)));
 	connect(&m_wTool, SIGNAL(editedWP(int)), SController, SLOT(editWaypoint(int)));
@@ -79,9 +82,7 @@ m_wTool(this)
 	
     connect(glView, SIGNAL(refreshView()), this, SLOT(updateGUI()));
 	
-    labelTerrainFilename->setText(SController->getGround()->terrainFilename());
-    
-    m_tTool.setScale(SController->getGround()->terrainScale());
+	this->terrainChanged();
 
 	//glView->setFocus(Qt::OtherFocusReason);
 	glView->setFocusPolicy(Qt::StrongFocus);
@@ -89,7 +90,6 @@ m_wTool(this)
 
 MainGUI::~MainGUI()
 {
-    qDebug("deleting UI");
 }
 
 void MainGUI::closeEvent(QCloseEvent *event)
@@ -118,19 +118,16 @@ void MainGUI::screenSize()
 /////////////////////////////////////////
 // GUI tool views
 /////////////
-void MainGUI::showSimTool()
+void MainGUI::showSimTiming()
 {
-	m_tTool.hide();
-	SController->getBlocks()->hideTool();
-	if(m_simTool.isVisible())
-		m_simTool.hide();
-	else
-		m_simTool.show();
+	simtool sDialog(this);
+	if(sDialog.exec() == QDialog::Accepted)
+		SController->stepTimevals(sDialog.step,sDialog.fixedStep,sDialog.subStep);
 }
 void MainGUI::showTerrainTool()
 {
 	SController->getBlocks()->hideTool();
-	m_simTool.hide();
+
 	if(m_tTool.isVisible())
 		m_tTool.hide();
 	else
@@ -138,60 +135,19 @@ void MainGUI::showTerrainTool()
 }
 void MainGUI::showObstacleTool()
 {
-	m_simTool.hide();
 	m_tTool.hide();
 	
 	SController->getBlocks()->showTool();
 }
 
 /////////////////////////////////////////
-// update sim time and gravity
-/////////////
-void MainGUI::stepTimevals()
-{
-    SController->stepTimevals(m_simTool.getTimeStep(),m_simTool.getFixedTimeStep(),m_simTool.getSubSteps());
-}
-void MainGUI::simGravity()
-{
-    SController->setGravity(m_tTool.gravity());
-}
-
-/////////////////////////////////////////
 // Terrain editing functions
 /////////////
-void MainGUI::openGround()
+void MainGUI::terrainChanged()
 {
-	// open an Open File dialog to look for a PNG image to represent a height map
-    QString filename = QFileDialog::getOpenFileName(this,tr("Open Terrain"), tr("/Users"),tr("Image File (*.png)"));
-	if(filename == NULL) return; // if cancel is pressed dont do anything
-	SController->openNewGround(filename);
-	
 	labelTerrainFilename->setText(SController->getGround()->terrainShortname());
-	labelTerrainFilename->setStatusTip(SController->getGround()->terrainFilename());
 	m_tTool.setScale(SController->getGround()->terrainScale());
-	menuRoverView->setEnabled(false);
-}
-void MainGUI::saveGround()
-{
-	// open a Save File dialog and select location and filename
-	QString filename = QFileDialog::getSaveFileName(this,tr("Save Terrain PNG"), tr("/Users"),tr("Image File (*.png)"));
-	if(filename == NULL) return; // if cancel is pressed dont do anything
-
-    if(!filename.endsWith(".png")) filename.append(".png");
-	SController->getGround()->saveTerrain(filename);
-	labelTerrainFilename->setText(SController->getGround()->terrainShortname());
-}
-void MainGUI::flattenGround()
-{
-	SController->flattenGround();
-
-	labelTerrainFilename->setText(SController->getGround()->terrainShortname());
-	menuRoverView->setEnabled(false);
-}
-void MainGUI::rescaleGround()
-{
-    SController->rescaleGround(m_tTool.scale());
-    SController->setGravity(m_tTool.gravity());
+	SController->setGravity(m_tTool.gravity());
 	menuRoverView->setEnabled(false);
 }
 

@@ -1,19 +1,22 @@
-#include <QtGui>
-
 #include "simtool.h"
 #include "physicsWorld.h"
 
-simtool::simtool(QWidget *parent) : QWidget(parent)
+simtool::simtool(QWidget *parent) 
+:
+QDialog(parent)
 {
 	physicsWorld *arena = physicsWorld::instance(); 					// get the physics world object
-    QWidget::setWindowFlags(Qt::Sheet);
+    setWindowTitle("Simulation Timing Parameters");
+	//QWidget::setWindowFlags(Qt::Sheet);
 
-    updateButton = new QPushButton(tr("&Update"));
-    updateButton->setStyleSheet(QString("background:rgb(255, 0, 0); color:white; border:2px solid rgb(169, 2, 6); border-radius:10px;"));
-	updateButton->setFixedWidth(100);
+    updateButton = new QPushButton("&Update");
+	updateButton->setMinimumWidth(80);
+    updateButton->setStyleSheet(QString("background: red; color:white; border:2px solid rgb(169, 2, 6); border-radius:10px;"));
 	
-    connect(updateButton, SIGNAL(clicked()), this, SLOT(close()));
-	
+	cancelButton = new QPushButton("Cancel");
+	cancelButton->setMinimumWidth(80);
+	cancelButton->setStyleSheet("QPushButton:enabled{background: yellow; border: 2px solid white; border-radius:10; color: black;} QPushButton:pressed{background: white; border-color: yellow;}");
+
     timeStepLabel = new QLabel(this);									// time step
     timeStepLabel->setText(QString("Time step:"));
     timeStepLine = new QLineEdit;
@@ -44,36 +47,23 @@ simtool::simtool(QWidget *parent) : QWidget(parent)
 	QSpacerItem *space = new QSpacerItem(100,10);
 	buttonLayoutH->addItem(space);
 	buttonLayoutH->addWidget(updateButton);
+	buttonLayoutH->addWidget(cancelButton);
 	buttonLayoutH->addItem(space);
 	
     QVBoxLayout *layoutV = new QVBoxLayout;
     layoutV->addLayout(layoutH);
     layoutV->addLayout(buttonLayoutH);
 
-    setLayout(layoutV);
+    this->setLayout(layoutV);
+
+	connect(updateButton,SIGNAL(clicked()),this,SLOT(acceptData()));
+	connect(cancelButton,SIGNAL(clicked()),this,SLOT(reject()));
 }
 
-simtool::~simtool()
+void simtool::acceptData()
 {
-}
-
-void simtool::closeEvent(QCloseEvent *event)
-{
-    emit paramUpdate();
-    event->accept();
-}
-
-float simtool::getTimeStep()
-{
-    return timeStepLine->text().toFloat();
-}
-
-float simtool::getFixedTimeStep()
-{
-    return fixedStepLine->text().toFloat();
-}
-
-int simtool::getSubSteps()
-{
-    return subStepLine->text().toInt();
+	step = timeStepLine->text().toFloat();
+	fixedStep = fixedStepLine->text().toFloat();
+	subStep = subStepLine->text().toInt();
+	this->accept();
 }

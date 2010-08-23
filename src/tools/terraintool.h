@@ -32,8 +32,8 @@ public slots:
     void raise();
 
 signals:
-    void gravityUpdate();
-    void scaleUpdate();
+    void gravityUpdate(btVector3);
+    void scaleUpdate(btVector3);
 
 };
 

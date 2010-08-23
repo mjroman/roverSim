@@ -1,38 +1,32 @@
 #ifndef SIMTOOL_H
 #define SIMTOOL_H
 
-#include <QWidget>
+#include <QtGui>
 
-class QPushButton;
-class QLineEdit;
-class QLabel;
-
-class simtool : public QWidget
+class simtool : public QDialog
 {
     Q_OBJECT
 
-public:
-    QPushButton *updateButton;
-    QLineEdit   *timeStepLine;
-    QLineEdit   *fixedStepLine;
-    QLineEdit   *subStepLine;
-    QLabel      *timeStepLabel;
-    QLabel      *fixedStepLabel;
-    QLabel      *subStepLabel;
+private:
+	QPushButton		*cancelButton;
+    QPushButton 	*updateButton;
 
+    QLineEdit   	*timeStepLine;
+    QLineEdit   	*fixedStepLine;
+    QLineEdit   	*subStepLine;
+
+    QLabel      	*timeStepLabel;
+    QLabel      	*fixedStepLabel;
+    QLabel      	*subStepLabel;
+
+public:
+	float			step;
+	float			fixedStep;
+	int				subStep;
     simtool(QWidget *parent = 0);
-	~simtool();
-	
-    float getTimeStep();
-    float getFixedTimeStep();
-    int getSubSteps();
 
 public slots:
-    void closeEvent(QCloseEvent *event);
-
-signals:
-    void paramUpdate();
-
+	void acceptData();
 };
 
 #endif // SIMTOOL_H
