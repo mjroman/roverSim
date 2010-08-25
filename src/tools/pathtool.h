@@ -37,6 +37,8 @@ class pathEditDialog : public QDialog
 		ColorListEditor *colorComboBox;
 		QLineEdit 		*rangeLineEdit;
 		QLineEdit 		*stepLineEdit;
+		QLineEdit		*efficiencyLineEdit;
+		QLineEdit		*spinLineEdit;
 		QLineEdit 		*breadthLineEdit;
 		QCheckBox 		*saveAllCheckBox;
 		
@@ -55,9 +57,12 @@ class pathEditDialog : public QDialog
 		QLabel 			*colorLabel;
 		QLabel 			*rangeLabel;
 		QLabel 			*stepLabel;
+		QLabel			*efficiencyLabel;
+		QLabel			*spinLabel;
 		QLabel 			*breadthLabel;
 	
-	public slots:	
+	public slots:
+		void enableLines();	
 		void acceptData();
 };
 
@@ -80,6 +85,7 @@ class pathTool : public QWidget, private Ui::pathtool
 		void on_buttonGenerate_clicked();
 		void processPath(int x);
 		void updateTool();
+		void updateCompEfficiency(float gLength);
 		void setRowBackground(int row, QBrush stroke);
 		void tableDataChange(int row, int column);
 		void tableDataEdit(int row, int column);

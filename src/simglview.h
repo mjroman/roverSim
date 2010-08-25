@@ -42,7 +42,6 @@ protected:
 	void drawPickingHalo();
 
 public:
-	int debugVal;
     simGLView(QWidget *parent = 0);
     ~simGLView();
 

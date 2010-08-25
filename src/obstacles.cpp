@@ -299,8 +299,6 @@ void obstacles::loadLayout()
 	
 	m_view->printText("Obstacle layout loaded: " + obstInfo.baseName());
 	m_view->printText(QString("Count = %1").arg(m_obstacleObjects.size()));
-	
-	//labelTerrainFilename->setText(SController->getGround()->terrainShortname());		// update the terrain name incase it changes
 }
 
 btVector3 obstacles::elementToVector(QDomElement element)

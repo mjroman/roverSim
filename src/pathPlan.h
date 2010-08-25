@@ -80,11 +80,14 @@ private:
 	rankPoint									m_startPoint;		// start point of the path
 	rankPoint									m_midPoint;
 	rankPoint									m_goalPoint;		// calculate a path to this point
-	float										m_goalDistance;		// straight line distance to the goal from the start
+	float										m_goalDistance;		// straight line distance to the goal from a midpoint
+	float										m_straightDistance;	// straight line distance from the start of the path to the goal
 	btCollisionObject*							m_goalOccluded;		// hold the object the goal is inside if the goal is occluded
-	float										m_loopThreshold;	// the threshold for exiting a looping path when searching at limited ranges
-	bool 										m_looping;
-		
+	float										m_progressLimit;	// holds the maximum distance of progress before quitting path search
+	float										m_efficiencyLimit;	// minimum efficiency exit limit for searching a path to the goal
+	int											m_spinDirection;	// 0=no path limiting, 1=right side path limiting, -1=left side path limiting
+	float										m_spinProgress;		// the distance driven after a local minima has been reached
+	
 	QList< ACallback<pathPlan> >				m_drawingList;		// holds all drawing callbacks
 	QList< ACallback<pathPlan>* >				m_displayList;		// holds a pointer to the objects that should be currently drawn
 	
@@ -104,7 +107,7 @@ private:
 	QList<rankPoint> progressAngleBasedRank(QList<rankPoint> list, rankPoint pivotPoint);
 	QList<rankPoint> rangeBasedRank(QList<rankPoint> list, rankPoint pivotPoint);
 	QList<rankPoint> quickSortRankLessthan(QList<rankPoint> list);
-	QList<rankPoint> getVisablePointsFrom(rankPoint here);
+	QList<rankPoint> getVisablePointsFrom(rankPoint here, float dist);
 	QList<rankPoint> prunePointsFrom(QList<rankPoint> list);
 	//bool isNewPoint(rankPoint pt);
 	//bool isNewLink(rankLink link);
@@ -128,17 +131,22 @@ public:
 	btVector3 getGoalPoint() { return m_goalPoint.point; }
 	float getGoalDistance() { return m_goalDistance; }
 	goalPath* getShortestPath() { return &m_GP; }
+	float getShortestLength() { return m_GP.length; }
 	
 	QColor getColor() { QColor c = m_color; c.setAlphaF(1.0); return c; }
 	float getRange() { return m_range; }
 	float getStep() { return m_step; }
+	float getEffLimit() { return m_efficiencyLimit; }
+	float getSpinLimit() { return m_spinProgress; }
 	int getBreadth() { return m_breadth; }
 	bool getSaveOn() { return m_saveOn; }
-	bool isLooping() { return m_looping; }
+	bool isStuck() { return (m_GP.length > m_progressLimit); }
 	
 	void setColor(QColor color) { m_color = color; m_color.setAlphaF(0.45); }
 	void setRange(float r) { m_range = fabs(r); }
 	void setStep(float s) { m_step = s; }
+	void setEffLimit(float e) { m_efficiencyLimit = e; }
+	void setSpinLimit(float s) { m_spinProgress = s; }
 	void setBreadth(int b) { m_breadth = b; }
 	void setSaveOn(bool x) { m_saveOn = x; }
 

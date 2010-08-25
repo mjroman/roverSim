@@ -15,7 +15,8 @@ m_step(0.25),
 m_breadth(0),
 m_saveOn(false),
 m_goalOccluded(NULL),
-m_looping(false),
+m_efficiencyLimit(0.75),
+m_spinProgress(6),
 m_linkViewIndex(0)
 {	
 	// create callbacks to all the drawing methods, these are added to/removed from the display list
@@ -28,14 +29,12 @@ m_linkViewIndex(0)
 	drawCB.SetCallback(this,&pathPlan::drawPathBaseLine);		m_drawingList << drawCB;
 	drawCB.SetCallback(this,&pathPlan::drawLightTrail);			m_drawingList << drawCB;
 	
-	m_loopThreshold = SQ(m_step*0.25);	// set looping to 1/4 of a step distance
-	
 	m_GP.length = 0;
 	m_GP.time = 0;
 	m_GP.efficiency = 0;
 	
 	displayPath(true);
-	displayLightTrail(true);
+	displayLightTrail(false);
 	displayCrowFly(false);
 	displaySavedPaths(false);
 	displayDebug(false);
@@ -65,7 +64,6 @@ void pathPlan::reset()
 	m_GP.length = 0;
 	m_GP.time = 0;
 	m_GP.efficiency = 0;
-	m_looping = false;
 }
 
 void pathPlan::goForGoal(btVector3 start, btVector3 end)
@@ -76,6 +74,9 @@ void pathPlan::goForGoal(btVector3 start, btVector3 end)
 	
 	m_startPoint.point = start;
 	m_goalPoint.point = end;
+	m_straightDistance = start.distance(end);
+	m_progressLimit = m_straightDistance / m_efficiencyLimit;
+	m_spinDirection = 0;
 	
 	displayCurrentSearch(true);								// turn on drawing the yellow search lines
 	
@@ -97,11 +98,10 @@ void pathPlan::goForGoal(btVector3 start, btVector3 end)
 	
 	m_view->printText("Mapping Complete");
 	if(m_saveOn) m_view->printText(QString("%1 paths found").arg(m_pathList.size()));
-	if(m_GP.length == 0 || m_looping)
+	if(m_GP.length == 0 || m_GP.length > m_progressLimit)
 		m_view->printText(QString("No paths to goal found for range %1").arg(m_range));
-	else{
-		m_GP.efficiency = m_goalDistance/m_GP.length;
-	}
+
+	m_GP.efficiency = m_straightDistance/m_GP.length;
 	m_view->printText(QString("Range %1 Search Time: %2 s").arg(m_range).arg((float)m_GP.time/1000.0));
 }
 
@@ -114,8 +114,6 @@ void pathPlan::generateCspace()
 	if(m_CS) delete m_CS;
 	m_CS = new cSpace(m_startPoint.point,m_range,m_blocks,m_view);		// create a new Configuration Space based on the start point
 	m_CS->drawCspace(m_displayCS);
-	
-	m_goalDistance = m_startPoint.point.distance(m_goalPoint.point);		// calculate the distance to the goal from the start point
 	
 	if(isGoalInRange()){
 		QList<btCollisionObject*>* ghostList = m_CS->getGhostList();
@@ -134,6 +132,7 @@ void pathPlan::generateCspace()
 // returns true if the goal is within sensor range of the robot
 bool pathPlan::isGoalInRange()
 {
+	m_goalDistance = m_startPoint.point.distance(m_goalPoint.point);		// calculate the distance to the goal from the start point
 	if(m_range == 0) return true;
 	if(m_range <= m_goalDistance) return false;
 	else return true;
@@ -145,9 +144,11 @@ bool pathPlan::isGoalInRange()
 void pathPlan::cycleToGoal()
 {
 	int i;
+	float progress = 0;
+	float spinDist = 0;
 	QList<rankPoint> deltList;
 	
-	while( !this->isGoalInRange() )												// while the goal is not in range
+	while( m_range < m_goalDistance )											// while the goal is not in range
 	{
 		this->findPathA();														// calculate the path to the goal
 		if(m_GP.points.size() <= 1) break;										// if only 1 point is in the path list or it is empty then no path is found
@@ -156,6 +157,7 @@ void pathPlan::cycleToGoal()
 		i=1;
 		float step = m_step;
 		float pdist = m_GP.points[0].point.distance(m_GP.points[i].point);		// find the distance to the first point on the path
+		progress += m_step;
 		
 		while(step > pdist)														// while the step distance is longer than the distance to the next point
 		{
@@ -169,21 +171,35 @@ void pathPlan::cycleToGoal()
 	
 		memset(&m_startPoint,0,sizeof(rankPoint));								// create a new start point
 		m_startPoint.point = step * v.normalized() + m_GP.points[i-1].point;		
-	
+		
 		m_GP.length = 0;
 		m_GP.points.clear();
 		
-		this->generateCspace();
+		this->generateCspace();													// create new C-Space and calculate new goal distance
 		
 		//////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		// check for looping conditions
-		int j = deltList.size()-2;			// exclude the last point to eliminate a corner point added during a step
-		while(j>0 && j>deltList.size()-6)	// check the last 4 points to see if the path is in a loop
-		{
-			if(m_startPoint.point.distance2(deltList[j].point) < m_loopThreshold) m_looping = true;
-			j--;
+		// local minima work around
+		if(m_spinDirection == 0){
+			i=deltList.size()-1;
+			if(i >= 1){															// check for switch back condition
+				btVector3 preVect = deltList[i].point - deltList[i-1].point;
+				btVector3 newVect = m_startPoint.point - deltList[i].point;
+				if(preVect.dot(newVect) < 0){
+					if(newVect.cross(preVect).z() > 0) m_spinDirection = 1;
+					else m_spinDirection = -1;
+					spinDist = 0;
+					//m_view->printText(QString("spin around %1").arg(m_spinDirection));
+				}
+			}
 		}
-		if(m_looping) break;
+		else{
+			if(spinDist > m_spinProgress) m_spinDirection = 0;					// once progress past the local minima has been made reset spin direction
+			else spinDist += m_step;
+		}
+		//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		// looping condition check based on path efficiency
+		if(progress > m_progressLimit) 
+			break;	// current path length is not making progress exit
 	}
 
 	this->findPathA();
@@ -192,7 +208,6 @@ void pathPlan::cycleToGoal()
 	m_GP.length = 0;
 	for(i=0; i<m_GP.points.size()-1; i++) m_GP.length += m_GP.points[i].point.distance(m_GP.points[i+1].point);
 	m_startPoint = m_GP.points[0];
-	m_goalDistance = m_startPoint.point.distance(m_goalPoint.point);		// calculate the distance to the goal from the start point
 }
 
 
@@ -254,13 +269,13 @@ void pathPlan::constructRoadMap()
 
 
 /////////////////////////////////////////
-// first path planner algorithm DFSearch
+// first path planner algorithm DFSearch, this is where it all happens
 /////////////
 bool pathPlan::findPathA(float length)
 {
 	float goalDist = m_midPoint.point.distance(m_goalPoint.point);	// find the distance from the current midpoint to the Goal
 	
- 	if(m_GP.length != 0 && length + goalDist > m_GP.length) 	// incase the new search path is farther than the shortest path
+ 	if(m_GP.length != 0 && length + goalDist > m_GP.length) 		// incase the new search path is farther than the shortest path
 		return false;
 	
 	btCollisionObject *objBlock = this->isRayBlocked(m_midPoint,m_goalPoint);	// is the ray blocked?
@@ -285,7 +300,7 @@ bool pathPlan::findPathA(float length)
 		return true;															// no intersection all done
 	}
 	
-	QList<rankPoint> prospectPoints = getVisablePointsFrom(m_midPoint); 		// get all the visable points from the current location
+	QList<rankPoint> prospectPoints = getVisablePointsFrom(m_midPoint,length); 	// get all the visable points from the current location
 	//prospectPoints = this->progressAngleBasedRank(prospectPoints, m_midPoint);	// compute the ranks based on progress angle from start-goal vector
 	prospectPoints = this->angleBasedRank(prospectPoints, m_midPoint); 			// compute the ranks based on angle to goal from midPoint
 	prospectPoints = this->prunePointsFrom(prospectPoints);						// remove points that are already in the point path
@@ -293,16 +308,14 @@ bool pathPlan::findPathA(float length)
 	if(prospectPoints.isEmpty()) return false;
 	
 	int i=0;
-	btVector3 oldMidPoint = m_midPoint.point;
 	while(i < prospectPoints.size() && (m_breadth == 0 || i < m_breadth))
 	{
-		float del = oldMidPoint.distance(prospectPoints[i].point);
 		m_midPoint = prospectPoints[i];											// change the midPoint to the lowest rank point
 		m_pointPath << m_midPoint;												// add the potential point to the global path list
 
 		m_view->updateGL();
 		
-		if(this->findPathA(length+del)){										// recursive check for a path to the goal
+		if(this->findPathA(prospectPoints[i].length)){							// recursive check for a path to the goal
 			m_pointPath.removeLast();											// remove the goal point from the global list
 			m_pointPath.removeLast();
 			break;																// don't need to do anymore looping since the goal is visible
@@ -348,7 +361,7 @@ void pathPlan::togglePathPoint(int dir)
 	m_CS->drawCspace(true);
 
 // gather all objects extreme vertices
-	contactPoints = getVisablePointsFrom(here);
+	contactPoints = getVisablePointsFrom(here,0);
 
 	//contactPoints = prunePointsFrom(contactPoints);
 	contactPoints = angleBasedRank(contactPoints, m_GP.points[m_linkViewIndex]);
@@ -435,6 +448,8 @@ void pathPlan::getExtremes(btCollisionObject* obj, rankPoint pivotPoint, rankPoi
 {
 	float leftMax = 0;
 	float rightMax = 0;
+	bool setFirst = true;
+	btVector3 firstPoint;
 	QList<btVector3> ptList;
 	
 	btTransform objTrans = obj->getWorldTransform();		// the transform of the object being intersected
@@ -448,10 +463,22 @@ void pathPlan::getExtremes(btCollisionObject* obj, rankPoint pivotPoint, rankPoi
 		//vert.setZ(objTrans.getOrigin().z());								// flatten vectors to 2D
 		vert.setZ(m_startPoint.point.z());									// set all extremes to start height
 		
-			// get the cross product to find the direction, left or right side
-		btVector3 xc = (objTrans.getOrigin() - pivotPoint.point).cross(vert - pivotPoint.point);
+		if( setFirst ){ 
+			firstPoint = vert; 
+			(*left).point = vert;
+			(*left).corner = i;
+			(*left).object = obj;
+			(*right).point = vert;
+			(*right).corner = i;
+			(*right).object = obj;
+			setFirst = false;
+			continue; 
+		}
+		
+			// get the cross product to find the direction, left or right side of first point
+		btVector3 xc = (firstPoint - pivotPoint.point).cross(vert - pivotPoint.point);
 			// get the angle to find the extremes
-		float angle = (objTrans.getOrigin() - pivotPoint.point).angle(vert - pivotPoint.point);
+		float angle = (firstPoint - pivotPoint.point).angle(vert - pivotPoint.point);
 
 			// if cross product between obj center and vertex is + or UP then left point
 		if(xc.z() > 0){
@@ -475,7 +502,7 @@ void pathPlan::getExtremes(btCollisionObject* obj, rankPoint pivotPoint, rankPoi
 }
 
 // returns a list of all the visable extremes of C Space obstacles
-QList<rankPoint> pathPlan::getVisablePointsFrom(rankPoint here)
+QList<rankPoint> pathPlan::getVisablePointsFrom(rankPoint here, float dist)
 {
 	int i;
 	rankPoint leftMost;
@@ -508,11 +535,14 @@ QList<rankPoint> pathPlan::getVisablePointsFrom(rankPoint here)
 // begin Pruning points from the list
 	i=0;
 	while(i < list.size()){
-		if(this->isRayBlocked(here,list[i])) 					// remove all remaining points that are blocked
+		if(this->isRayBlocked(here,list[i])) 							// remove all remaining points that are blocked
 			list.removeAt(i);
 		else
 			i++;	
 	}
+	
+	for(i=0; i<list.size(); i++)
+		list[i].length = here.point.distance(list[i].point) + dist;		// calculate the distance to each point from the midpoint
 
 	return list;
 }
@@ -520,17 +550,44 @@ QList<rankPoint> pathPlan::getVisablePointsFrom(rankPoint here)
 // removes visible points not wanted
 QList<rankPoint> pathPlan::prunePointsFrom(QList<rankPoint> list)
 {
-	// check each point if it is already on the path
-	for(int j = 0; j < m_pointPath.size(); ++j)
+	int i,j;
+// check each point if it is already on the path
+	for( j = 0; j < m_pointPath.size(); ++j)
 	{
 		// check all points in the visible list
-		for(int i = 0; i < list.size(); ++i)
+		for( i = 0; i < list.size(); ++i)
 		{
 			if(list[i].object == m_pointPath[j].object && list[i].corner == m_pointPath[j].corner)
 			{
 				list.removeAt(i);
 				break;
 			}
+		}
+	}
+
+// check each visible point if it is already on the global path, remove it if it is longer
+	for( j = 0; j < m_GP.points.size(); j++)
+	{
+		for( i = 0; i < list.size(); ++i)
+		{
+			if(list[i].object == m_GP.points[j].object && list[i].corner == m_GP.points[j].corner && list[i].length >= m_GP.points[j].length)
+			{
+				list.removeAt(i);
+				break;
+			}
+		}
+	}
+
+// check for spin condition past obstacles and eliminate paths to the left or right depending on spin	
+	if(m_spinDirection != 0){
+		i=0;
+		btVector3 goalVect = m_goalPoint.point - m_midPoint.point;
+		while(i < list.size())
+		{
+			btVector3 ptVect = list[i].point - m_midPoint.point;
+			float dir = ptVect.cross(goalVect).z() * m_spinDirection;	// multiply the two directions to check for sign
+			if(dir < 0)	list.removeAt(i);								// dir will be negative if the directions differ, so remove the point
+			else i++;
 		}
 	}
 	

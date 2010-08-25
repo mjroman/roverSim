@@ -13,6 +13,7 @@ typedef struct _rankPoint
 {
 	btCollisionObject* 	object;
 	btVector3			point;
+	float				length;
 	float				rank;
 	int					corner;
 }rankPoint;

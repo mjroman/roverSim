@@ -391,7 +391,6 @@ void MainGUI::updateGUI()
     }
 
 //	labelDebug->setText(QString("random seed = %1\n").arg(seed));
-	labelDebug->setText(QString::number(glView->debugVal));
 	
 // GUI camera properties
     btVector3 cameraParam = glView->getCamera()->cameraPitchYawZoom();

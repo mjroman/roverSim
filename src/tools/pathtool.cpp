@@ -42,7 +42,7 @@ pathEditDialog::pathEditDialog(pathPlan *ph, QWidget *parent)
 	
 	// main input layout
 	QGridLayout *inputLayout = new QGridLayout;
-	colorLabel = new QLabel("Path Color");
+	colorLabel = new QLabel("Path Color");								// path color
 	inputLayout->addWidget(colorLabel,0,0);
 	colorComboBox = new ColorListEditor;
 	colorComboBox->setColor(path->getColor());
@@ -50,34 +50,57 @@ pathEditDialog::pathEditDialog(pathPlan *ph, QWidget *parent)
 		int z = rand() % QColor::colorNames().size();
 		colorComboBox->setCurrentIndex(z);
 	}
+	colorComboBox->setMaximumWidth(100);
 	inputLayout->addWidget(colorComboBox,0,1);
 	
-  	rangeLabel = new QLabel("Sensor Range");
+  	rangeLabel = new QLabel("Sensor Range");							// sensor range
 	inputLayout->addWidget(rangeLabel,1,0);
 	rangeLineEdit = new QLineEdit(this);
 	rangeLineEdit->setText(QString::number(path->getRange()));
 	rangeLineEdit->setAlignment(Qt::AlignHCenter);
-	this->setFocusProxy(rangeLineEdit);									// sets the range line edit as the focused item when the dialog is shown
+	rangeLineEdit->setMaximumWidth(100);
+	this->setFocusProxy(rangeLineEdit);		// sets the range line edit as the focused item when the dialog is shown
 	rangeLineEdit->selectAll();
 	inputLayout->addWidget(rangeLineEdit,1,1);
 	
-    stepLabel = new QLabel("Step Distance");
+    stepLabel = new QLabel("Step Distance");							// step distance
 	inputLayout->addWidget(stepLabel,2,0);
 	stepLineEdit = new QLineEdit(this);
 	stepLineEdit->setText(QString::number(path->getStep()));
 	stepLineEdit->setAlignment(Qt::AlignHCenter);
+	stepLineEdit->setMaximumWidth(100);
+	stepLineEdit->setEnabled(path->getRange() != 0);
 	inputLayout->addWidget(stepLineEdit,2,1);
 	
-	breadthLabel = new QLabel("Search Breadth");
-	inputLayout->addWidget(breadthLabel,3,0);
+	efficiencyLabel = new QLabel("Efficiency Limit");					// efficiency limit
+	inputLayout->addWidget(efficiencyLabel,3,0);
+	efficiencyLineEdit = new QLineEdit(this);
+	efficiencyLineEdit->setText(QString::number(path->getEffLimit()));
+	efficiencyLineEdit->setAlignment(Qt::AlignHCenter);
+	efficiencyLineEdit->setMaximumWidth(100);
+	efficiencyLineEdit->setEnabled(path->getRange() != 0);
+	inputLayout->addWidget(efficiencyLineEdit,3,1);
+
+	spinLabel = new QLabel("Spin Progress Limit");						// spin progress
+	inputLayout->addWidget(spinLabel,4,0);
+	spinLineEdit = new QLineEdit(this);
+	spinLineEdit->setText(QString::number(path->getSpinLimit()));
+	spinLineEdit->setAlignment(Qt::AlignHCenter);
+	spinLineEdit->setMaximumWidth(100);
+	spinLineEdit->setEnabled(path->getRange() != 0);
+	inputLayout->addWidget(spinLineEdit,4,1);
+	
+	breadthLabel = new QLabel("Search Breadth");						// path search breadth
+	inputLayout->addWidget(breadthLabel,5,0);
 	breadthLineEdit = new QLineEdit(this);
 	breadthLineEdit->setText(QString::number(path->getBreadth()));
 	breadthLineEdit->setAlignment(Qt::AlignHCenter);
-	inputLayout->addWidget(breadthLineEdit,3,1);
+	breadthLineEdit->setMaximumWidth(100);
+	inputLayout->addWidget(breadthLineEdit,5,1);
 	
-	saveAllCheckBox = new QCheckBox("Save All Paths");
+	saveAllCheckBox = new QCheckBox("Save All Paths");					// save paths 
 	saveAllCheckBox->setChecked(ph->getSaveOn());
-	inputLayout->addWidget(saveAllCheckBox,4,1);
+	inputLayout->addWidget(saveAllCheckBox,6,1);
 	
 	// Display group box setup
 	QVBoxLayout *displayLayout = new QVBoxLayout;
@@ -122,6 +145,8 @@ pathEditDialog::pathEditDialog(pathPlan *ph, QWidget *parent)
 	connect(saveDisplayCheckBox,SIGNAL(clicked(bool)),path,SLOT(displaySavedPaths(bool)));
 	connect(cspaceDisplayCheckBox,SIGNAL(clicked(bool)),path,SLOT(displayCspace(bool)));
 	
+	connect(rangeLineEdit,SIGNAL(selectionChanged()),this,SLOT(enableLines()));
+	
 	baselineCheckBox->setChecked(path->m_displayPath);
 	lightTrailCheckBox->setChecked(path->m_displayLightTrail);
 	crowFlyCheckBox->setChecked(path->m_displayCrowFly);
@@ -137,12 +162,39 @@ pathEditDialog::pathEditDialog(pathPlan *ph, QWidget *parent)
 	this->setLayout(mainLayout);
 }
 
+void pathEditDialog::enableLines()
+{
+	if(rangeLineEdit->text().toFloat() == 0){
+		stepLineEdit->setEnabled(false);
+		efficiencyLineEdit->setEnabled(false);
+		spinLineEdit->setEnabled(false);
+	}
+	else{
+		stepLineEdit->setEnabled(true);
+		efficiencyLineEdit->setEnabled(true);
+		spinLineEdit->setEnabled(true);
+	}
+}
 void pathEditDialog::acceptData()
 {
+	float temp;
 	path->setColor(colorComboBox->color());
 	path->setRange(rangeLineEdit->text().toFloat());
-	path->setStep(stepLineEdit->text().toFloat());
-	path->setBreadth(breadthLineEdit->text().toFloat());
+	
+	temp = stepLineEdit->text().toFloat();
+	if(temp > path->getRange()) path->setStep(path->getRange());
+	else path->setStep(temp);
+	
+	temp = fabs(efficiencyLineEdit->text().toFloat());
+	if(temp > 1 || temp == 0) path->setEffLimit(1);
+	else path->setEffLimit(temp);
+	
+	temp = fabs(spinLineEdit->text().toFloat());
+	path->setSpinLimit(temp);
+	
+	temp = fabs(breadthLineEdit->text().toInt());
+	path->setBreadth(temp);
+	
 	path->setSaveOn(saveAllCheckBox->isChecked());
 	this->accept();
 }
@@ -180,6 +232,38 @@ pathTool::~pathTool()
 	removePaths();
 }
 
+void pathTool::tableSetup()
+{
+	this->setUpdatesEnabled(true);
+	pathTableWidget->setColumnCount(6);
+	pathTableWidget->setRowCount(0);
+	pathTableWidget->showGrid();
+	pathTableWidget->setAlternatingRowColors(false);
+	pathTableWidget->verticalHeader()->setResizeMode(QHeaderView::Fixed);
+	pathTableWidget->horizontalHeader()->setResizeMode(QHeaderView::Fixed);
+
+	QTableWidgetItem* item = new QTableWidgetItem(" ");		// color
+	pathTableWidget->setHorizontalHeaderItem(0,item);		
+	pathTableWidget->setColumnWidth(0,28);
+	item = new QTableWidgetItem("Range");					// range
+	pathTableWidget->setHorizontalHeaderItem(1,item);		
+	pathTableWidget->setColumnWidth(1,45);
+	item = new QTableWidgetItem("Length");					// length
+	pathTableWidget->setHorizontalHeaderItem(2,item);		
+	pathTableWidget->setColumnWidth(2,80);
+	item = new QTableWidgetItem("Time (s)");				// time
+	pathTableWidget->setHorizontalHeaderItem(3,item);		
+	pathTableWidget->setColumnWidth(3,100);
+	item = new QTableWidgetItem("Comp. Efficiency");		// Gods eye comparison efficiency
+	pathTableWidget->setHorizontalHeaderItem(4,item);
+	pathTableWidget->setColumnWidth(4,100);
+	item = new QTableWidgetItem("Efficiency");				// efficiency
+	pathTableWidget->setHorizontalHeaderItem(5,item);		
+	pathTableWidget->setColumnWidth(5,100);
+
+	this->setMaximumWidth(453+39);	// max width of table, all items width + right collumn width
+}
+
 void pathTool::show()
 {
 	QPropertyAnimation *anim = new QPropertyAnimation(this,"pos");
@@ -209,35 +293,6 @@ void pathTool::resetPaths()
 	}
 }
 
-void pathTool::tableSetup()
-{
-	this->setUpdatesEnabled(true);
-	pathTableWidget->setColumnCount(5);
-	pathTableWidget->setRowCount(0);
-	pathTableWidget->showGrid();
-	pathTableWidget->setAlternatingRowColors(false);
-	pathTableWidget->verticalHeader()->setResizeMode(QHeaderView::Fixed);
-	pathTableWidget->horizontalHeader()->setResizeMode(QHeaderView::Fixed);
-
-	QTableWidgetItem* item = new QTableWidgetItem(" ");		// color
-	pathTableWidget->setHorizontalHeaderItem(0,item);		
-	pathTableWidget->setColumnWidth(0,28);
-	item = new QTableWidgetItem("Range");					// range
-	pathTableWidget->setHorizontalHeaderItem(1,item);		
-	pathTableWidget->setColumnWidth(1,45);
-	item = new QTableWidgetItem("Length");					// length
-	pathTableWidget->setHorizontalHeaderItem(2,item);		
-	pathTableWidget->setColumnWidth(2,80);
-	item = new QTableWidgetItem("Time (s)");				// time
-	pathTableWidget->setHorizontalHeaderItem(3,item);		
-	pathTableWidget->setColumnWidth(3,100);
-	item = new QTableWidgetItem("Efficiency");				// efficiency
-	pathTableWidget->setHorizontalHeaderItem(4,item);		
-	pathTableWidget->setColumnWidth(4,100);
-
-	this->setMaximumWidth(393);
-}
-
 // when the [+] button is pressed
 void pathTool::on_buttonAdd_clicked()
 {
@@ -249,46 +304,57 @@ void pathTool::on_buttonAdd_clicked()
 		return;
 	}
 	
+	int selected;
+	
 	if(pathList.isEmpty()) buttonDelete->setEnabled(true);				// enable the delete button if the list is empty
 	
-	pathList.insert(m_selectedPath, path);								// add the new path to the list
+	if(!pathList.isEmpty() && path->getRange() == 0){
+		if(pathList.last()->getRange() == 0) return;
+		selected = pathList.size();
+		pathList << path;											// add the gods eye path last
+	}
+	else{
+		selected = m_selectedPath;
+		pathList.insert(selected, path);							// add the new path to the list
+	}
 	
-	pathTableWidget->insertRow(m_selectedPath);							// insert a new row into the table
+	pathTableWidget->insertRow(selected);							// insert a new row into the table
 
 	QTableWidgetItem* color = new QTableWidgetItem();					// add the color item
 	color->setData(Qt::DecorationRole,path->getColor());
 	color->setFlags(Qt::ItemIsEnabled);
-	pathTableWidget->setItem(m_selectedPath,0,color);
+	pathTableWidget->setItem(selected,0,color);
 	
 	QTableWidgetItem* range = new QTableWidgetItem();					// add the range item
-	QFont ft = range->font();
 	if(path->getRange() == 0) {
 		range->setData(Qt::DisplayRole,QString::fromWCharArray(L"\x221e"));
-		ft.setPointSize(18);
 	}
 	else {
 		range->setData(Qt::DisplayRole,path->getRange());
-		ft.setPointSize(12);
 	}
-	range->setFont(ft);
 	range->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 	range->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
-	pathTableWidget->setItem(m_selectedPath,1,range);
+	pathTableWidget->setItem(selected,1,range);
 	
 	QTableWidgetItem* length = new QTableWidgetItem("...");				// add the length item
 	length->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 	length->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
-	pathTableWidget->setItem(m_selectedPath,2,length);
+	pathTableWidget->setItem(selected,2,length);
 	
 	QTableWidgetItem* stint = new QTableWidgetItem("...");				// add the time item
 	stint->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 	stint->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
-	pathTableWidget->setItem(m_selectedPath,3,stint);
+	pathTableWidget->setItem(selected,3,stint);
+	
+	QTableWidgetItem* comp = new QTableWidgetItem("...");				// add comparison efficiency item
+	comp->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+	comp->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+	pathTableWidget->setItem(selected,4,comp);
 	
 	QTableWidgetItem* eff = new QTableWidgetItem("...");				// add the efficiency item
 	eff->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 	eff->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
-	pathTableWidget->setItem(m_selectedPath,4,eff);
+	pathTableWidget->setItem(selected,5,eff);
 }
 
 // when the [-] button is pressed
@@ -317,6 +383,8 @@ void pathTool::processPath(int x)
 	qApp->processEvents();
 	if(x >= pathList.size()){
 		QSound::play("/Users/mattroman/Documents/code/roverSim/src/sounds/singleBell.wav");
+		if(pathList.last()->getRange() == 0)
+			updateCompEfficiency(pathList.last()->getShortestLength());
 		return;
 	}
 	
@@ -325,7 +393,7 @@ void pathTool::processPath(int x)
 	pathList[x]->goForGoal(rover->position - btVector3(0,0,0.34),goalPoint);
 	updateTool();
 	
-	if(pathList[x]->isLooping())
+	if(pathList[x]->isStuck())
 		emit changeBackground(x,QBrush(QColor(Qt::yellow)));
 	else
 		emit changeBackground(x,QBrush(QColor("lightsteelblue")));
@@ -368,6 +436,11 @@ void pathTool::updateTool()
 				}
 				case 4:
 				{
+					//item->setText("...");
+					break;
+				}
+				case 5:
+				{
 					item->setData(Qt::DisplayRole,QVariant(gp->efficiency));
 					break;
 				}
@@ -378,6 +451,16 @@ void pathTool::updateTool()
 	}
 }
 
+void pathTool::updateCompEfficiency(float gLength)
+{
+	int i;
+	for(i=0; i<pathList.size(); i++){
+		QTableWidgetItem* item = pathTableWidget->item(i,4);
+		item->setData(Qt::DisplayRole,QVariant(gLength/pathList[i]->getShortestLength()));
+	}
+}
+
+// sets the table row background color
 void pathTool::setRowBackground(int row, QBrush stroke)
 {
 	if(row >= pathTableWidget->rowCount()) return;
@@ -396,6 +479,7 @@ void pathTool::tableDataChange(int row, int column)
 	m_selectedPath = row;
 }
 
+// called when user double clicks on an item brings up the path editing dialog
 void pathTool::tableDataEdit(int row, int column)
 {
 	m_selectedPath = row;
@@ -406,6 +490,7 @@ void pathTool::tableDataEdit(int row, int column)
 	updateTool();
 }
 
+// called when the user goes to path view
 void pathTool::stepOnPath(int dir)
 {
 	if(pathList.isEmpty()) return;
