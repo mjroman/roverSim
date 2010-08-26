@@ -86,6 +86,8 @@ m_wTool(this)
 
 	//glView->setFocus(Qt::OtherFocusReason);
 	glView->setFocusPolicy(Qt::StrongFocus);
+	
+	this->helpText();
 }
 
 MainGUI::~MainGUI()
@@ -115,6 +117,17 @@ void MainGUI::screenSize()
 	}
 }
 
+void MainGUI::helpText()
+{
+	textConsole->append("Command-Mouse :\t Rotate view");
+	textConsole->append("Command-R :\t Randomize Obstacles");
+	textConsole->append("Command-N :\t Drop/Remove a Rover");
+	textConsole->append("Arrow Keys :\t \t Drive the Rover");
+	textConsole->append("Space :\t\t Pause Physics Motion");
+	textConsole->append("V :\t\t Cycles through views with Rover");
+	textConsole->append("B :\t\t Resets the Rover");
+	textConsole->append("L :\t\t Toggles Sensor Graphics");
+}
 /////////////////////////////////////////
 // GUI tool views
 /////////////

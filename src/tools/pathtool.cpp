@@ -57,6 +57,7 @@ pathEditDialog::pathEditDialog(pathPlan *ph, QWidget *parent)
 	inputLayout->addWidget(rangeLabel,1,0);
 	rangeLineEdit = new QLineEdit(this);
 	rangeLineEdit->setText(QString::number(path->getRange()));
+	rangeLineEdit->setToolTip("The distance in meters that obstacles are detected.\nSet to 0 for Infinite range");
 	rangeLineEdit->setAlignment(Qt::AlignHCenter);
 	rangeLineEdit->setMaximumWidth(100);
 	this->setFocusProxy(rangeLineEdit);		// sets the range line edit as the focused item when the dialog is shown
@@ -67,6 +68,7 @@ pathEditDialog::pathEditDialog(pathPlan *ph, QWidget *parent)
 	inputLayout->addWidget(stepLabel,2,0);
 	stepLineEdit = new QLineEdit(this);
 	stepLineEdit->setText(QString::number(path->getStep()));
+	stepLineEdit->setToolTip("The distance between sensor updates");
 	stepLineEdit->setAlignment(Qt::AlignHCenter);
 	stepLineEdit->setMaximumWidth(100);
 	stepLineEdit->setEnabled(path->getRange() != 0);
@@ -76,6 +78,7 @@ pathEditDialog::pathEditDialog(pathPlan *ph, QWidget *parent)
 	inputLayout->addWidget(efficiencyLabel,3,0);
 	efficiencyLineEdit = new QLineEdit(this);
 	efficiencyLineEdit->setText(QString::number(path->getEffLimit()));
+	efficiencyLineEdit->setToolTip("Path searching exits if efficiency degrades to this limit");
 	efficiencyLineEdit->setAlignment(Qt::AlignHCenter);
 	efficiencyLineEdit->setMaximumWidth(100);
 	efficiencyLineEdit->setEnabled(path->getRange() != 0);
@@ -85,6 +88,7 @@ pathEditDialog::pathEditDialog(pathPlan *ph, QWidget *parent)
 	inputLayout->addWidget(spinLabel,4,0);
 	spinLineEdit = new QLineEdit(this);
 	spinLineEdit->setText(QString::number(path->getSpinLimit()));
+	spinLineEdit->setToolTip("The distance the path search will step if a local minima is reached");
 	spinLineEdit->setAlignment(Qt::AlignHCenter);
 	spinLineEdit->setMaximumWidth(100);
 	spinLineEdit->setEnabled(path->getRange() != 0);
@@ -94,12 +98,14 @@ pathEditDialog::pathEditDialog(pathPlan *ph, QWidget *parent)
 	inputLayout->addWidget(breadthLabel,5,0);
 	breadthLineEdit = new QLineEdit(this);
 	breadthLineEdit->setText(QString::number(path->getBreadth()));
+	breadthLineEdit->setToolTip("The maximum number of paths to search at each path node.\nSet to 0 for complete search");
 	breadthLineEdit->setAlignment(Qt::AlignHCenter);
 	breadthLineEdit->setMaximumWidth(100);
 	inputLayout->addWidget(breadthLineEdit,5,1);
 	
 	saveAllCheckBox = new QCheckBox("Save All Paths");					// save paths 
 	saveAllCheckBox->setChecked(ph->getSaveOn());
+	saveAllCheckBox->setToolTip("Saves all potential paths to the goal while searching for shortest.\nFor viewing only");
 	inputLayout->addWidget(saveAllCheckBox,6,1);
 	
 	// Display group box setup
@@ -107,18 +113,22 @@ pathEditDialog::pathEditDialog(pathPlan *ph, QWidget *parent)
 	displayGroupBox = new QGroupBox("Path display items");
     
 	baselineCheckBox = new QCheckBox("Baseline");
+	baselineCheckBox->setToolTip("Draws the shortest path in the selected color");
 	displayLayout->addWidget(baselineCheckBox);
 	
 	lightTrailCheckBox = new QCheckBox("Light Trail");
 	displayLayout->addWidget(lightTrailCheckBox);
 	
 	crowFlyCheckBox = new QCheckBox("Crow Fly Line");
+	crowFlyCheckBox->setToolTip("Displays a vector line from the start to goal.\nFor debugging");
 	displayLayout->addWidget(crowFlyCheckBox);
 	
 	saveDisplayCheckBox = new QCheckBox("Saved Paths");
+	saveDisplayCheckBox->setToolTip("Display all potential paths if they have been saved");
 	displayLayout->addWidget(saveDisplayCheckBox);
 	
 	cspaceDisplayCheckBox = new QCheckBox("Config Space");
+	cspaceDisplayCheckBox->setToolTip("Display Configuration Space while searching for paths");
 	displayLayout->addWidget(cspaceDisplayCheckBox);
 	
 	displayGroupBox->setLayout(displayLayout);
@@ -219,6 +229,10 @@ m_foundSound("/Users/mattroman/Documents/code/roverSim/src/sounds/singleBeep2.wa
 	
 	buttonDelete->setEnabled(false);
 	tableSetup();
+	
+	pathTableWidget->setToolTip("Double click a path to edit parameters.\nUse X and Z to walk over selected path!");
+	buttonGenerate->setToolTip("Generates the paths in the list above");
+	checkBoxSave->setToolTip("Check this box BEFORE generating paths to save them!");
 	
 	connect(this,SIGNAL(changeBackground(int,QBrush)),this,SLOT(setRowBackground(int,QBrush)));
 	connect(this,SIGNAL(computePaths(int)),this,SLOT(processPath(int)));
@@ -344,16 +358,19 @@ void pathTool::on_buttonAdd_clicked()
 	QTableWidgetItem* stint = new QTableWidgetItem("...");				// add the time item
 	stint->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 	stint->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+	stint->setToolTip("Path computation time in Seconds");
 	pathTableWidget->setItem(selected,3,stint);
 	
 	QTableWidgetItem* comp = new QTableWidgetItem("...");				// add comparison efficiency item
 	comp->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 	comp->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+	comp->setToolTip("Efficiency based on infinite sensor range path");
 	pathTableWidget->setItem(selected,4,comp);
 	
 	QTableWidgetItem* eff = new QTableWidgetItem("...");				// add the efficiency item
 	eff->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 	eff->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+	eff->setToolTip("Efficiency based on straight line distance to goal");
 	pathTableWidget->setItem(selected,5,eff);
 }
 

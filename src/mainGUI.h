@@ -37,6 +37,7 @@ private:
     terrainTool     m_tTool;
 	waypointTool	m_wTool;
 
+	void helpText();
 	void serverStart();
 	//void mousePressEvent(QMouseEvent *event);
 
