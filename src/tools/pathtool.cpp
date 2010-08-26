@@ -2,6 +2,7 @@
 #include "../robot.h"
 #include "../obstacles.h"
 #include "../pathPlan.h"
+#include "utility/SimDomElement.h"
 #include <QSound>
 
 /////////////////////////////////////////
@@ -219,7 +220,10 @@ rover(bot),
 blocks(obs),
 view(glView),
 m_selectedPath(0),
-m_foundSound("/Users/mattroman/Documents/code/roverSim/src/sounds/singleBeep2.wav")
+m_foundSound("/Users/mattroman/Documents/code/roverSim/src/sounds/singleBeep2.wav"),
+m_filename(NULL),
+m_file(NULL),
+m_xmlDoc( "roverSimDoc" )
 {
 	setupUi(this);
 	move(20,540);
@@ -244,6 +248,7 @@ m_foundSound("/Users/mattroman/Documents/code/roverSim/src/sounds/singleBeep2.wa
 pathTool::~pathTool()
 {
 	removePaths();
+	if(m_file) delete m_file;
 }
 
 void pathTool::tableSetup()
@@ -388,9 +393,8 @@ void pathTool::on_buttonDelete_clicked()
 void pathTool::on_buttonGenerate_clicked()
 {
 	resetPaths();
-	if(checkBoxSave->isChecked()){
-		
-	}
+	if(!initSaveFile()) return;
+	
 	emit changeBackground(0,QBrush(QColor("springgreen")));
 	emit computePaths(0);
 }
@@ -398,16 +402,23 @@ void pathTool::on_buttonGenerate_clicked()
 void pathTool::processPath(int x)
 {
 	qApp->processEvents();
-	if(x >= pathList.size()){
+	if(x >= pathList.size()){		// finished computing paths
 		QSound::play("/Users/mattroman/Documents/code/roverSim/src/sounds/singleBell.wav");
 		if(pathList.last()->getRange() == 0)
-			updateCompEfficiency(pathList.last()->getShortestLength());
+			updateCompEfficiency(pathList.last()->getShortestLength());								// updates comparison efficiency and writes data to file
 		return;
 	}
 	
 	if(x != 0) m_foundSound.play();
 
-	pathList[x]->goForGoal(rover->position - btVector3(0,0,0.34),goalPoint);
+	pathList[x]->goForGoal(rover->position - btVector3(0,0,0.34),goalPoint);						// find the shortest path from start to goal points
+	
+	if(checkBoxSave->isChecked()){
+		m_xmlDoc.documentElement().appendChild(SimDomElement::pathToNode(m_xmlDoc,pathList[x]));	// write the data to the xml document
+		m_xmlStream.seek(0);																		// start writing data to the begining of the file
+		m_xmlStream << m_xmlDoc.toString();															// sync the data to the file, incase the simulation crashes
+		m_xmlStream.flush();
+	}
 	updateTool();
 	
 	if(pathList[x]->isStuck())
@@ -425,7 +436,7 @@ void pathTool::updateTool()
 {
 	int i,j;
 	for(i=0; i<pathList.size(); i++){
-		goalPath* gp = pathList[i]->getShortestPath();
+		const goalPath* gp = pathList[i]->getShortestPath();
 		for(j=0; j<pathTableWidget->columnCount(); j++){
 			QTableWidgetItem* item = pathTableWidget->item(i,j);
 			switch(j){
@@ -475,6 +486,12 @@ void pathTool::updateCompEfficiency(float gLength)
 		QTableWidgetItem* item = pathTableWidget->item(i,4);
 		item->setData(Qt::DisplayRole,QVariant(gLength/pathList[i]->getShortestLength()));
 	}
+	if(m_xmlStream.device()){
+		m_xmlStream.seek(0);																		// start writing data to the begining of the file
+		m_xmlStream << m_xmlDoc.toString();															// sync the data to the file, incase the simulation crashes
+		m_xmlStream.flush();
+		m_file->close();
+	}
 }
 
 // sets the table row background color
@@ -513,4 +530,53 @@ void pathTool::stepOnPath(int dir)
 	if(pathList.isEmpty()) return;
 	if(m_selectedPath < pathList.size() && m_selectedPath >= 0)
 		pathList[m_selectedPath]->togglePathPoint(dir);
+}
+
+// sets up an XML file to save path data too
+// returns FALSE if there is an error
+bool pathTool::initSaveFile()
+{
+	if(!checkBoxSave->isChecked()) return true;
+
+	if(m_filename == NULL){
+		m_filename = QFileDialog::getSaveFileName(view->parentWidget(),"Save Path Data", "/Users");	// open a Save File dialog and select location and filename
+		if(m_filename == NULL){
+			checkBoxSave->setChecked(false);														// if cancel is pressed turn off saving
+			return true;
+		}
+		m_runCount = 0;																				// reset the run count for a new series
+	}
+	else{
+		m_runCount++;																				// increment the filename
+		m_xmlDocclear();
+	}
+
+	int hyp = m_filename.lastIndexOf("-");															// remove old file endings
+	if(hyp != -1) m_filename.truncate(hyp);
+	if(m_filename.endsWith(".xml")) m_filename.replace(".xml","");
+	
+	blocks->saveLayout(m_filename + "_layout.xml");													// save the obstacle layout
+	
+	m_file = new QFile(m_filename + "-" + QString::number(m_runCount) + ".xml");
+	if (!m_file->open(QIODevice::WriteOnly)){														// open file
+		view->printText("Save File Error - " + m_filename);
+		return false;
+	}
+
+	QDomElement root = m_xmlDoc.createElement( "PathData" );										// create a root element
+	m_xmlDoc.appendChild(root);
+	QString docInfo = "This XML document represents calculated path data from the RoverSim application";
+	root.appendChild(m_xmlDoc.createComment(docInfo));
+	
+	root.setAttribute( "layoutFile", m_filename + "_layout");										// write layout name
+	
+	btVector3 startPoint = rover->position - btVector3(0,0,0.34);
+	QDomElement goalLine = m_xmlDoc.createElement( "startgoal" );
+	goalLine.setAttribute( "distance", QString::number(startPoint.distance(goalPoint)));			// write straight line distance
+	goalLine.appendChild(SimDomElement::vectorToNode(m_xmlDoc,startPoint));							// write start point
+	goalLine.appendChild(SimDomElement::vectorToNode(m_xmlDoc,goalPoint));							// write goal point
+	root.appendChild(goalLine);
+	
+	m_xmlStream.setDevice(m_file);
+	return true;
 }

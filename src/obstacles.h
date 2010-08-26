@@ -25,6 +25,7 @@ class obstacles : public simGLObject
 		~obstacles();
 		
 		QList<btCollisionObject*>* getObstacles() { return &m_obstacleObjects; }
+		bool isSaved() { return m_saved; }
 		void showTool() { oTool->show(); }
 		void hideTool() { oTool->hide(); }
 		void renderGLObject();
@@ -32,7 +33,7 @@ class obstacles : public simGLObject
 	public slots:
 		void eliminate();
 		void generate();
-		void saveLayout();
+		void saveLayout(QString filename = NULL);
 		void loadLayout();
 		
 		// pick and place functions
@@ -54,6 +55,7 @@ class obstacles : public simGLObject
 		physicsWorld    					*arena;
 		terrain         					*ground;
 		obstacleTool						*oTool;
+		bool								m_saved;
 		
 		pickValue							m_pickingObject;
 		QSettings 							m_obstSettings;
@@ -61,17 +63,8 @@ class obstacles : public simGLObject
 		// rigid body creation
 		btCollisionShape* createObstacleShape(int shapeType, btVector3& lwh, float& vol);
 		btRigidBody* createObstacleObject(float mass, btCollisionShape* cShape, btTransform trans);
-				
-		// XML functions
-		QDomElement vectorToNode(QDomDocument &doc, const btVector3 v);
-		QDomElement basisToNode(QDomDocument &doc, const btMatrix3x3 mx);
-		QDomElement transformToNode(QDomDocument &doc, const btTransform t);
-		QDomElement rigidBodyToNode(QDomDocument &doc, const btRigidBody* body);
 		
-		btVector3 elementToVector(QDomElement element);
-		btMatrix3x3 elementToMatrix(QDomElement element);
-		btTransform elementToTransform(QDomElement element);
-		void elementToRigidBody(QDomElement element);
+		void elementToObstacle(QDomElement element);
 	
 	public:
 		// redefintion of ray reslut callback to exclude the object that is being picked

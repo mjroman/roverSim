@@ -130,17 +130,17 @@ public:
 	btVector3 getStartPoint() { return m_startPoint.point; }
 	btVector3 getGoalPoint() { return m_goalPoint.point; }
 	float getGoalDistance() { return m_goalDistance; }
-	goalPath* getShortestPath() { return &m_GP; }
+	const goalPath* getShortestPath() const { return &m_GP; }
 	float getShortestLength() { return m_GP.length; }
 	
-	QColor getColor() { QColor c = m_color; c.setAlphaF(1.0); return c; }
-	float getRange() { return m_range; }
+	const QColor getColor() const { QColor c = m_color; c.setAlphaF(1.0); return c; }
+	const float getRange() const { return m_range; }
 	float getStep() { return m_step; }
 	float getEffLimit() { return m_efficiencyLimit; }
 	float getSpinLimit() { return m_spinProgress; }
 	int getBreadth() { return m_breadth; }
 	bool getSaveOn() { return m_saveOn; }
-	bool isStuck() { return (m_GP.length > m_progressLimit); }
+	const bool isStuck() const { return (m_GP.length > m_progressLimit); }
 	
 	void setColor(QColor color) { m_color = color; m_color.setAlphaF(0.45); }
 	void setRange(float r) { m_range = fabs(r); }

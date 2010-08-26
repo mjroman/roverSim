@@ -14,13 +14,15 @@
 #include <BulletDynamics/Dynamics/btRigidBody.h>
 #include <BulletDynamics/Dynamics/btDynamicsWorld.h>
 #include <LinearMath/btDefaultMotionState.h>
+#include "utility/SimDomElement.h"
 
 #define OBSTSHAPEGROUP	"ObstacleShape" // settings group key value
 
 obstacles::obstacles(terrain* gnd, simGLView* glView)
 :
 simGLObject(glView),
-ground(gnd)
+ground(gnd),
+m_saved(false)
 {
 	arena = physicsWorld::instance(); // get the physics world object
 	oTool = new obstacleTool(m_view->parentWidget());
@@ -107,6 +109,7 @@ void obstacles::generate()
 		
 		createObstacleObject(mass,oShape,startTrans);				// create the new obstacle and add it to the world	
     }
+	m_saved = false;
 	emit obstaclesRegenerated();
 }
 
@@ -167,10 +170,13 @@ btRigidBody* obstacles::createObstacleObject(float mass, btCollisionShape* cShap
 /////////////////////////////////////////
 // XML file Creation functions
 /////////////
-void obstacles::saveLayout()
+void obstacles::saveLayout(QString filename)
 {
-	QString filename = QFileDialog::getSaveFileName(m_view->parentWidget(),"Save Obstacle Layout", "/Users");	// open a Save File dialog and select location and filename
-	if(filename == NULL) return; 															// if cancel is pressed dont do anything
+	if(m_saved) return;
+	if(filename == NULL){
+		filename = QFileDialog::getSaveFileName(m_view->parentWidget(),"Save Obstacle Layout", "/Users");	// open a Save File dialog and select location and filename
+		if(filename == NULL) return;															// if cancel is pressed dont do anything
+	}
 
 	if(!filename.endsWith(".xml")) filename.append(".xml");
 	
@@ -192,61 +198,16 @@ void obstacles::saveLayout()
 	
 	for(int i=0; i<m_obstacleObjects.size(); i++){
 		btRigidBody* body = btRigidBody::upcast(m_obstacleObjects[i]);
-		root.appendChild(rigidBodyToNode(xmlDoc,body));										// add each rigid body obstacle as children
+		root.appendChild(SimDomElement::rigidBodyToNode(xmlDoc,body));										// add each rigid body obstacle as children
 	}
 	
 	QTextStream stream(&obstFile);
 	stream << xmlDoc.toString();															// write the XML text to the file
+	m_saved = true;
 	
 	obstFile.close();																		// flush data and close file
 	m_view->printText("Obstacle layout saved: " + obstInfo.baseName());
 	arena->toggleIdle();																	// resume the simulation
-}
-
-QDomElement obstacles::vectorToNode(QDomDocument &doc, const btVector3 v)
-{
-	QDomElement vector = doc.createElement( "vector" );
-	
-	vector.setAttribute( "X", QString::number(v.x(),'g',12));
-	vector.setAttribute( "Y", QString::number(v.y(),'g',12));
-	vector.setAttribute( "Z", QString::number(v.z(),'g',12));
-	return vector;
-}
-QDomElement obstacles::basisToNode(QDomDocument &doc, const btMatrix3x3 mx)
-{
-	QDomElement matrix = doc.createElement( "matrix" );
-	
-	for(int i=0;i<3;i++)
-		matrix.appendChild(vectorToNode(doc, mx.getRow(i)));
-	return matrix;
-}
-QDomElement obstacles::transformToNode(QDomDocument &doc, const btTransform t)
-{
-	QDomElement trans = doc.createElement( "transform" );
-	
-	QDomElement origin = doc.createElement( "origin" );
-	origin.appendChild(vectorToNode(doc, t.getOrigin()));
-	trans.appendChild(origin);
-	
-	QDomElement rotate = doc.createElement( "rotation" );
-	rotate.appendChild(basisToNode(doc, t.getBasis()));
-	trans.appendChild(rotate);
-	return trans;
-}
-QDomElement obstacles::rigidBodyToNode(QDomDocument &doc, const btRigidBody* body)
-{
-	QDomElement rigidBody = doc.createElement( "rigidBody" );
-	
-	rigidBody.setAttribute( "shape", QString::number(body->getCollisionShape()->getShapeType()));
-	rigidBody.setAttribute( "mass", QString::number(1.0/body->getInvMass(),'g',10));
-	
-	QDomElement size = doc.createElement( "size" );
-	const btBoxShape* boxShape = static_cast<const btBoxShape*>(body->getCollisionShape());
-	size.appendChild(vectorToNode(doc, boxShape->getHalfExtentsWithMargin()));
-	
-	rigidBody.appendChild(size);
-	rigidBody.appendChild(transformToNode(doc, body->getWorldTransform()));
-	return rigidBody;
 }
 
 void obstacles::loadLayout()
@@ -269,6 +230,7 @@ void obstacles::loadLayout()
 	QDomElement root = xmlDoc.documentElement();
 	if(root.tagName() != "obstacleLayout"){
 		m_view->printText("File is not an obstacle layout: " + obstInfo.baseName());
+		return;
 	}
 	
 	this->eliminate();							// remove all obstacles
@@ -292,7 +254,7 @@ void obstacles::loadLayout()
 	while(!obst.isNull()){
 		QDomElement e = obst.toElement();
 		
-		if( !e.isNull() && e.tagName() == "rigidBody" ) elementToRigidBody(e);
+		if( !e.isNull() && e.tagName() == "rigidBody" ) elementToObstacle(e);
 
 		obst = obst.nextSibling();
 	}
@@ -301,41 +263,7 @@ void obstacles::loadLayout()
 	m_view->printText(QString("Count = %1").arg(m_obstacleObjects.size()));
 }
 
-btVector3 obstacles::elementToVector(QDomElement element)
-{
-	btVector3 vect;
-	
-	vect.setX(element.attribute("X").toFloat());
-	vect.setY(element.attribute("Y").toFloat());
-	vect.setZ(element.attribute("Z").toFloat());
-	return vect;
-}
-btMatrix3x3 obstacles::elementToMatrix(QDomElement element)
-{
-	btVector3 vx,vy,vz;
-	QDomElement vect = element.firstChildElement("vector");
-	vx = elementToVector(vect);
-	vect = vect.nextSiblingElement("vector");
-	vy = elementToVector(vect);
-	vect = vect.nextSiblingElement("vector");
-	vz = elementToVector(vect);
-	
-	btMatrix3x3 mx(vx.x(),vx.y(),vx.z(),vy.x(),vy.y(),vy.z(),vz.x(),vz.y(),vz.z());
-	return mx;
-}
-btTransform obstacles::elementToTransform(QDomElement element)
-{
-	btTransform trans;
-	
-	trans.setIdentity();
-	QDomElement origin = element.firstChildElement("origin");
-	trans.setOrigin(elementToVector(origin.firstChildElement("vector")));
-	QDomElement rotate = element.firstChildElement("rotation");
-	trans.setBasis(elementToMatrix(rotate.firstChildElement("matrix")));
-	
-	return trans;
-}
-void obstacles::elementToRigidBody(QDomElement element)
+void obstacles::elementToObstacle(QDomElement element)
 {
 	float		tempVol;
 	float 		tempMass;
@@ -347,8 +275,8 @@ void obstacles::elementToRigidBody(QDomElement element)
 	tempShape = element.attribute("shape","0").toInt();
 	
 	QDomElement size = element.firstChildElement("size");
-	tempSize = elementToVector(size.firstChildElement("vector"));
-	tempTrans = elementToTransform(element.firstChildElement("transform"));
+	tempSize = SimDomElement::elementToVector(size.firstChildElement("vector"));
+	tempTrans = SimDomElement::elementToTransform(element.firstChildElement("transform"));
 	
 	btCollisionShape* oShape = createObstacleShape(tempShape,tempSize,tempVol);		// create the collision shape
 	createObstacleObject(tempMass,oShape,tempTrans);								// create the dynamic rigid body and add it to the world
@@ -445,6 +373,7 @@ void obstacles::dropObstacle()
 	m_pickingObject.rigidbody->activate();
 	m_view->setPickObject(NULL);
 	m_pickingObject.rigidbody = NULL;
+	m_saved = false;
 }
 void obstacles::orientObstacle()
 {

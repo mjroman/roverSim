@@ -3,6 +3,8 @@
 
 #include <QtGui>
 #include <QComboBox>
+#include <QDomNode>
+#include <QTextStream>
 #include "ui_pathtool.h"
 #include "../utility/structures.h"
 
@@ -103,5 +105,12 @@ class pathTool : public QWidget, private Ui::pathtool
 		btVector3			goalPoint;
 		int					m_selectedPath;
 		QSound				m_foundSound;
+		int					m_runCount;
+		QString				m_filename;
+		QFile				*m_file;
+		QDomDocument		m_xmlDoc;
+		QTextStream			m_xmlStream;
+		
+		bool initSaveFile();
 };
 #endif //PATHTOOL_H
