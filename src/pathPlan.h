@@ -87,6 +87,7 @@ private:
 	float										m_efficiencyLimit;	// minimum efficiency exit limit for searching a path to the goal
 	int											m_spinDirection;	// 0=no path limiting, 1=right side path limiting, -1=left side path limiting
 	float										m_spinProgress;		// the distance driven after a local minima has been reached
+	int											m_spinProgressBase;	// 0 = distance based progress 1 = step based progress
 	
 	QList< ACallback<pathPlan> >				m_drawingList;		// holds all drawing callbacks
 	QList< ACallback<pathPlan>* >				m_displayList;		// holds a pointer to the objects that should be currently drawn
@@ -138,6 +139,7 @@ public:
 	float getStep() { return m_step; }
 	float getEffLimit() { return m_efficiencyLimit; }
 	float getSpinLimit() { return m_spinProgress; }
+	int	getSpinBase() { return m_spinProgressBase; }
 	int getBreadth() { return m_breadth; }
 	bool getSaveOn() { return m_saveOn; }
 	const bool isStuck() const { return (m_GP.length > m_progressLimit || m_GP.length < m_straightDistance); }
@@ -147,6 +149,7 @@ public:
 	void setStep(float s) { m_step = s; }
 	void setEffLimit(float e) { m_efficiencyLimit = e; }
 	void setSpinLimit(float s) { m_spinProgress = s; }
+	void setSpinBase(int b) { m_spinProgressBase = b; }
 	void setBreadth(int b) { m_breadth = b; }
 	void setSaveOn(bool x) { m_saveOn = x; }
 

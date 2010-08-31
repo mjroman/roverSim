@@ -17,6 +17,7 @@ m_saveOn(false),
 m_goalOccluded(NULL),
 m_efficiencyLimit(0.75),
 m_spinProgress(6),
+m_spinProgressBase(0),
 m_linkViewIndex(0)
 {	
 	// create callbacks to all the drawing methods, these are added to/removed from the display list
@@ -182,18 +183,21 @@ void pathPlan::cycleToGoal()
 		if(m_spinDirection == 0){
 			i=deltList.size()-1;
 			if(i >= 1){															// check for switch back condition
-				btVector3 preVect = deltList[i].point - deltList[i-1].point;
-				btVector3 newVect = m_startPoint.point - deltList[i].point;
-				if(preVect.dot(newVect) < 0){
+				btVector3 preVect = deltList[i].point - deltList[i-1].point;	// use the current position to compare the previous step point
+				btVector3 newVect = m_startPoint.point - deltList[i].point;		// to the new startpoint
+				
+				if(preVect.dot(newVect) < 0){									// dot is negative if the angle is greater than 90
 					if(newVect.cross(preVect).z() > 0) m_spinDirection = 1;
 					else m_spinDirection = -1;
 					spinDist = 0;
-					//m_view->printText(QString("spin around %1").arg(m_spinDirection));
 				}
 			}
 		}
 		else{
-			if(spinDist > m_spinProgress) m_spinDirection = 0;					// once progress past the local minima has been made reset spin direction
+			float d;
+			if(m_spinProgressBase == 0) d = m_spinProgress;					// distance based progress
+			else if(m_spinProgressBase == 1) d = m_spinProgress * m_step;	// step based progress
+			if(spinDist > d) m_spinDirection = 0;							// once progress past the local minima has been made reset spin direction
 			else spinDist += m_step;
 		}
 		

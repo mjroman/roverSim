@@ -41,6 +41,7 @@ class pathEditDialog : public QDialog
 		QLineEdit 		*stepLineEdit;
 		QLineEdit		*efficiencyLineEdit;
 		QLineEdit		*spinLineEdit;
+		QComboBox		*spinBaseBox;
 		QLineEdit 		*breadthLineEdit;
 		QCheckBox 		*saveAllCheckBox;
 		

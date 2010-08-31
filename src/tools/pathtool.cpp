@@ -39,7 +39,7 @@ void ColorListEditor::populateList()
 pathEditDialog::pathEditDialog(pathPlan *ph, QWidget *parent)
 : QDialog(parent), path(ph)
 {
-	setWindowTitle("Set Path Parameters");
+	setWindowTitle("Path Parameters");
 	
 	// main input layout
 	QGridLayout *inputLayout = new QGridLayout;
@@ -87,13 +87,23 @@ pathEditDialog::pathEditDialog(pathPlan *ph, QWidget *parent)
 
 	spinLabel = new QLabel("Spin Progress Limit");						// spin progress
 	inputLayout->addWidget(spinLabel,4,0);
+	QHBoxLayout *spinLayout = new QHBoxLayout;
 	spinLineEdit = new QLineEdit(this);
 	spinLineEdit->setText(QString::number(path->getSpinLimit()));
 	spinLineEdit->setToolTip("The distance the path search will step if a local minima is reached");
 	spinLineEdit->setAlignment(Qt::AlignHCenter);
-	spinLineEdit->setMaximumWidth(100);
+	spinLineEdit->setMaximumWidth(35);
 	spinLineEdit->setEnabled(path->getRange() != 0);
-	inputLayout->addWidget(spinLineEdit,4,1);
+	spinLayout->addWidget(spinLineEdit);
+	spinBaseBox = new QComboBox(this);
+	spinBaseBox->addItem("Dist.");
+	spinBaseBox->addItem("Step");
+	spinBaseBox->setCurrentIndex(path->getSpinBase());
+	spinBaseBox->setToolTip("Sets how the progress distance will be compared.");
+	spinBaseBox->setMaximumWidth(65);
+	spinBaseBox->setEnabled(path->getRange() != 0);
+	spinLayout->addWidget(spinBaseBox);
+	inputLayout->addLayout(spinLayout,4,1);
 	
 	breadthLabel = new QLabel("Search Breadth");						// path search breadth
 	inputLayout->addWidget(breadthLabel,5,0);
@@ -179,11 +189,13 @@ void pathEditDialog::enableLines()
 		stepLineEdit->setEnabled(false);
 		efficiencyLineEdit->setEnabled(false);
 		spinLineEdit->setEnabled(false);
+		spinBaseBox->setEnabled(false);
 	}
 	else{
 		stepLineEdit->setEnabled(true);
 		efficiencyLineEdit->setEnabled(true);
 		spinLineEdit->setEnabled(true);
+		spinBaseBox->setEnabled(true);
 	}
 }
 void pathEditDialog::acceptData()
@@ -202,6 +214,8 @@ void pathEditDialog::acceptData()
 	
 	temp = fabs(spinLineEdit->text().toFloat());
 	path->setSpinLimit(temp);
+	
+	path->setSpinBase(spinBaseBox->currentIndex());
 	
 	temp = fabs(breadthLineEdit->text().toInt());
 	path->setBreadth(temp);
