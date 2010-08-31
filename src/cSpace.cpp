@@ -14,7 +14,8 @@
 #include <BulletDynamics/Dynamics/btDynamicsWorld.h>
 #include <LinearMath/btAlignedObjectArray.h>
 
-#define SPACEMARGIN	0.5
+#define SPACEMARGIN			0.5
+#define CORNERRESOLUTION	0.3	// in radians
 
 cSpace::cSpace(btVector3 center, float range, obstacles *obs, simGLView* glView)
 :
@@ -22,7 +23,8 @@ simGLObject(glView),
 m_blocks(obs),
 m_centerPoint(center),
 m_detectRange(range),
-m_detectRangeSq(range*range)
+m_detectRangeSq(range*range),
+m_margin(0.5)
 {
 	m_vertices[0] = btVector3(1,1,1);
 	m_vertices[1] = btVector3(-1,1,1);
@@ -93,48 +95,29 @@ void cSpace::generateCSpace()
 {
 	int i;
 	QList<btVector3> top;
-	btVector3 cc = m_centerPoint * btVector3(1,1,0);
 	
 	deleteGhostGroup();
 	
 	// create CSpace by using the obstacle shape and growing it by SPACEMARGIN or about the rover's radius
-	for(i=0;i<m_blocks->getObstacles()->size();i++){											// loop through all obstacle rigid bodies
+	for(i=0;i<m_blocks->getObstacles()->size();i++){						// loop through all obstacle rigid bodies
 		btCollisionObject* colisObject = m_blocks->getObstacles()->at(i);
 		
-		if(colisObject->isActive()) continue;									// check if object is in-active
-	
-		if(colisObject->getWorldTransform().getOrigin().z() < 0.0) continue;	// check if the obstacle is on the terrain
+		if(colisObject->isActive()) continue;								// check if object is in-active
+		
+		btTransform	trans;
+		trans.setIdentity();
+		trans = colisObject->getWorldTransform();
+		if(trans.getOrigin().z() < 0.0) continue;							// check if the obstacle is on the terrain
 
 		top.clear();
 		top = getVerticalOutlinePoints(colisObject);						// get the vertical projected outline of the obstacle
-
-		int count = top.size();
-		if(m_detectRange > 0)												// for a limited sensor range C-Space make sure the objects are in range
-		{			
-			for(int j=0; j < top.size(); j++){								// check if it is in-range, out of range, or intersects the range arc
-				if(cc.distance2(top[j]) > m_detectRangeSq) count--;
-			}
-		}
-		if(count == 0) continue;											// the whole obstacle is out of range
-
-		btVector3 grow;
-		btTransform	trans;
-		trans.setIdentity();
-		trans.setOrigin(colisObject->getWorldTransform().getOrigin());
-
-		for(int j=0; j < top.size(); j++) 									
-		{
-			top[j].setZ(trans.getOrigin().z());								// set z position to the height of the obstacle
-			top[j] = trans.invXform(top[j]);								// inverse transform from world frame to local object frame
-			grow = top[j].normalized() * SPACEMARGIN;						// calculate the growth vector
-			grow.setZ(0);													// remove the z components otherwise creates a lopsided object
-			top[j] += grow;													// grow the obstacle vertex
-		}
-
-		if(m_detectRange <= 0) createGhostHull(trans,top);					// Global view contains all obstacles
-		else if(count == top.size()) createGhostHull(trans,top); 			// the whole obstacle is within range
-		else createGhostRangeClipHull(trans,top);							// part of the obstacle intersects the arc
-
+		
+		if(m_detectRange)
+			if(!clipShape(trans,top)) continue;								// if the obstacle is out of range continue
+		
+		top = growShape(m_margin,top);								// grow the detected obstacle shape
+		
+		createGhostHull(trans,top);											// create the ghost object
 	}
 }
 
@@ -164,72 +147,6 @@ btCollisionObject* cSpace::createGhostHull(btTransform bodyTrans, QList<btVector
 	for(i=0;i<list.size();i++) cshape->addPoint(list[i] + btVector3(0,0,2));	// the list only contains the outline of the hull
 	for(i=0;i<list.size();i++) cshape->addPoint(list[i] + btVector3(0,0,-2));	// it is duplicated in the negative z direction
 	return createGhostObject(cshape, bodyTrans);
-}
-
-// creates a new ghost hull object from a list of points but clips the hull where it intersects the range arc
-// returns NULL if the polygon list is out of range
-btCollisionObject* cSpace::createGhostRangeClipHull(btTransform bodyTrans, QList<btVector3> ls)
-{
-	int i=0;
-	int nexti;
-	int arcType;
-	btVector3 cc = m_centerPoint;
-	btVector3 xpoint1,xpoint2;
-	btVector3 startCorner;
-	bool side;
-	bool nextSide;
-	
-	cc.setZ(bodyTrans.getOrigin().z());
-	cc = bodyTrans.invXform(cc);
-	
-	i=0;
-	while(cc.distance2(ls[i]) > m_detectRangeSq) // look for a point on ls inside the range
-	{
-		i++;
-		if(i == ls.size()) return NULL;
-	}
-	startCorner = ls[i];	// save the starting point for exit condition
-	side = true;			// always start in range
-	
-	// starting at a point on the polygon from ls inside the range arc traveling in a CCW (right hand rule) look for intersections
-	// with the arc, SIDE keeps track of the current state of wether the index point is inside the arc or not
-	// SIDE is used to tell when to delete, replace, or insert points for the new shape
-	do{
-		if(i == ls.size()-1) nexti = 0;
-		else nexti = i+1;
-		
-		nextSide = (cc.distance2(ls[nexti]) > m_detectRangeSq) ? false : true;
-		if(nextSide != side){							// only add or replace points if there is a change of side
-			// find the intersection point
-			arcType = arcIntersection(cc, m_detectRange, ls[i], ls[nexti], &xpoint1, &xpoint2);
-			xpoint1.setZ(ls[0].z());
-			xpoint2.setZ(ls[0].z());
-			
-			if(arcType == 2) xpoint1 = xpoint2;
-			if(arcType == 0){
-				if(side) side = !side;				// skip over a point if its at the end of a segment that intersects the arc
-				i++;
-			}
-			else if(!side){								// if current index is out of range (side=FALSE)
-				ls.replace(i,xpoint1);				// replace the point with the intersection point
-				i++;
-			}
-			else {										// if the current index is out of range (side=FALSE)
-				if(nexti == 0) ls.append(xpoint1);	// add new point to the end of the ls if we are at the wraparound point
-				else ls.insert(nexti,xpoint1);		// add the intersection point to the ls
-				i+=2;
-			}
-			side = !side;
-		}
-		else if(!side){									// if there is no change of side and the current index is still out of range
-			ls.removeAt(i);							// remove the current index and move to the next
-		}
-		else i++; 										// else keep moving around polygon
-		 
-		if(i == ls.size()) i=0;
-	}while(startCorner != ls[i]);
-	
-	return createGhostHull(bodyTrans,ls);
 }
 
 // groups all overlapping CSpace shapes into a list, m_ghostGroups contains a list of all grouped objects
@@ -384,31 +301,31 @@ int cSpace::segmentIntersection(btVector3 p1,btVector3 p2,btVector3 p3,btVector3
 	if(s1 != s2) // if side 1 and side 2 are different the lines straddle
 	{
 		// FINDING THE INTERSECTION POINT
-		num = p2.y() - p1.y();	// slope calculation rise/run
+		num = p2.y() - p1.y();					// slope calculation rise/run
 		dnm = p2.x() - p1.x();
 		if(num == 0){
-			 m1 = 0;		// horizontal line
+			 m1 = 0;							// horizontal line
 			intsect->setY(p1.y());
 		}
 		else if(dnm == 0){
-			 m1 = 1;		// vertical line
+			 m1 = 1;							// vertical line
 			intsect->setX(p1.x());
 		}
 		else m1 = num/dnm;
-		b1 = p1.y() - m1*p1.x();	// find the y-intercept
+		b1 = p1.y() - m1*p1.x();				// find the y-intercept
 		
 		num = p4.y() - p3.y();
 		dnm = p4.x() - p3.x();
 		if(num == 0){
-			m2 = 0;			// horizontal line
+			m2 = 0;								// horizontal line
 			intsect->setY(p3.y());
 		}
 		else if(dnm == 0){
-			m2 = 1;			// vertical line
+			m2 = 1;								// vertical line
 			intsect->setX(p3.x());
 		}
 		else m2 = num/dnm;
-		b2 = p3.y() - m2*p3.x();	// find the y-intercept
+		b2 = p3.y() - m2*p3.x();				// find the y-intercept
 		
 		//qDebug("m1%f b1%f m2%f b2%f",m1,b1,m2,b2);
 		if(m1 != 1 && m2 != 1) intsect->setX((b2-b1)/(m1-m2));
@@ -453,35 +370,75 @@ int cSpace::arcIntersection(btVector3 cc, float rad, btVector3 p1, btVector3 p2,
 	if(dy < 0) sign = -1;
 	else sign = 1;
 	
-	discrim = SQ(rad)*(SQ(dx) + SQ(dy)) - SQ(D);
+	discrim = SQ(rad)*SQ(dr) - SQ(D);
 	type = 0;
-	if(discrim >= 0){	// avoid imaginary numbers from lines that don't intersect the arc	
+	if(discrim < 0) return 0;						// no intersections
+	else{	
 		//qDebug("p1(%f,%f) p2(%f,%f)",p1.x(),p1.y(),p2.x(),p2.y());
-		intsect1->setX(((D*dy+sign*dx*sqrt(discrim))/SQ(dr)));
+		intsect1->setX((D*dy+sign*dx*sqrt(discrim))/SQ(dr));
 		intsect1->setY(((-D*dx+fabs(dy)*sqrt(discrim))/SQ(dr)));
-		intsect1->setZ(cc.z());
+		intsect1->setZ(0);
 		
 		intsect2->setX(((D*dy-sign*dx*sqrt(discrim))/SQ(dr)));
 		intsect2->setY(((-D*dx-fabs(dy)*sqrt(discrim))/SQ(dr)));
-		intsect2->setZ(cc.z());
+		intsect2->setZ(0);
 		
-		
-		// check the first point if it is between the line segment ends
-		if(intsect1->x() >= MINIMUM(p1.x(),p2.x()) && 
-		   intsect1->x() <= MAXIMUM(p1.x(),p2.x()) &&
-		   intsect1->y() >= MINIMUM(p1.y(),p2.y()) &&
-		   intsect1->y() <= MAXIMUM(p1.y(),p2.y()))
+		////////////////////////////////////////////////////////////////
+		// check the FIRST point if it is between the line segment ends
+		if(dy == 0){										// special case horizontal line
+			if(intsect1->x() >= MINIMUM(p1.x(),p2.x()) && 
+			intsect1->x() <= MAXIMUM(p1.x(),p2.x())){
+				*intsect1 += cc;
+				type = 1;						// the first point is inbetween the line segment ends
+				if(discrim == 0) return 1;		// the line is tangent
+			}
+		}
+		else if(dx == 0){									// special case vertical line
+			if(intsect1->y() >= MINIMUM(p1.y(),p2.y()) &&
+			intsect1->y() <= MAXIMUM(p1.y(),p2.y())){
+				*intsect1 += cc;
+				type = 1;						// the first point is inbetween the line segment ends
+				if(discrim == 0) return 1;		// the line is tangent
+			}
+		}
+		else if(intsect1->x() >= MINIMUM(p1.x(),p2.x()) && 
+			intsect1->x() <= MAXIMUM(p1.x(),p2.x()) &&
+			intsect1->y() >= MINIMUM(p1.y(),p2.y()) &&
+			intsect1->y() <= MAXIMUM(p1.y(),p2.y()))
 		{
 			*intsect1 += cc;
-			type = 1;							// the first point is inbetween the line segment ends
-			if(discrim == 0) return type;		// the line is tangent
+			type = 1;						// the first point is inbetween the line segment ends
+			if(discrim == 0) return 1;		// the line is tangent
 		}
-		
-		// check the second point if it is between the line segment ends
-		if(intsect2->x() >= MINIMUM(p1.x(),p2.x()) &&
-		   intsect2->x() <= MAXIMUM(p1.x(),p2.x()) &&
-		   intsect2->y() >= MINIMUM(p1.y(),p2.y()) &&
-		   intsect2->y() <= MAXIMUM(p1.y(),p2.y())) 
+
+		/////////////////////////////////////////////////////////////////
+		// check the SECOND point if it is between the line segment ends
+		if(dy == 0){										// special case horizontal line
+			if(intsect2->x() >= MINIMUM(p1.x(),p2.x()) &&
+			intsect2->x() <= MAXIMUM(p1.x(),p2.x())){
+				*intsect2 += cc;
+				if(type) type = 3;				// the line segment crosses at two points between the line segment
+				else							// the second point is between the line segment ends
+				{ 
+					type = 2;
+				}
+			}
+		}
+		else if(dx == 0){									// special case vertical line
+			if(intsect2->y() >= MINIMUM(p1.y(),p2.y()) &&
+			intsect2->y() <= MAXIMUM(p1.y(),p2.y())){
+				*intsect2 += cc;
+				if(type) type = 3;				// the line segment crosses at two points between the line segment
+				else							// the second point is between the line segment ends
+				{ 
+					type = 2;
+				}
+			}
+		}
+		else if(intsect2->x() >= MINIMUM(p1.x(),p2.x()) &&
+			intsect2->x() <= MAXIMUM(p1.x(),p2.x()) &&
+			intsect2->y() >= MINIMUM(p1.y(),p2.y()) &&
+			intsect2->y() <= MAXIMUM(p1.y(),p2.y())) 
 		{
 			*intsect2 += cc;
 			if(type) type = 3;				// the line segment crosses at two points between the line segment
@@ -490,9 +447,32 @@ int cSpace::arcIntersection(btVector3 cc, float rad, btVector3 p1, btVector3 p2,
 				type = 2;
 			}
 		}
-		//qDebug("typ %d x1(%f,%f) x2(%f,%f)",type,intsect1->x(),intsect1->y(),intsect2->x(),intsect2->y());
 	}
 	return type;
+}
+
+// determins if there is an intersection between two lines represented by point pairs (p1,p2) and (p3,p4)
+// returns 0 = parallel 1 = intersection
+bool cSpace::lineIntersection(btVector3 p1,btVector3 p2,btVector3 p3,btVector3 p4,btVector3* intsect)
+{
+	float x,y;
+	float d12,d34;
+	float bigD;
+	
+	d12 = p1.x()*p2.y() - p1.y()*p2.x();
+	d34 = p3.x()*p4.y() - p3.y()*p4.x();
+	
+	bigD = (p1.x()-p2.x())*(p3.y()-p4.y()) - (p1.y()-p2.y())*(p3.x()-p4.x());
+	if(bigD == 0) return false;
+	
+	x = ((d12)*(p3.x()-p4.x()) - (p1.x()-p2.x())*(d34)) / bigD;
+	y = ((d12)*(p3.y()-p4.y()) - (p1.y()-p2.y())*(d34)) / bigD;
+	
+	intsect->setX(x);
+	intsect->setY(y);
+	intsect->setZ(0);
+
+	return true;
 }
 
 // takes an object and returns a list of points that represent the top of its geometric shape in world coordinates, assumes symmetric
@@ -527,7 +507,7 @@ QList<btVector3> cSpace::getTopShapePoints(btCollisionObject* obj)
 	return list;
 }
 
-// returns a list of points that make up the vertical projected outline of the obstacle in world coordinates
+// returns a list of points that make up the vertical projected outline of the obstacle in LOCAL coordinates
 // the vector list returned is a convex polygon where overlapping vertices are removed
 QList<btVector3> cSpace::getVerticalOutlinePoints(btCollisionObject* obj)
 {
@@ -544,7 +524,7 @@ QList<btVector3> cSpace::getVerticalOutlinePoints(btCollisionObject* obj)
 			halfDims = boxShape->getHalfExtentsWithMargin();
 			for(int i=0; i<8; i++)
 			{
-				list << trans(halfDims * m_vertices[i]) * btVector3(1,1,0);	// flatten to 2D
+				list << (halfDims * m_vertices[i]) * btVector3(1,1,0);	// flatten to 2D
 			}
 			break;
 		}
@@ -554,7 +534,7 @@ QList<btVector3> cSpace::getVerticalOutlinePoints(btCollisionObject* obj)
 			halfDims.setValue(radius,radius,radius);
 			for(int i=0; i<8; i++)
 			{
-				list << trans(halfDims * m_vertices[i]) * btVector3(1,1,0);	// flatten to 2D
+				list << (halfDims * m_vertices[i]) * btVector3(1,1,0);	// flatten to 2D
 			}
 			break;
 		}
@@ -565,7 +545,7 @@ QList<btVector3> cSpace::getVerticalOutlinePoints(btCollisionObject* obj)
 			halfDims.setValue(radius,radius,height/2);
 			for(int i=0; i<8; i++)
 			{
-				list << trans(halfDims * m_vertices[i]) * btVector3(1,1,0);	// flatten to 2D
+				list << (halfDims * m_vertices[i]) * btVector3(1,1,0);	// flatten to 2D
 			}
 			break;
 		}
@@ -574,7 +554,7 @@ QList<btVector3> cSpace::getVerticalOutlinePoints(btCollisionObject* obj)
 			halfDims = cylShape->getHalfExtentsWithMargin();
 			for(int i=0; i<8; i++)
 			{
-				list << trans(halfDims * m_vertices[i]) * btVector3(1,1,0);	// flatten to 2D
+				list << (halfDims * m_vertices[i]) * btVector3(1,1,0);	// flatten to 2D
 			}
 			break;
 		}
@@ -583,7 +563,7 @@ QList<btVector3> cSpace::getVerticalOutlinePoints(btCollisionObject* obj)
 			const btVector3* ptlist = hullShape->getUnscaledPoints();
 			for(int i = 0; i < hullShape->getNumPoints(); ++i)
 			{
-				list << trans(ptlist[i]) * btVector3(1,1,0);	// flatten to 2D
+				list << (ptlist[i]) * btVector3(1,1,0);	// flatten to 2D
 			}
 			break;
 		}
@@ -633,6 +613,145 @@ QList<btVector3> cSpace::getVerticalOutlinePoints(btCollisionObject* obj)
 	return outline;
 }
 
+// clips an obstacle shape if it is within range of the sensors
+// if not returns false
+bool cSpace::clipShape(btTransform trans, QList<btVector3>& ls)
+{
+	if(ls.size() < 2) return false;
+	int j=0;
+	btVector3 cc = trans.invXform(m_centerPoint);				// move the sensor center point to obstacle local frame
+	cc.setZ(0);
+	
+	// check if the whole obstacle is in range
+	do{								
+		if(cc.distance2(ls[j]) > m_detectRangeSq) break;		// check if the point is in-range
+		j++;
+	}while(j<ls.size());
+	if(j == ls.size()) return true;								// the whole obstacle is in range
+	
+	
+	int i;
+	int nexti;
+	int arcType;
+	btVector3 xpoint1,xpoint2;
+	bool outofrange = true;
+	
+	i=0;
+	while(i<ls.size())
+	{
+		if(i == ls.size()-1) nexti = 0;
+		else nexti = i+1;
+		
+		arcType = arcIntersection(cc, m_detectRange, ls[i], ls[nexti], &xpoint1, &xpoint2);
+		
+		if(arcType == 0)														// NO intersection
+			i++;
+		else if(arcType == 1 || arcType == 2){									// ONE intersection
+			if(arcType == 2) xpoint1 = xpoint2;
+			
+			if(nexti == 0) ls.append(xpoint1);									// append new point ls if at the wraparound point
+			else ls.insert(nexti,xpoint1);										// insert the intersection point to the ls
+			i+=2;
+			outofrange = false;
+		}
+		else{																	// TWO intersections
+			if(nexti == 0){														// add the two intersect points between i and nexti
+				if(ls[i].distance2(xpoint1) < ls[i].distance2(xpoint2)){		// append them in order
+					ls << xpoint1;
+					ls << xpoint2;
+				}
+				else{
+					ls << xpoint2;
+					ls << xpoint1;
+				}
+			}
+			else{
+				if(ls[i].distance2(xpoint1) < ls[i].distance2(xpoint2)){		// insert them in order
+					ls.insert(nexti,xpoint1);
+					ls.insert(nexti+1,xpoint2);
+				}
+				else{
+					ls.insert(nexti,xpoint2);
+					ls.insert(nexti+1,xpoint1);	
+				}
+			}
+			i+=3;
+			outofrange = false;
+		}
+	}
+	if(outofrange) return false;												// the entire obstacle is out of range
+	
+	// remove any points outside of the sensor range
+	i=0;
+	while(i<ls.size()){
+		if(cc.distance2(ls[i]) > m_detectRangeSq+0.001)
+			ls.removeAt(i);
+		else
+			i++;
+	}
+
+	if(ls.size() == 2){
+		btVector3 cx;
+		cx = (ls[1] - ls[0]).cross((ls[0]-btVector3(0,0,1)) - ls[0]);
+		cx.normalize();
+		ls << (ls[1]+(cx*0.1));
+		ls << (ls[0]+(cx*0.1));
+	}
+	return true;
+}
+
+// Grows shape defined by list LS, does this by expanding two adj. sides outward a distance of SWELL.
+// corners greater than ~100deg are rounded to keep sharp angles from over extending.
+// shallower angles use the intersection of the expanded sides
+QList<btVector3> cSpace::growShape(float swell, QList<btVector3> ls)
+{
+	QList<btVector3> list;
+	btVector3 p;
+	btVector3 p1,p2,p3,p4;
+	btVector3 cxl,cxr;
+	int i,j,nexti,prei;
+	float alpha;
+	
+	for(i=0;i<ls.size();i++){												// traverse the shape in a CCW direction
+		if(i == ls.size()-1) nexti = 0;										// make sure indices stay within bounds of the shape list
+		else nexti = i+1;
+		if(i == 0) prei = ls.size()-1;
+		else prei = i-1;
+		
+		cxr = (ls[prei] - ls[i]).cross((ls[i]-btVector3(0,0,1)) - ls[i]);	// find the normal vector to the side pointing away from obj. center
+		cxr.normalize();													// normalize the right vector
+		
+		cxl = (ls[nexti] - ls[i]).cross((ls[i]+btVector3(0,0,1)) - ls[i]);	// find the normal vector to the side pointing away from obj. center
+		cxl.normalize();
+		
+		alpha = cxr.angle(cxl);												// get the angle between the two sides for exit condition
+		
+		if(alpha > HALFPI + 0.15){											// if the angle is larger than 90 then round the corner, reduces global vertex count
+			j=1;
+			list << ls[i] + (cxr * swell);									// add the first or right point
+			while(alpha > CORNERRESOLUTION * j){
+				p = ls[i] + (cxr.rotate(btVector3(0,0,1),CORNERRESOLUTION * j) * swell);	// add points every few rads until the left has been reached
+				list << p;
+				j++;
+			}
+			list << ls[i] + (cxl * swell);									// add the last or left point
+		}
+		else{
+			p1 = ls[i] + (cxl * swell);											// p1 and p2 represent the left swelled side
+			p2 = ls[nexti] + (cxl * swell);
+			p3 = ls[i] + (cxr * swell);											// p3 and p4 represent the right swelled side
+			p4 = ls[prei] + (cxr * swell);
+			
+			btVector3 corner;
+			if(lineIntersection(p1,p2,p3,p4,&corner))							// find the intersection
+				list << corner;													// insert the intersection point
+			else
+				list << ls[i];													// if lines are parallel just use the current point
+		}
+	}
+	
+	return list;
+}
 /////////////////////////////////////////
 // Drawing the C-space objects 
 /////////////

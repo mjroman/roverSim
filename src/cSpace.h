@@ -27,18 +27,23 @@ public:
 	
 	void setCenterPoint(btVector3 center) { m_centerPoint = center; }
 	void setDetectRange(float range) { m_detectRange = range; m_detectRangeSq = range*range; }
+	void setMargin(float m) { m_margin = m; }
 	
 	btVector3 getCenterPoint() { return m_centerPoint; }
 	float getDetectRange() { return m_detectRange; }
+	float getMargin() { return m_margin; }
 	QList<btCollisionObject*>* getGhostList() { return &m_ghostObjects; }
 	
 	// utility functions
 	bool isPointInsidePoly(btVector3 pt,QList<btVector3> ls);
 	bool isPointInsideObject(btVector3 pt, btCollisionObject* obj);
 	int segmentIntersection(btVector3 p1,btVector3 p2,btVector3 p3,btVector3 p4,btVector3* intsec);
+	bool lineIntersection(btVector3 p1,btVector3 p2,btVector3 p3,btVector3 p4,btVector3* intsect);
 	int arcIntersection(btVector3 cc, float rad, btVector3 p1, btVector3 p2, btVector3* intsect1, btVector3* intsect2);
 	QList<btVector3> getTopShapePoints(btCollisionObject* obj);
 	QList<btVector3> getVerticalOutlinePoints(btCollisionObject* obj);
+	bool clipShape(btTransform trans, QList<btVector3>& ls);
+	QList<btVector3> growShape(float swell, QList<btVector3> ls);
 
 	// drawing functions
 	void renderGLObject();
@@ -50,6 +55,7 @@ private:
 	btVector3									m_centerPoint;
 	float										m_detectRange;
 	float										m_detectRangeSq;
+	float										m_margin;
 	
 	QList<btCollisionShape*>					m_ghostShapes;
 	QList<btCollisionObject*>					m_ghostObjects;
@@ -64,8 +70,7 @@ private:
 	btCollisionObject* createGhostObject(btCollisionShape* cshape,btTransform bodyTrans);
 	btCollisionObject* createGhostShape(btCollisionObject* bodyObj);
 	btCollisionObject* createGhostHull(btTransform bodyTrans, QList<btVector3> list);
-	btCollisionObject* createGhostRangeClipHull(btTransform bodyTrans, QList<btVector3> ls);
-	
+
 	void compoundCSpace();	// not used
 	void mergeCSpace();		// not used
 	QList<btVector3> clipAfromB(QList<btVector3> lista, QList<btVector3> listb, btTransform transab, int* mod=NULL);	// not used

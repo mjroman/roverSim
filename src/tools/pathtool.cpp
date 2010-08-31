@@ -392,6 +392,7 @@ void pathTool::on_buttonDelete_clicked()
 
 void pathTool::on_buttonGenerate_clicked()
 {
+	if(pathList.isEmpty()) return;
 	resetPaths();
 	if(!initSaveFile()) return;
 	
@@ -416,8 +417,7 @@ void pathTool::processPath(int x)
 	if(checkBoxSave->isChecked()){
 		m_xmlDoc.documentElement().appendChild(SimDomElement::pathToNode(m_xmlDoc,pathList[x]));	// write the data to the xml document
 		m_xmlStream.seek(0);																		// start writing data to the begining of the file
-		m_xmlStream << m_xmlDoc.toString();															// sync the data to the file, incase the simulation crashes
-		m_xmlStream.flush();
+		m_xmlDoc.save(m_xmlStream,5);																// sync the data to the file, incase the simulation crashes
 	}
 	updateTool();
 	
@@ -487,9 +487,8 @@ void pathTool::updateCompEfficiency(float gLength)
 		item->setData(Qt::DisplayRole,QVariant(gLength/pathList[i]->getShortestLength()));
 	}
 	if(m_xmlStream.device()){
-		m_xmlStream.seek(0);																		// start writing data to the begining of the file
-		m_xmlStream << m_xmlDoc.toString();															// sync the data to the file, incase the simulation crashes
-		m_xmlStream.flush();
+		m_xmlStream.seek(0);																			// start writing data to the begining of the file
+		m_xmlDoc.save(m_xmlStream,5);																	// sync the data to the file, incase the simulation crashes
 		m_file->close();
 	}
 }
@@ -548,27 +547,29 @@ bool pathTool::initSaveFile()
 	}
 	else{
 		m_runCount++;																				// increment the filename
-		m_xmlDocclear();
+		m_xmlDoc.clear();
 	}
 
 	int hyp = m_filename.lastIndexOf("-");															// remove old file endings
 	if(hyp != -1) m_filename.truncate(hyp);
 	if(m_filename.endsWith(".xml")) m_filename.replace(".xml","");
 	
-	blocks->saveLayout(m_filename + "_layout.xml");													// save the obstacle layout
+	if(!blocks->isSaved()) 
+		blocks->saveLayout(m_filename + "_layout_" + QString::number(m_runCount) + ".xml"); 		// save the obstacle layout
 	
-	m_file = new QFile(m_filename + "-" + QString::number(m_runCount) + ".xml");
-	if (!m_file->open(QIODevice::WriteOnly)){														// open file
+	m_file = new QFile(m_filename + "_" + QString::number(m_runCount) + ".xml");
+	if (!m_file->open(QIODevice::WriteOnly)){														// open XML file
 		view->printText("Save File Error - " + m_filename);
 		return false;
 	}
-
+	m_xmlStream.setDevice(m_file);																	// set the stream device
+	
 	QDomElement root = m_xmlDoc.createElement( "PathData" );										// create a root element
 	m_xmlDoc.appendChild(root);
 	QString docInfo = "This XML document represents calculated path data from the RoverSim application";
 	root.appendChild(m_xmlDoc.createComment(docInfo));
 	
-	root.setAttribute( "layoutFile", m_filename + "_layout");										// write layout name
+	root.setAttribute( "layoutFile", blocks->getLayoutName());										// write layout name
 	
 	btVector3 startPoint = rover->position - btVector3(0,0,0.34);
 	QDomElement goalLine = m_xmlDoc.createElement( "startgoal" );
@@ -577,6 +578,5 @@ bool pathTool::initSaveFile()
 	goalLine.appendChild(SimDomElement::vectorToNode(m_xmlDoc,goalPoint));							// write goal point
 	root.appendChild(goalLine);
 	
-	m_xmlStream.setDevice(m_file);
 	return true;
 }

@@ -172,7 +172,6 @@ btRigidBody* obstacles::createObstacleObject(float mass, btCollisionShape* cShap
 /////////////
 void obstacles::saveLayout(QString filename)
 {
-	if(m_saved) return;
 	if(filename == NULL){
 		filename = QFileDialog::getSaveFileName(m_view->parentWidget(),"Save Obstacle Layout", "/Users");	// open a Save File dialog and select location and filename
 		if(filename == NULL) return;															// if cancel is pressed dont do anything
@@ -183,8 +182,10 @@ void obstacles::saveLayout(QString filename)
 	QFile obstFile(filename); 
 	if (!obstFile.open(QIODevice::WriteOnly))												// open file
 		return;
+		
+	m_layoutName = filename;
 	
-	QFileInfo obstInfo(filename);
+	QFileInfo obstInfo(m_layoutName);
 	arena->idle();																			// pause the simulation so nothing moves while saving
 	
 	QDomDocument xmlDoc( "roverSimDoc" );
@@ -198,11 +199,11 @@ void obstacles::saveLayout(QString filename)
 	
 	for(int i=0; i<m_obstacleObjects.size(); i++){
 		btRigidBody* body = btRigidBody::upcast(m_obstacleObjects[i]);
-		root.appendChild(SimDomElement::rigidBodyToNode(xmlDoc,body));										// add each rigid body obstacle as children
+		root.appendChild(SimDomElement::rigidBodyToNode(xmlDoc,body));						// add each rigid body obstacle as children
 	}
 	
 	QTextStream stream(&obstFile);
-	stream << xmlDoc.toString();															// write the XML text to the file
+	xmlDoc.save(stream,5);																	// write the XML text to the file
 	m_saved = true;
 	
 	obstFile.close();																		// flush data and close file
@@ -215,9 +216,11 @@ void obstacles::loadLayout()
 	QString filename = QFileDialog::getOpenFileName(m_view->parentWidget(),"Open Obstacle Layout", "/Users");
 	if(filename == NULL) return;
 	
+	m_layoutName = filename;
+	
 	QDomDocument xmlDoc( "roverSimDoc" );
-	QFile obstFile(filename);
-	QFileInfo obstInfo(filename);
+	QFile obstFile(m_layoutName);
+	QFileInfo obstInfo(m_layoutName);
 	if(!obstFile.open(QIODevice::ReadOnly))
 		return;
 	
@@ -246,8 +249,11 @@ void obstacles::loadLayout()
 					QMessageBox::Yes | QMessageBox::No,
 					QMessageBox::Yes);
 												
-		if(ret == QMessageBox::Yes)
+		if(ret == QMessageBox::Yes){
+			m_saved = true;
 			ground->openTerrain(tName);				// open the new ground
+		}
+		else m_saved = false;
 	}
 	
 	QDomNode obst = root.firstChild();

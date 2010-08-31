@@ -26,6 +26,7 @@ class obstacles : public simGLObject
 		
 		QList<btCollisionObject*>* getObstacles() { return &m_obstacleObjects; }
 		bool isSaved() { return m_saved; }
+		QString getLayoutName() { return m_layoutName; }
 		void showTool() { oTool->show(); }
 		void hideTool() { oTool->hide(); }
 		void renderGLObject();
@@ -59,6 +60,7 @@ class obstacles : public simGLObject
 		
 		pickValue							m_pickingObject;
 		QSettings 							m_obstSettings;
+		QString								m_layoutName;
 		
 		// rigid body creation
 		btCollisionShape* createObstacleShape(int shapeType, btVector3& lwh, float& vol);

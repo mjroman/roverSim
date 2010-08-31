@@ -196,6 +196,7 @@ void pathPlan::cycleToGoal()
 			if(spinDist > m_spinProgress) m_spinDirection = 0;					// once progress past the local minima has been made reset spin direction
 			else spinDist += m_step;
 		}
+		
 		//////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// looping condition check based on path efficiency
 		if(progress > m_progressLimit) 

@@ -140,7 +140,7 @@ public:
 	float getSpinLimit() { return m_spinProgress; }
 	int getBreadth() { return m_breadth; }
 	bool getSaveOn() { return m_saveOn; }
-	const bool isStuck() const { return (m_GP.length > m_progressLimit); }
+	const bool isStuck() const { return (m_GP.length > m_progressLimit || m_GP.length < m_straightDistance); }
 	
 	void setColor(QColor color) { m_color = color; m_color.setAlphaF(0.45); }
 	void setRange(float r) { m_range = fabs(r); }
