@@ -14,7 +14,7 @@
 #include <BulletDynamics/Dynamics/btDynamicsWorld.h>
 #include <LinearMath/btAlignedObjectArray.h>
 
-#define SPACEMARGIN			0.5
+#define SPACEMARGIN			0.65
 #define CORNERRESOLUTION	0.3	// in radians
 
 cSpace::cSpace(btVector3 center, float range, obstacles *obs, simGLView* glView)
@@ -24,7 +24,7 @@ m_blocks(obs),
 m_centerPoint(center),
 m_detectRange(range),
 m_detectRangeSq(range*range),
-m_margin(0.5)
+m_margin(SPACEMARGIN)
 {
 	m_vertices[0] = btVector3(1,1,1);
 	m_vertices[1] = btVector3(-1,1,1);

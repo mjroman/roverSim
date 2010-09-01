@@ -35,7 +35,6 @@ m_terrainModified(false)
 
 terrain::~terrain()
 {
-	qDebug("deleting Terrain");
     terrainClear();
 }
 
@@ -78,7 +77,7 @@ int terrain::terrainLoadFile()
 	
     QImage heightMap(m_terrainFilename);
     if(heightMap.isNull()){
-        qDebug("Terrain File could not open");
+        m_view->printText("Terrain File could not open");
         return 0; // if the file does not open return
     }
 
@@ -95,7 +94,7 @@ int terrain::terrainLoadFile()
     // create a new array to hold all the height data from the image
     unsigned int *imgData = new unsigned int[imgSize+1];
     if(imgData == NULL) {
-        qDebug("Memory error");
+        m_view->printText("Memory error");
         return 0;
     }
     unsigned int tHeight;
@@ -458,7 +457,7 @@ void terrain::openTerrain(QString filename)
 void terrain::saveTerrain()
 {
 	// open a Save File dialog and select location and filename
-	QString filename = QFileDialog::getSaveFileName(m_view->parentWidget(),tr("Save Terrain PNG"), tr("/Users"),tr("Image File (*.png)"));
+	QString filename = QFileDialog::getSaveFileName(m_view->parentWidget(),tr("Save Terrain PNG"), QDir::homePath(),tr("Image File (*.png)"));
 	if(filename == NULL) return; // if cancel is pressed dont do anything
 
     if(!filename.endsWith(".png")) filename.append(".png");
@@ -498,7 +497,7 @@ void terrain::rescaleTerrain(btVector3 scale)
 	m_terrainScale.setX(m_terrainScale.x() * scale.x());
 	m_terrainScale.setY(m_terrainScale.y() * scale.y());
 	m_terrainScale.setZ(m_terrainScale.z() * scale.z());
-	qDebug("new Scale %f,%f,%f",m_terrainScale.x(),m_terrainScale.y(),m_terrainScale.z());
+	m_view->printText(QString("new Scale %1,%2,%3").arg(m_terrainScale.x()).arg(m_terrainScale.y()).arg(m_terrainScale.z()));
     arena->setWorldSize(m_worldSize);
 
     this->terrainRefresh();

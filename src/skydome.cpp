@@ -7,8 +7,6 @@ skydome::skydome(simGLView* glView)
     m_delLat(15),
     m_delLon(15)
 {
-    qDebug("skydome startup");
-
 	if(glView){
 		this->buildDome();
 		this->createTextCords();
@@ -17,7 +15,6 @@ skydome::skydome(simGLView* glView)
 
 skydome::~skydome()
 {
-    qDebug("deleting skydome");
     if(m_domeVerts) delete m_domeVerts;
     m_domeVerts = 0;
     if(m_domeTextPoints) delete m_domeTextPoints;

@@ -32,7 +32,6 @@ GLfloat ghostColor[4] = { 0.9f, 0.9f, 0.9f, 0.1f};
 
 simGLView::simGLView(QWidget *parent) : QGLWidget(parent)
 {
-    qDebug("glView startup");
     this->setMinimumSize(80,50);
 
     m_viewAngle = 1.0;
@@ -70,7 +69,6 @@ void simGLView::toggleDrawing()
 }
 simGLView::~simGLView()
 {
-	qDebug("deleting glView");
 	m_timer->stop();
 	delete m_timer;
 
@@ -113,8 +111,6 @@ GLuint simGLView::getTexture(int n)
 
 void simGLView::initializeGL()
 {
-    qDebug("GL initialize");
-
     this->loadTextures();
 
     glShadeModel(GL_SMOOTH);

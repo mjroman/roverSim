@@ -24,22 +24,6 @@ enum serverCommand {
 class MainGUI : public QMainWindow, private Ui::MainGUI
 {
     Q_OBJECT
-	
-private:
-	QTcpServer		m_tcpServer;
-	QTcpSocket		*m_tcpSocket;
-	quint16			m_blockSize;
-	QDataStream		inStream;
-	QDataStream		outStream;
-	
-	simControl		*SController;
-	
-    terrainTool     m_tTool;
-	waypointTool	m_wTool;
-
-	void helpText();
-	void serverStart();
-	//void mousePressEvent(QMouseEvent *event);
 
 public:
     MainGUI(QWidget *parent = 0);
@@ -71,6 +55,22 @@ public slots:
 	void screenSize();
     void closeEvent(QCloseEvent *event);
 	void updateGUI();
+	
+	private:
+		QTcpServer		m_tcpServer;
+		QTcpSocket		*m_tcpSocket;
+		quint16			m_blockSize;
+		QDataStream		inStream;
+		QDataStream		outStream;
+
+		simControl		*SController;
+
+	    terrainTool     m_tTool;
+		waypointTool	m_wTool;
+
+		void helpText();
+		void serverStart();
+		//void mousePressEvent(QMouseEvent *event);
 };
 
 #endif // MainGUI_H

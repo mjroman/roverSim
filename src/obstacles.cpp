@@ -37,7 +37,6 @@ m_saved(false)
 
 obstacles::~obstacles()
 {
-	qDebug("deleting obstacles");
 	this->eliminate();
 	delete oTool;
 }
@@ -173,7 +172,7 @@ btRigidBody* obstacles::createObstacleObject(float mass, btCollisionShape* cShap
 void obstacles::saveLayout(QString filename)
 {
 	if(filename == NULL){
-		filename = QFileDialog::getSaveFileName(m_view->parentWidget(),"Save Obstacle Layout", "/Users");	// open a Save File dialog and select location and filename
+		filename = QFileDialog::getSaveFileName(m_view->parentWidget(),"Save Obstacle Layout", QDir::homePath());	// open a Save File dialog and select location and filename
 		if(filename == NULL) return;															// if cancel is pressed dont do anything
 	}
 
@@ -213,7 +212,7 @@ void obstacles::saveLayout(QString filename)
 
 void obstacles::loadLayout()
 {
-	QString filename = QFileDialog::getOpenFileName(m_view->parentWidget(),"Open Obstacle Layout", "/Users");
+	QString filename = QFileDialog::getOpenFileName(m_view->parentWidget(),"Open Obstacle Layout", QDir::homePath());
 	if(filename == NULL) return;
 	
 	m_layoutName = filename;

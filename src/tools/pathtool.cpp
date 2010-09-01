@@ -234,7 +234,7 @@ rover(bot),
 blocks(obs),
 view(glView),
 m_selectedPath(0),
-m_foundSound("/Users/mattroman/Documents/code/roverSim/src/sounds/singleBeep2.wav"),
+m_foundSound(QDir::currentPath() + "/Resources/sounds/singleBeep2.wav"),
 m_filename(NULL),
 m_file(NULL),
 m_xmlDoc( "roverSimDoc" )
@@ -417,8 +417,8 @@ void pathTool::on_buttonGenerate_clicked()
 void pathTool::processPath(int x)
 {
 	qApp->processEvents();
-	if(x >= pathList.size()){		// finished computing paths
-		QSound::play("/Users/mattroman/Documents/code/roverSim/src/sounds/singleBell.wav");
+	if(x >= pathList.size()){																		// finished computing paths
+		QSound::play(QDir::currentPath() + "/Resources/sounds/singleBell.wav");
 		if(pathList.last()->getRange() == 0)
 			updateCompEfficiency(pathList.last()->getShortestLength());								// updates comparison efficiency and writes data to file
 		return;
@@ -552,7 +552,7 @@ bool pathTool::initSaveFile()
 	if(!checkBoxSave->isChecked()) return true;
 
 	if(m_filename == NULL){
-		m_filename = QFileDialog::getSaveFileName(view->parentWidget(),"Save Path Data", "/Users");	// open a Save File dialog and select location and filename
+		m_filename = QFileDialog::getSaveFileName(view->parentWidget(),"Save Path Data", QDir::homePath());	// open a Save File dialog and select location and filename
 		if(m_filename == NULL){
 			checkBoxSave->setChecked(false);														// if cancel is pressed turn off saving
 			return true;

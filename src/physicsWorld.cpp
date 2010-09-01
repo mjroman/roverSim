@@ -30,8 +30,6 @@ simTimeStep(0.1),
 simFixedTimeStep(0.001),
 simSubSteps(15)
 {
-    qDebug("Physics startup");
-
 	//collision configuration contains default setup for memory, collision setup
 	m_collisionConfiguration = new btDefaultCollisionConfiguration();
 	//use the default collision dispatcher. For parallel processing you can use a diffent dispatcher (see Extras/BulletMultiThreaded)

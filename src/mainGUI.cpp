@@ -21,6 +21,10 @@ m_wTool(this)
 	QCoreApplication::setOrganizationName("OUengineering");
 	QCoreApplication::setOrganizationDomain("i-borg.engr.ou.edu");
 	QCoreApplication::setApplicationName("Rover_Sim");
+
+	QDir temp(QCoreApplication::applicationDirPath());
+	temp.cdUp();
+	QDir::setCurrent(temp.path());								// set the current directory of the application
 	
     m_tTool.hide();
 	m_wTool.hide();

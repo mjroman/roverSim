@@ -7,7 +7,6 @@
 #include "utility/definitions.h"
 #include "utility/structures.h"
 #include <QtGui>
-#include <QSettings>
 #include <QDomNode>
 #include <QTextStream>
 #include <BulletCollision/CollisionDispatch/btCollisionWorld.h>
@@ -59,7 +58,6 @@ class obstacles : public simGLObject
 		bool								m_saved;
 		
 		pickValue							m_pickingObject;
-		QSettings 							m_obstSettings;
 		QString								m_layoutName;
 		
 		// rigid body creation

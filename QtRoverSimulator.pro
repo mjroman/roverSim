@@ -19,9 +19,12 @@ OBJECTS_DIR = build/obj
 MOC_DIR = build/moc
 UI_DIR = build/ui
 RCC_DIR = build/rcc
- 
+
 QMAKE_DISTCLEAN += build/obj build/moc build/ui build/rcc build
 
+RESOURCES += resource.qrc 
+	
+RC_FILE = redrobot.icns
 
 TEMPLATE = app \
     /src
@@ -99,6 +102,4 @@ LIBS += -L/usr/local \
 		-lBulletDynamics \
 		-lBulletCollision \
 		-lLinearMath	
-		
-RESOURCES += resource.qrc
-RC_FILE = redrobot.icns
+

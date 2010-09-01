@@ -25,7 +25,6 @@ autoNav(NULL),
 m_pTool(NULL),
 glView(vw)
 {
-	qDebug("simControl startup");
    	arena = physicsWorld::instance(); // get the physics world object
 	
 	//ground = new terrain(QString(":/textures/src/textures/defaultTerrain.png"), glView);
