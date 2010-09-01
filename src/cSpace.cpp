@@ -106,16 +106,17 @@ void cSpace::generateCSpace()
 		
 		btTransform	trans;
 		trans.setIdentity();
-		trans = colisObject->getWorldTransform();
+		trans.setOrigin(colisObject->getWorldTransform().getOrigin());
+		
 		if(trans.getOrigin().z() < 0.0) continue;							// check if the obstacle is on the terrain
 
 		top.clear();
 		top = getVerticalOutlinePoints(colisObject);						// get the vertical projected outline of the obstacle
 		
 		if(m_detectRange)
-			if(!clipShape(trans,top)) continue;								// if the obstacle is out of range continue
+			if(!clipShape(m_centerPoint - trans.getOrigin(),top)) continue;	// if the obstacle is out of range continue
 		
-		top = growShape(m_margin,top);								// grow the detected obstacle shape
+		top = growShape(m_margin,top);										// grow the detected obstacle shape
 		
 		createGhostHull(trans,top);											// create the ghost object
 	}
@@ -515,8 +516,8 @@ QList<btVector3> cSpace::getVerticalOutlinePoints(btCollisionObject* obj)
 	QList<btVector3> list;
 	btVector3 halfDims;
 
-	btTransform trans = obj->getWorldTransform();
 	btCollisionShape* colisShape = obj->getCollisionShape();
+	btTransform trans = obj->getWorldTransform();
 
 	switch(colisShape->getShapeType()){ 
 		case BOX_SHAPE_PROXYTYPE: {
@@ -524,7 +525,7 @@ QList<btVector3> cSpace::getVerticalOutlinePoints(btCollisionObject* obj)
 			halfDims = boxShape->getHalfExtentsWithMargin();
 			for(int i=0; i<8; i++)
 			{
-				list << (halfDims * m_vertices[i]) * btVector3(1,1,0);	// flatten to 2D
+				list << (trans(halfDims * m_vertices[i]) - trans.getOrigin()) * btVector3(1,1,0);	// flatten to 2D
 			}
 			break;
 		}
@@ -534,7 +535,7 @@ QList<btVector3> cSpace::getVerticalOutlinePoints(btCollisionObject* obj)
 			halfDims.setValue(radius,radius,radius);
 			for(int i=0; i<8; i++)
 			{
-				list << (halfDims * m_vertices[i]) * btVector3(1,1,0);	// flatten to 2D
+				list << trans(halfDims * m_vertices[i]) * btVector3(1,1,0);	// flatten to 2D
 			}
 			break;
 		}
@@ -545,7 +546,7 @@ QList<btVector3> cSpace::getVerticalOutlinePoints(btCollisionObject* obj)
 			halfDims.setValue(radius,radius,height/2);
 			for(int i=0; i<8; i++)
 			{
-				list << (halfDims * m_vertices[i]) * btVector3(1,1,0);	// flatten to 2D
+				list << trans(halfDims * m_vertices[i]) * btVector3(1,1,0);	// flatten to 2D
 			}
 			break;
 		}
@@ -554,7 +555,7 @@ QList<btVector3> cSpace::getVerticalOutlinePoints(btCollisionObject* obj)
 			halfDims = cylShape->getHalfExtentsWithMargin();
 			for(int i=0; i<8; i++)
 			{
-				list << (halfDims * m_vertices[i]) * btVector3(1,1,0);	// flatten to 2D
+				list << trans(halfDims * m_vertices[i]) * btVector3(1,1,0);	// flatten to 2D
 			}
 			break;
 		}
@@ -563,7 +564,7 @@ QList<btVector3> cSpace::getVerticalOutlinePoints(btCollisionObject* obj)
 			const btVector3* ptlist = hullShape->getUnscaledPoints();
 			for(int i = 0; i < hullShape->getNumPoints(); ++i)
 			{
-				list << (ptlist[i]) * btVector3(1,1,0);	// flatten to 2D
+				list << trans(ptlist[i]) * btVector3(1,1,0);	// flatten to 2D
 			}
 			break;
 		}
@@ -615,11 +616,10 @@ QList<btVector3> cSpace::getVerticalOutlinePoints(btCollisionObject* obj)
 
 // clips an obstacle shape if it is within range of the sensors
 // if not returns false
-bool cSpace::clipShape(btTransform trans, QList<btVector3>& ls)
+bool cSpace::clipShape(btVector3 cc, QList<btVector3>& ls)
 {
 	if(ls.size() < 2) return false;
 	int j=0;
-	btVector3 cc = trans.invXform(m_centerPoint);				// move the sensor center point to obstacle local frame
 	cc.setZ(0);
 	
 	// check if the whole obstacle is in range

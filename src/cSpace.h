@@ -42,7 +42,7 @@ public:
 	int arcIntersection(btVector3 cc, float rad, btVector3 p1, btVector3 p2, btVector3* intsect1, btVector3* intsect2);
 	QList<btVector3> getTopShapePoints(btCollisionObject* obj);
 	QList<btVector3> getVerticalOutlinePoints(btCollisionObject* obj);
-	bool clipShape(btTransform trans, QList<btVector3>& ls);
+	bool clipShape(btVector3 cc, QList<btVector3>& ls);
 	QList<btVector3> growShape(float swell, QList<btVector3> ls);
 
 	// drawing functions
