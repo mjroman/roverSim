@@ -7,6 +7,8 @@
 #include "utility/definitions.h"
 #include "tools/simtool.h"
 
+#define GUIGROUP	"GUI_windows" // settings group key value
+
 MainGUI::MainGUI(QWidget *parent)
 :
 QMainWindow(parent),
@@ -14,8 +16,7 @@ m_tTool(this),
 m_wTool(this)
 {
     setupUi(this);
-	move(240,22);
-    resize(1200,700);
+
 	setWindowTitle("Rover Simulator");
 	
 	QCoreApplication::setOrganizationName("OUengineering");
@@ -25,6 +26,16 @@ m_wTool(this)
 	QDir temp(QCoreApplication::applicationDirPath());
 	temp.cdUp();
 	QDir::setCurrent(temp.path());								// set the current directory of the application
+	
+	QSettings settings(QSettings::IniFormat,QSettings::UserScope,"OUengineering","Rover_Sim");
+	if(!QFile::exists(settings.fileName()) || !settings.contains("MainWindowGeom")){
+		move(240,22);
+	    resize(1200,700);
+		settings.setValue("MainWindowGeom", saveGeometry());
+	}
+	else
+		this->restoreGeometry(settings.value("MainWindowGeom").toByteArray());
+
 	
     m_tTool.hide();
 	m_wTool.hide();
@@ -100,6 +111,8 @@ MainGUI::~MainGUI()
 
 void MainGUI::closeEvent(QCloseEvent *event)
 {
+	QSettings settings(QSettings::IniFormat,QSettings::UserScope,"OUengineering","Rover_Sim");
+	settings.setValue("MainWindowGeom", saveGeometry());
     delete SController;
     event->accept();
 }
@@ -353,37 +366,38 @@ void MainGUI::keyPressEvent(QKeyEvent *event)
 
 void MainGUI::keyReleaseEvent(QKeyEvent *event)
 {
-	if(!glView->hasFocus()) return;
-	SR2rover *sr2;
-	sr2 = SController->getRover();
- 
-   if(!sr2) return;	
-    switch(event->key()){
-        case Qt::Key_Up:
-        {
-            //sr2->stopRobot();
-            break;
-        }
-        case Qt::Key_Down:
-        {
-            sr2->stopRobot();	
-            break;
-        }
-        case Qt::Key_Left:
-        {
-            float avgSpeed = (sr2->rightSpeed + sr2->leftSpeed) / 2;
-            sr2->setLeftSpeed(avgSpeed);
-            sr2->setRightSpeed(avgSpeed);
-            break;
-        }
-        case Qt::Key_Right:
-        {
-            float avgSpeed = (sr2->rightSpeed + sr2->leftSpeed) / 2;
-            sr2->setRightSpeed(avgSpeed);
-            sr2->setLeftSpeed(avgSpeed);
-            break;
-        }
-    }
+	if(glView->hasFocus()){
+		SR2rover *sr2;
+		sr2 = SController->getRover();
+
+		if(!sr2) return;	
+		switch(event->key()){
+			case Qt::Key_Up:
+			{
+			//sr2->stopRobot();
+				break;
+			}
+			case Qt::Key_Down:
+			{
+				sr2->stopRobot();	
+				break;
+			}
+			case Qt::Key_Left:
+			{
+				float avgSpeed = (sr2->rightSpeed + sr2->leftSpeed) / 2;
+				sr2->setLeftSpeed(avgSpeed);
+				sr2->setRightSpeed(avgSpeed);
+				break;
+			}
+			case Qt::Key_Right:
+			{
+				float avgSpeed = (sr2->rightSpeed + sr2->leftSpeed) / 2;
+				sr2->setRightSpeed(avgSpeed);
+				sr2->setLeftSpeed(avgSpeed);
+				break;
+			}
+		}
+	}
 }
 
 

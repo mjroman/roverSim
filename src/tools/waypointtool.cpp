@@ -5,9 +5,16 @@ waypointTool::waypointTool(QWidget *parent)
 QWidget(parent)
 {
 	setupUi(this);
-	move(20,350);
 	QWidget::setWindowFlags(Qt::Window | Qt::WindowStaysOnTopHint);
 	setWindowTitle("Waypoint Editor");
+	
+	QSettings settings(QSettings::IniFormat,QSettings::UserScope,"OUengineering","Rover_Sim");
+	if(!QFile::exists(settings.fileName()) || !settings.contains("WaypointWindowGeom")){
+		move(20,350);
+		settings.setValue("WaypointWindowGeom", saveGeometry());
+	}
+	else
+		this->restoreGeometry(settings.value("WaypointWindowGeom").toByteArray());
 	
 	cIndex = 0;
 	waypointScienceKeyMapping();
@@ -20,6 +27,8 @@ QWidget(parent)
 
 waypointTool::~waypointTool()
 {
+	QSettings settings(QSettings::IniFormat,QSettings::UserScope,"OUengineering","Rover_Sim");
+	settings.setValue("WaypointWindowGeom", saveGeometry());
 }
 
 void waypointTool::show()

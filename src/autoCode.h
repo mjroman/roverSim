@@ -18,6 +18,7 @@ class autoCode : public QWidget, private Ui::navigationtool
 		
 	public slots:
 		void show();
+		void closeEvent(QCloseEvent *event);
 		void goAutonomous();
 		void stopAutonomous(RoverState rs);
 		void moveToWaypoint();

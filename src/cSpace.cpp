@@ -14,17 +14,16 @@
 #include <BulletDynamics/Dynamics/btDynamicsWorld.h>
 #include <LinearMath/btAlignedObjectArray.h>
 
-#define SPACEMARGIN			0.65
 #define CORNERRESOLUTION	0.3	// in radians
 
-cSpace::cSpace(btVector3 center, float range, obstacles *obs, simGLView* glView)
+cSpace::cSpace(btVector3 center, float range, float margin, obstacles *obs, simGLView* glView)
 :
 simGLObject(glView),
 m_blocks(obs),
 m_centerPoint(center),
 m_detectRange(range),
 m_detectRangeSq(range*range),
-m_margin(SPACEMARGIN)
+m_margin(margin)
 {
 	m_vertices[0] = btVector3(1,1,1);
 	m_vertices[1] = btVector3(-1,1,1);
@@ -914,7 +913,7 @@ btCollisionObject* cSpace::createGhostShape(btCollisionObject* bodyObj)
 	
 	
 	// grow the object and set the shape
-	btVector3 lwh = halfDims + notUpVector * SPACEMARGIN;
+	btVector3 lwh = halfDims + notUpVector * m_margin;
 	btCollisionShape* cshape = arena->createShape(BOX_SHAPE_PROXYTYPE, lwh);
 	return createGhostObject(cshape,bodyTrans); // create c-space object
 }

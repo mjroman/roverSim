@@ -38,6 +38,7 @@ class pathEditDialog : public QDialog
 		
 		ColorListEditor *colorComboBox;
 		QLineEdit 		*rangeLineEdit;
+		QLineEdit		*growLineEdit;
 		QLineEdit 		*stepLineEdit;
 		QLineEdit		*efficiencyLineEdit;
 		QLineEdit		*spinLineEdit;
@@ -59,13 +60,15 @@ class pathEditDialog : public QDialog
 		pathPlan		*path;
 		QLabel 			*colorLabel;
 		QLabel 			*rangeLabel;
+		QLabel			*growLabel;
 		QLabel 			*stepLabel;
 		QLabel			*efficiencyLabel;
 		QLabel			*spinLabel;
 		QLabel 			*breadthLabel;
 	
 	public slots:
-		void enableLines();	
+		void enableLines();
+		void stepWarning();	
 		void acceptData();
 };
 

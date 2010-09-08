@@ -22,16 +22,14 @@ public:
 		QList<btCollisionObject*> list;
 	};
 	
-	cSpace(btVector3 center, float range, obstacles *obs, simGLView* glView = NULL);
+	cSpace(btVector3 center, float range, float margin, obstacles *obs, simGLView* glView = NULL);
 	~cSpace();
 	
 	void setCenterPoint(btVector3 center) { m_centerPoint = center; }
 	void setDetectRange(float range) { m_detectRange = range; m_detectRangeSq = range*range; }
-	void setMargin(float m) { m_margin = m; }
 	
 	btVector3 getCenterPoint() { return m_centerPoint; }
 	float getDetectRange() { return m_detectRange; }
-	float getMargin() { return m_margin; }
 	QList<btCollisionObject*>* getGhostList() { return &m_ghostObjects; }
 	
 	// utility functions

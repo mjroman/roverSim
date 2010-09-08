@@ -87,7 +87,6 @@ panAngle(0),
 tiltAngle(-15)
 {
 	int i;
-    qDebug("SR2rover startup");
 
 // rpc struct hold the number of motor and passive joints, body parts, wheels and sensors.
 	robotParts rpc;
@@ -143,9 +142,8 @@ tiltAngle(-15)
 }
 
 SR2rover::~SR2rover()
-{   
+{  
 	int i;
-	qDebug("deleting SR2rover");
 	if(m_view) m_view->getCamera()->cameraSetRoverPointer(0);
 	
     glDeleteLists(m_aWheel,1);

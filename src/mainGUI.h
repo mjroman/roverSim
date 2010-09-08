@@ -14,63 +14,64 @@ class simControl;
 
 // the following enum is used under the server update switch
 enum serverCommand {
-		ROBOT,
+	ROBOT,
 		OBSTACLES,
 		TERRAIN,
 		SIMULATION,
 		STRING
-};
+	};
 
-class MainGUI : public QMainWindow, private Ui::MainGUI
-{
-    Q_OBJECT
+	class MainGUI : public QMainWindow, private Ui::MainGUI
+	{
+		Q_OBJECT
 
-public:
-    MainGUI(QWidget *parent = 0);
-    ~MainGUI();
+		public:
+			MainGUI(QWidget *parent = 0);
+			~MainGUI();
 
-    void keyPressEvent(QKeyEvent *event);
-    void keyReleaseEvent(QKeyEvent *event);
+			void keyPressEvent(QKeyEvent *event);
+			void keyReleaseEvent(QKeyEvent *event);
 
-public slots:
-	void showSimTiming();
-	void showTerrainTool();
-	void showObstacleTool();
-	
-	void terrainChanged();
-	
-	void newRover();
-	void waypointSetup();
-	
-	void cameraFreeView();
-	void cameraRoverCenter();
-	void cameraRoverFollow();
-	void cameraRoverView();
-	void cameraRoverPanCam();
-	
-	void serverAcceptConnect();
-	void serverDisconnect();
-	void serverUpdate();
+		public slots:
+			void showSimTiming();
+			void showTerrainTool();
+			void showObstacleTool();
 
-	void screenSize();
-    void closeEvent(QCloseEvent *event);
-	void updateGUI();
-	
-	private:
-		QTcpServer		m_tcpServer;
-		QTcpSocket		*m_tcpSocket;
-		quint16			m_blockSize;
-		QDataStream		inStream;
-		QDataStream		outStream;
+			void terrainChanged();
 
-		simControl		*SController;
+			void newRover();
+			void waypointSetup();
 
-	    terrainTool     m_tTool;
-		waypointTool	m_wTool;
+			void cameraFreeView();
+			void cameraRoverCenter();
+			void cameraRoverFollow();
+			void cameraRoverView();
+			void cameraRoverPanCam();
 
-		void helpText();
-		void serverStart();
+			void serverAcceptConnect();
+			void serverDisconnect();
+			void serverUpdate();
+
+			void screenSize();
+			void closeEvent(QCloseEvent *event);
+			void updateGUI();
+
+		private:
+			QTcpServer		m_tcpServer;
+			QTcpSocket		*m_tcpSocket;
+			quint16			m_blockSize;
+			QDataStream		inStream;
+			QDataStream		outStream;
+
+			simControl		*SController;
+
+			terrainTool     m_tTool;
+			waypointTool	m_wTool;
+
+			void helpText();
+			void serverStart();
+			void initGUISettings();
 		//void mousePressEvent(QMouseEvent *event);
-};
+		};
 
 #endif // MainGUI_H

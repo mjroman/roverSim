@@ -30,10 +30,13 @@ GLfloat obstacleEmission[4] = { 0.02f,0.52f,0.51f, 0.f };
 GLfloat reflectance3[4] = { 0.0f, 0.9f, 0.9f, 1.0f };
 GLfloat ghostColor[4] = { 0.9f, 0.9f, 0.9f, 0.1f};
 
+#define FONTFADERATE	0.01
+
 simGLView::simGLView(QWidget *parent) : QGLWidget(parent)
 {
     this->setMinimumSize(80,50);
 
+	m_paused = false;
     m_viewAngle = 1.0;
     m_eye = new camera(btVector3(-5,-5,5),btVector3(0,0,0));
 
@@ -56,17 +59,17 @@ void simGLView::printText(QString st)
 
 void simGLView::toggleDrawing()
 {
-	static bool x = false;
-	if(x){
+	if(!m_paused){
+		m_paused = true;
 		m_timer->stop();
-		emit outputText("Drawing Paused");
+		updateGL();
 	}
 	else{
+		m_paused = false;
 		m_timer->start(100);
-		emit outputText("Resumed Drawing");
 	}
-	x = !x;
 }
+
 simGLView::~simGLView()
 {
 	m_timer->stop();
@@ -197,21 +200,85 @@ void simGLView::overlayGL()
     glPushMatrix();
     glLoadIdentity();
     gluOrtho2D(0, width, 0, height);
-    glColor3f(0, 1, 0);
-
     glDisable(GL_LIGHTING);
-	glLineWidth(1.0);
-    glBegin(GL_LINES);
-    glVertex2f(width/2-5,height/2);
-    glVertex2f(width/2+5,height/2);
-    glVertex2f(width/2,height/2+5);
-    glVertex2f(width/2,height/2-5);
-    glEnd();
 
+	if(m_paused){
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glColor4f(0,0,0,0.6);
+		glBegin(GL_QUADS);
+		glVertex2f(0,0);
+		glVertex2f(width,0);
+		glVertex2f(width,height);
+		glVertex2f(0,height);
+		glEnd();
+		glDisable(GL_BLEND);
+		QFont f;
+		f.setPointSize(100);
+		f.setBold(true);
+		glColor3f(1,0.6,0);
+		renderText(width/2 - 425,height/2 + 5,"OpenGL Paused",f);
+		glColor3f(1,1,0);
+		renderText(width/2 - 430,height/2,"OpenGL Paused",f);
+	}
+	else{
+	// draw crosshairs
+		glLineWidth(1.0);
+		glColor3f(0, 1, 0);
+		glBegin(GL_LINES);
+		glVertex2f(width/2-5,height/2);
+		glVertex2f(width/2+5,height/2);
+		glVertex2f(width/2,height/2+5);
+		glVertex2f(width/2,height/2-5);
+		glEnd();
+
+		if(!m_overlayStringList.isEmpty()) 
+			overlayText();
+	}
+	
     glEnable(GL_LIGHTING);
     glPopMatrix();
     glMatrixMode(GL_MODELVIEW);
     glPopMatrix();
+}
+
+void simGLView::overlayString(QString s)
+{
+	renderString r;
+	r.text = s;
+	r.fade = 1;
+	m_overlayStringList.prepend(r);
+}
+
+// prints out strings in a global list to the OpenGL projection matrix
+// strings only last a few seconds before they fade and are removed from the list
+void simGLView::overlayText()
+{
+	static QTime t = QTime::currentTime().addMSecs(100);
+	int i=0;
+	int height = frameSize().height();
+	float rate = FONTFADERATE;
+	QFont f;
+	f.setPointSize(20);
+	
+	if(t > QTime::currentTime()) rate = 0;
+	else t = QTime::currentTime().addMSecs(100);
+	
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	
+	while(i<m_overlayStringList.size()){
+		if(i > 10) m_overlayStringList.removeAt(i);							// keep the print buffer limited to 10 to keep screen clear
+		else if(m_overlayStringList[i].fade > 0) {
+			glColor4f(0,1,0,m_overlayStringList[i].fade);
+			renderText(0,height - (i*20),m_overlayStringList[i].text,f);
+			m_overlayStringList[i].fade -= rate;
+			i++;
+		}
+		else m_overlayStringList.removeAt(i);								// remove the string from the list if it is completely faded
+	}
+	
+	glDisable(GL_BLEND);	
 }
 
 void simGLView::toggleFog()

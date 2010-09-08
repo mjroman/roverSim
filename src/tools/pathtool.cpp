@@ -65,28 +65,37 @@ pathEditDialog::pathEditDialog(pathPlan *ph, QWidget *parent)
 	rangeLineEdit->selectAll();
 	inputLayout->addWidget(rangeLineEdit,1,1);
 	
+	growLabel = new QLabel("CSpace Growth");							// C-Space growth margin
+	inputLayout->addWidget(growLabel,2,0);
+	growLineEdit = new QLineEdit(this);
+	growLineEdit->setText(QString::number(path->getMargin()));
+	growLineEdit->setToolTip("The growth size of the C-Space objects.");
+	growLineEdit->setAlignment(Qt::AlignHCenter);
+	growLineEdit->setMaximumWidth(100);
+	inputLayout->addWidget(growLineEdit,2,1);
+	
     stepLabel = new QLabel("Step Distance");							// step distance
-	inputLayout->addWidget(stepLabel,2,0);
+	inputLayout->addWidget(stepLabel,3,0);
 	stepLineEdit = new QLineEdit(this);
 	stepLineEdit->setText(QString::number(path->getStep()));
 	stepLineEdit->setToolTip("The distance between sensor updates");
 	stepLineEdit->setAlignment(Qt::AlignHCenter);
 	stepLineEdit->setMaximumWidth(100);
 	stepLineEdit->setEnabled(path->getRange() != 0);
-	inputLayout->addWidget(stepLineEdit,2,1);
+	inputLayout->addWidget(stepLineEdit,3,1);
 	
 	efficiencyLabel = new QLabel("Efficiency Limit");					// efficiency limit
-	inputLayout->addWidget(efficiencyLabel,3,0);
+	inputLayout->addWidget(efficiencyLabel,4,0);
 	efficiencyLineEdit = new QLineEdit(this);
 	efficiencyLineEdit->setText(QString::number(path->getEffLimit()));
 	efficiencyLineEdit->setToolTip("Path searching exits if efficiency degrades to this limit");
 	efficiencyLineEdit->setAlignment(Qt::AlignHCenter);
 	efficiencyLineEdit->setMaximumWidth(100);
 	efficiencyLineEdit->setEnabled(path->getRange() != 0);
-	inputLayout->addWidget(efficiencyLineEdit,3,1);
+	inputLayout->addWidget(efficiencyLineEdit,4,1);
 
 	spinLabel = new QLabel("Spin Progress Limit");						// spin progress
-	inputLayout->addWidget(spinLabel,4,0);
+	inputLayout->addWidget(spinLabel,5,0);
 	QHBoxLayout *spinLayout = new QHBoxLayout;
 	spinLineEdit = new QLineEdit(this);
 	spinLineEdit->setText(QString::number(path->getSpinLimit()));
@@ -103,21 +112,21 @@ pathEditDialog::pathEditDialog(pathPlan *ph, QWidget *parent)
 	spinBaseBox->setMaximumWidth(65);
 	spinBaseBox->setEnabled(path->getRange() != 0);
 	spinLayout->addWidget(spinBaseBox);
-	inputLayout->addLayout(spinLayout,4,1);
+	inputLayout->addLayout(spinLayout,5,1);
 	
 	breadthLabel = new QLabel("Search Breadth");						// path search breadth
-	inputLayout->addWidget(breadthLabel,5,0);
+	inputLayout->addWidget(breadthLabel,6,0);
 	breadthLineEdit = new QLineEdit(this);
 	breadthLineEdit->setText(QString::number(path->getBreadth()));
 	breadthLineEdit->setToolTip("The maximum number of paths to search at each path node.\nSet to 0 for complete search");
 	breadthLineEdit->setAlignment(Qt::AlignHCenter);
 	breadthLineEdit->setMaximumWidth(100);
-	inputLayout->addWidget(breadthLineEdit,5,1);
+	inputLayout->addWidget(breadthLineEdit,6,1);
 	
 	saveAllCheckBox = new QCheckBox("Save All Paths");					// save paths 
 	saveAllCheckBox->setChecked(ph->getSaveOn());
 	saveAllCheckBox->setToolTip("Saves all potential paths to the goal while searching for shortest.\nFor viewing only");
-	inputLayout->addWidget(saveAllCheckBox,6,1);
+	inputLayout->addWidget(saveAllCheckBox,7,1);
 	
 	// Display group box setup
 	QVBoxLayout *displayLayout = new QVBoxLayout;
@@ -166,7 +175,10 @@ pathEditDialog::pathEditDialog(pathPlan *ph, QWidget *parent)
 	connect(saveDisplayCheckBox,SIGNAL(clicked(bool)),path,SLOT(displaySavedPaths(bool)));
 	connect(cspaceDisplayCheckBox,SIGNAL(clicked(bool)),path,SLOT(displayCspace(bool)));
 	
-	connect(rangeLineEdit,SIGNAL(selectionChanged()),this,SLOT(enableLines()));
+	connect(rangeLineEdit,SIGNAL(editingFinished()),this,SLOT(enableLines()));
+	connect(rangeLineEdit,SIGNAL(editingFinished()),this,SLOT(stepWarning()));
+	connect(growLineEdit,SIGNAL(editingFinished()),this,SLOT(stepWarning()));
+	connect(stepLineEdit,SIGNAL(editingFinished()),this,SLOT(stepWarning()));
 	
 	baselineCheckBox->setChecked(path->m_displayPath);
 	lightTrailCheckBox->setChecked(path->m_displayLightTrail);
@@ -198,11 +210,47 @@ void pathEditDialog::enableLines()
 		spinBaseBox->setEnabled(true);
 	}
 }
+void pathEditDialog::stepWarning()
+{
+	float range = rangeLineEdit->text().toFloat();
+	float grow = growLineEdit->text().toFloat();
+	float step = stepLineEdit->text().toFloat();
+	
+	if(range == 0) return;
+	
+	if(step <= 0){
+		QMessageBox::warning(this,
+							"Caution !!!",
+							"Sensor update step must be greater than ZERO.",
+							QMessageBox::Ok,
+							QMessageBox::Ok);
+		stepLineEdit->setText(QString::number(0.01));
+	}
+	else if(range < (grow + step)){
+		QMessageBox::warning(this,
+							"Caution !!!",
+							"Sensor range is too small with respect to C-Space margin and update step size.\n\nSENSOR RANGE > STEP SIZE + C-SPACE",
+							QMessageBox::Ok,
+							QMessageBox::Ok);
+		rangeLineEdit->setText(QString::number(grow + step + 0.01));
+	}
+	else if(step > range - grow)
+	{
+		QMessageBox::warning(this,
+							"Caution !!!",
+							"Update step size is too large with respect to sensor range or C-Space margin.\n\nSENSOR RANGE >= STEP SIZE + C-SPACE",
+							QMessageBox::Ok,
+							QMessageBox::Ok);
+		rangeLineEdit->setText(QString::number(grow + step + 0.01));
+	}
+}
+
 void pathEditDialog::acceptData()
 {
 	float temp;
 	path->setColor(colorComboBox->color());
 	path->setRange(rangeLineEdit->text().toFloat());
+	path->setMargin(growLineEdit->text().toFloat());
 	
 	temp = stepLineEdit->text().toFloat();
 	if(temp > path->getRange()) path->setStep(path->getRange());
@@ -240,10 +288,18 @@ m_file(NULL),
 m_xmlDoc( "roverSimDoc" )
 {
 	setupUi(this);
-	move(20,540);
-	resize(300,150);
 	setWindowFlags(Qt::Window | Qt::WindowStaysOnTopHint);
 	setWindowTitle("Path Creation");
+	
+	QSettings settings(QSettings::IniFormat,QSettings::UserScope,"OUengineering","Rover_Sim");
+	if(!QFile::exists(settings.fileName()) || !settings.contains("PathToolWindowGeom")){
+		move(20,540);
+		resize(300,150);
+		settings.setValue("PathToolWindowGeom", saveGeometry());
+	}
+	else
+		this->restoreGeometry(settings.value("PathToolWindowGeom").toByteArray());
+	
 	
 	buttonDelete->setEnabled(false);
 	tableSetup();
@@ -261,6 +317,8 @@ m_xmlDoc( "roverSimDoc" )
 
 pathTool::~pathTool()
 {
+	QSettings settings(QSettings::IniFormat,QSettings::UserScope,"OUengineering","Rover_Sim");
+	settings.setValue("PathToolWindowGeom", saveGeometry());
 	removePaths();
 	if(m_file) delete m_file;
 }

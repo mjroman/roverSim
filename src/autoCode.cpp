@@ -25,15 +25,20 @@ lastBlockedDirection(0),
 simSettings(QSettings::IniFormat,QSettings::UserScope,"OUengineering","Rover_Sim")
 {
 	setupUi(this);
-	move(20,25);
-	resize(281,300);
+
 	setWindowFlags(Qt::Window | Qt::WindowStaysOnTopHint);
 	setWindowTitle("Navigation Info.");
 	
 	initSettingsNames();
 	
-	if(!QFile::exists(simSettings.fileName())) initSettings();
-	else if(!simSettings.childGroups().contains(OBSTNAVGROUP)) initSettings();
+	if(!QFile::exists(simSettings.fileName()) || (!simSettings.childGroups().contains(OBSTNAVGROUP))){
+		initSettings();
+		move(20,25);
+		resize(281,300);
+		simSettings.setValue("AutoCodeWindowGeom", saveGeometry());
+	}
+	else 
+		this->restoreGeometry(simSettings.value("AutoCodeWindowGeom").toByteArray());
 	
 	parameterListInit();
 	tableSetup();
@@ -50,6 +55,7 @@ simSettings(QSettings::IniFormat,QSettings::UserScope,"OUengineering","Rover_Sim
 
 autoCode::~autoCode()
 {
+	simSettings.setValue("AutoCodeWindowGeom", saveGeometry());
 }
 
 void autoCode::show()
@@ -63,6 +69,11 @@ void autoCode::show()
 	QWidget::show();
 }
 
+void autoCode::closeEvent(QCloseEvent *event)
+{
+	simSettings.setValue("AutoCodeWindowGeom", saveGeometry());
+    event->accept();
+}
 void autoCode::callForHelp(RoverError errCode)
 {
 	error = errCode;

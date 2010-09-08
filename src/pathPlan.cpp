@@ -5,12 +5,15 @@
 #include "utility/glshapes.h"
 #include <BulletCollision/CollisionDispatch/btCollisionObject.h>
 
+#define SPACEMARGIN			0.65
+
 pathPlan::pathPlan(obstacles *obs,simGLView* glView)
 :
 simGLObject(glView),
 m_blocks(obs),
 m_CS(NULL),
 m_range(0),
+m_margin(SPACEMARGIN),
 m_step(0.25),
 m_breadth(0),
 m_saveOn(false),
@@ -83,6 +86,9 @@ void pathPlan::goForGoal(btVector3 start, btVector3 end)
 	
 	this->generateCspace();									// create the C-Space to compute the path in
 	
+	m_view->overlayString(QString("Searching Range %1").arg(m_range));
+	m_firstPath = true;
+	
 	QTime t;
 	t.start();												// start time of path calculation
 	
@@ -99,8 +105,10 @@ void pathPlan::goForGoal(btVector3 start, btVector3 end)
 	
 	m_view->printText("Mapping Complete");
 	if(m_saveOn) m_view->printText(QString("%1 paths found").arg(m_pathList.size()));
-	if(m_GP.length == 0 || m_GP.length > m_progressLimit)
+	if(m_GP.length == 0 || m_GP.length > m_progressLimit){
 		m_view->printText(QString("No paths to goal found for range %1").arg(m_range));
+		m_view->overlayString("Incomplete Path");
+	}
 
 	m_GP.efficiency = m_straightDistance/m_GP.length;
 	m_view->printText(QString("Range %1 Search Time: %2 s").arg(m_range).arg((float)m_GP.time/1000.0));
@@ -113,7 +121,7 @@ void pathPlan::goForGoal(btVector3 start, btVector3 end)
 void pathPlan::generateCspace()
 {
 	if(m_CS) delete m_CS;
-	m_CS = new cSpace(m_startPoint.point,m_range,m_blocks,m_view);		// create a new Configuration Space based on the start point
+	m_CS = new cSpace(m_startPoint.point,m_range,m_margin,m_blocks,m_view);		// create a new Configuration Space based on the start point
 	m_CS->drawCspace(m_displayCS);
 	
 	if(isGoalInRange()){
@@ -291,6 +299,10 @@ bool pathPlan::findPathA(float length)
 
 		if(length < m_GP.length || m_GP.length == 0)							// check if a new shortest path has been found
 		{
+			if(m_firstPath && m_range == 0) {
+				m_view->overlayString("Path Found");
+				m_firstPath = false;
+			}
 			m_GP.length = length;
 			m_GP.points = m_pointPath;											// save the new short path
 			if(m_saveOn) m_pathList.push_front(m_GP);
@@ -362,7 +374,7 @@ void pathPlan::togglePathPoint(int dir)
 // get All Visable points
 	rankPoint here = m_GP.points[m_linkViewIndex];
 	m_view->getCamera()->cameraSetDirection(here.point); 			// set the camera view to the path point
-	m_CS = new cSpace(here.point,m_range,m_blocks,m_view);					// create a new Configuration Space based on the start point
+	m_CS = new cSpace(here.point,m_range,m_margin,m_blocks,m_view);					// create a new Configuration Space based on the start point
 	m_CS->drawCspace(true);
 
 // gather all objects extreme vertices
