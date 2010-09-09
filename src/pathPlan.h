@@ -17,7 +17,8 @@ typedef enum _PathDisplay
 	PP_CURRENTSEARCH = 3,
 	PP_RANGEFAN = 4,
 	PP_BASELINE = 5,
-	PP_LIGHTTRAIL = 6
+	PP_LIGHTTRAIL = 6,
+	PP_BUILDPATH = 7
 } PathDisplay;
 
 // typedef struct _rankLink
@@ -70,6 +71,7 @@ private:
 	QList<rankPoint>							m_pointPath;		// global point containter, used while searching for a path
 	QList<goalPath>								m_pathList;			// contains all the paths if they have been saved
 	goalPath									m_GP;				// the shortest Goal Path
+	QList<rankPoint>							m_trailPath;		// holds the step path for limited range sensor paths
 	
 	QColor										m_color;
 	float										m_range;			// holds the sensor range or distance, if 0 then Gods eye
@@ -82,6 +84,7 @@ private:
 	rankPoint									m_startPoint;		// start point of the path
 	rankPoint									m_midPoint;
 	rankPoint									m_goalPoint;		// calculate a path to this point
+	
 	float										m_goalDistance;		// straight line distance to the goal from a midpoint
 	float										m_straightDistance;	// straight line distance from the start of the path to the goal
 	btCollisionObject*							m_goalOccluded;		// hold the object the goal is inside if the goal is occluded
@@ -120,6 +123,7 @@ private:
 	void drawSavedPaths();
 	void drawCurrentSearchPath();
 	void drawRangeFan();
+	void drawPathBuildLine();
 	void drawPathBaseLine();
 	void drawLightTrail();
 	
@@ -173,6 +177,7 @@ public slots:
 	void displayPath(bool x);
 	void displayLightTrail(bool x);
 	void displayCspace(bool x);
+	void displayBuildPath(bool x);
 	
 	void togglePathReset();
 	void togglePathPoint(int dir);

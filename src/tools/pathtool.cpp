@@ -499,7 +499,7 @@ void pathTool::processPath(int x)
 		emit changeBackground(x,QBrush(QColor("lightsteelblue")));
 	x++;
 	emit changeBackground(x,QBrush(QColor("springgreen")));
-
+	if(x < pathList.size()) pathTableWidget->scrollToItem(pathTableWidget->item(x,0));				// scroll the table view down
 	emit computePaths(x);
 }
 
@@ -577,11 +577,14 @@ void pathTool::setRowBackground(int row, QBrush stroke)
 
 void pathTool::tableDataChange(int row, int column)
 {
-	pathTableWidget->selectRow(row);
-	if(row == m_selectedPath) return;
+	pathTableWidget->selectRow(row);					// highlights the row
+	if(row == m_selectedPath) return;					// return if the same row is selected twice
 	if(m_selectedPath < pathList.size())
-		pathList[m_selectedPath]->togglePathReset();
+		pathList[m_selectedPath]->togglePathReset();	// reset the previously selected path
+		
 	m_selectedPath = row;
+	pathList[m_selectedPath]->displayPath(false);		// turn off normal path display
+	pathList[m_selectedPath]->displayBuildPath(true);	// make the path blink
 }
 
 // called when user double clicks on an item brings up the path editing dialog

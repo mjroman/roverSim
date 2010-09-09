@@ -32,12 +32,14 @@ m_linkViewIndex(0)
 	drawCB.SetCallback(this,&pathPlan::drawRangeFan);			m_drawingList << drawCB;
 	drawCB.SetCallback(this,&pathPlan::drawPathBaseLine);		m_drawingList << drawCB;
 	drawCB.SetCallback(this,&pathPlan::drawLightTrail);			m_drawingList << drawCB;
+	drawCB.SetCallback(this,&pathPlan::drawPathBuildLine);		m_drawingList << drawCB;
 	
 	m_GP.length = 0;
 	m_GP.time = 0;
 	m_GP.efficiency = 0;
 	
-	displayPath(true);
+	displayBuildPath(false);
+	displayPath(false);
 	displayLightTrail(false);
 	displayCrowFly(false);
 	displaySavedPaths(false);
@@ -83,6 +85,7 @@ void pathPlan::goForGoal(btVector3 start, btVector3 end)
 	m_spinDirection = 0;
 	
 	displayCurrentSearch(true);								// turn on drawing the yellow search lines
+	displayBuildPath(true);
 	
 	this->generateCspace();									// create the C-Space to compute the path in
 	
@@ -102,6 +105,8 @@ void pathPlan::goForGoal(btVector3 start, btVector3 end)
 	m_pointPath.clear();									// clear out the construction point path
 	
 	displayCurrentSearch(false);							// turn off search path drawing
+	displayBuildPath(false);
+	displayPath(true);
 	
 	m_view->printText("Mapping Complete");
 	if(m_saveOn) m_view->printText(QString("%1 paths found").arg(m_pathList.size()));
@@ -155,13 +160,13 @@ void pathPlan::cycleToGoal()
 	int i;
 	float progress = 0;
 	float spinDist = 0;
-	QList<rankPoint> deltList;
+	m_trailPath.clear();
 	
 	while( m_range < m_goalDistance )											// while the goal is not in range
 	{
 		this->findPathA();														// calculate the path to the goal
 		if(m_GP.points.size() <= 1) break;										// if only 1 point is in the path list or it is empty then no path is found
-		deltList << m_startPoint;												// add the current position of the begining of the path
+		m_trailPath << m_startPoint;											// add the current position of the begining of the path
 		
 		i=1;
 		float step = m_step;
@@ -170,7 +175,7 @@ void pathPlan::cycleToGoal()
 		
 		while(step > pdist)														// while the step distance is longer than the distance to the next point
 		{
-			deltList << m_GP.points[i];											// add that point to the overall path
+			m_trailPath << m_GP.points[i];										// add that point to the overall path
 			step -= pdist;
 			pdist = m_GP.points[i].point.distance(m_GP.points[i+1].point);
 			i++;
@@ -189,10 +194,10 @@ void pathPlan::cycleToGoal()
 		//////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// local minima work around
 		if(m_spinDirection == 0){
-			i=deltList.size()-1;
+			i=m_trailPath.size()-1;
 			if(i >= 1){															// check for switch back condition
-				btVector3 preVect = deltList[i].point - deltList[i-1].point;	// use the current position to compare the previous step point
-				btVector3 newVect = m_startPoint.point - deltList[i].point;		// to the new startpoint
+				btVector3 preVect = m_trailPath[i].point - m_trailPath[i-1].point;	// use the current position to compare the previous step point
+				btVector3 newVect = m_startPoint.point - m_trailPath[i].point;		// to the new startpoint
 				
 				if(preVect.dot(newVect) < 0){									// dot is negative if the angle is greater than 90
 					if(newVect.cross(preVect).z() > 0) m_spinDirection = 1;
@@ -217,7 +222,8 @@ void pathPlan::cycleToGoal()
 
 	this->findPathA();
 	
-	m_GP.points = deltList + m_GP.points;									// prepend the delt position list
+	m_GP.points = m_trailPath + m_GP.points;									// prepend the delt position list
+	m_trailPath.clear();
 	m_GP.length = 0;
 	for(i=0; i<m_GP.points.size()-1; i++) m_GP.length += m_GP.points[i].point.distance(m_GP.points[i+1].point);
 	m_startPoint = m_GP.points[0];
@@ -347,6 +353,8 @@ bool pathPlan::findPathA(float length)
 
 void pathPlan::togglePathReset()
 {
+	displayPath(true);
+	displayBuildPath(false);
 	displayDebug(false);
 	if(m_CS) delete m_CS;
 	m_CS = 0;
@@ -764,6 +772,11 @@ void pathPlan::displayCspace(bool x)
 	m_displayCS = x;
 	if(m_CS) m_CS->drawCspace(m_displayCS);
 }
+void pathPlan::displayBuildPath(bool x)
+{
+	if(x) m_displayList.push_front( &m_drawingList[PP_BUILDPATH] );
+	else m_displayList.removeAll( &m_drawingList[PP_BUILDPATH] );
+}
 
 /////////////////////////////////////////
 // Draw the path's
@@ -833,6 +846,26 @@ void pathPlan::drawRangeFan()
 {
 	btVector3 cc = m_CS->getCenterPoint() + btVector3(0,0,0.1);
 	radarFan(cc.m_floats,m_range);
+}
+
+void pathPlan::drawPathBuildLine()
+{
+	int i;
+	static bool x = true;
+	if(x)glLineStipple(1,0xFF);
+	else glLineStipple(1,0xFF00);
+	x = !x;
+	glLineWidth(6.0);
+	glNormal3f(0,0,1);
+	glColor3f(m_color.redF(),m_color.greenF(),m_color.blueF());
+	glEnable(GL_LINE_STIPPLE);
+	glBegin(GL_LINE_STRIP);
+	for(i = 0; i < m_trailPath.size(); i++)
+		glVertex3fv(m_trailPath[i].point.m_floats);
+	for(i = 0; i < m_GP.points.size(); i++)
+		glVertex3fv(m_GP.points[i].point.m_floats);
+	glEnd();
+	glDisable(GL_LINE_STIPPLE);
 }
 
 void pathPlan::drawPathBaseLine()			// draws the line on the base of the shortest path in m_color color
