@@ -217,7 +217,7 @@ void cSpace::groupOverlapCSpace()
 /////////////////////////////////////////
 // UTILITY FUNCTIONS
 /////////////
-// returns TRUE if pt is inside of the CONVEX polygon LS
+// returns TRUE if pt is inside of the CONVEX polygon LS, in world coordinates
 bool cSpace::isPointInsidePoly(btVector3 pt,QList<btVector3> ls)
 {
 	int i,iplus;
@@ -237,16 +237,59 @@ bool cSpace::isPointInsidePoly(btVector3 pt,QList<btVector3> ls)
 		// pt is on the right side z is positive, left is negative
 		z = (pt.x() - p1.x())*(p2.y() - p1.y()) - (pt.y() - p1.y())*(p2.x() - p1.x());
 		
-		if(z >= 0) return false; // if the point is to the right of any side pt is outside the polygon
+		if(z > 0) return false; // if the point is to the right of any side pt is outside the polygon
 	}
  	return true;
 }
 
-// returns TRUE if pt is inside of the top projection of the CONVEX object
+// returns TRUE if pt is inside of the top projection of the CONVEX object, in world coordinates
 bool cSpace::isPointInsideObject(btVector3 pt, btCollisionObject* obj)
 {
 	QList<btVector3> list = this->getTopShapePoints(obj);
 	return isPointInsidePoly(pt,list);
+}
+
+void cSpace::movePointOutsideObject(btVector3& pt, btCollisionObject* obj)
+{
+	QList<btVector3> list = this->getTopShapePoints(obj);
+	if(!isPointInsidePoly(pt,list)) return;
+	float zHeight = pt.z();
+	
+	// find the side of the polygon which is closest to the point
+	int i=0;
+	int nexti = 1;
+	int corner = 0;
+	int nextCorner = nexti;
+	float d = fabs((list[nexti].x() - list[i].x()) * (list[i].x() - pt.x()))/fabs(list[nexti].x() - list[i].x());
+	
+	for(i=1; i<list.size(); i++){
+		if(i == list.size()-1) nexti = 0;
+		else nexti = i+1;
+		float tempd = fabs((list[nexti].x() - list[i].x()) * (list[i].x() - pt.x()))/fabs(list[nexti].x() - list[i].x());
+		if(tempd < d){
+			d = tempd;
+			corner = i;
+			nextCorner = nexti;
+		}
+	}
+	
+	btVector3 para = list[nextCorner] - list[corner];			// polygon side vector
+	para.setZ(0);
+	btVector3 offs = pt - list[corner];							// vector to point from corner
+	offs.setZ(0);
+	btVector3 norm = para.cross(btVector3(0,0,1));				// polygon side normal vector
+	norm.normalized();
+	d = para.dot(offs);											// get the projection of the point along the polygon side
+	para.normalized();
+	
+	pt = (para * d) + (norm * 0.1) + list[corner];				// add the projection vector plus a 1cm offset with reference to the corner
+	pt.setZ(zHeight);											// reset the height of the point
+}
+
+void cSpace::movePointOutsideCSpace(btVector3& pt)
+{
+	for(int i=0;i<m_ghostObjects.size();i++)
+		movePointOutsideObject(pt,m_ghostObjects[i]);
 }
 
 // determins if there is an intersection between two lines represented by point pairs (p1,p2) and (p3,p4)

@@ -257,12 +257,13 @@ void simGLView::overlayText()
 	static QTime t = QTime::currentTime().addMSecs(100);
 	int i=0;
 	int height = frameSize().height();
+	int hwidth = frameSize().width()/2;										// horizontal offset
 	float rate = FONTFADERATE;
 	QFont f;
 	f.setPointSize(20);
 	
-	if(t > QTime::currentTime()) rate = 0;
-	else t = QTime::currentTime().addMSecs(100);
+	if(t > QTime::currentTime()) rate = 0;									// during path generation GL updates faster, 
+	else t = QTime::currentTime().addMSecs(100);							// limit fading based on time instead of incrementation
 	
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -271,7 +272,9 @@ void simGLView::overlayText()
 		if(i > 10) m_overlayStringList.removeAt(i);							// keep the print buffer limited to 10 to keep screen clear
 		else if(m_overlayStringList[i].fade > 0) {
 			glColor4f(0,1,0,m_overlayStringList[i].fade);
-			renderText(0,height - (i*20),m_overlayStringList[i].text,f);
+			int hsize = m_overlayStringList[i].text.size();
+			hsize = (hsize >> 2) * 15;
+			renderText(hwidth - hsize,height - (i*20),m_overlayStringList[i].text,f);	// render the string
 			m_overlayStringList[i].fade -= rate;
 			i++;
 		}

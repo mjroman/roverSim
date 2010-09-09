@@ -35,6 +35,8 @@ public:
 	// utility functions
 	bool isPointInsidePoly(btVector3 pt,QList<btVector3> ls);
 	bool isPointInsideObject(btVector3 pt, btCollisionObject* obj);
+	void movePointOutsideObject(btVector3& pt, btCollisionObject* obj);
+	void movePointOutsideCSpace(btVector3& pt);
 	int segmentIntersection(btVector3 p1,btVector3 p2,btVector3 p3,btVector3 p4,btVector3* intsec);
 	bool lineIntersection(btVector3 p1,btVector3 p2,btVector3 p3,btVector3 p4,btVector3* intsect);
 	int arcIntersection(btVector3 cc, float rad, btVector3 p1, btVector3 p2, btVector3* intsect1, btVector3* intsect2);

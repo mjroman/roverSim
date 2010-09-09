@@ -103,6 +103,7 @@ void pathPlan::goForGoal(btVector3 start, btVector3 end)
 	if(m_CS) delete m_CS;									// delete the C Space to free up some memory since it is not needed
 	m_CS = 0;
 	m_pointPath.clear();									// clear out the construction point path
+	m_nodeList.clear();										// clear out the node construction list
 	
 	displayCurrentSearch(false);							// turn off search path drawing
 	displayBuildPath(false);
@@ -141,6 +142,7 @@ void pathPlan::generateCspace()
 	m_midPoint = m_startPoint;												// reset all parameters due to new Cspace
 	m_pointPath.clear();
 	m_pointPath << m_startPoint;
+	m_nodeList.clear();
 }
 
 // returns true if the goal is within sensor range of the robot
@@ -178,13 +180,23 @@ void pathPlan::cycleToGoal()
 			m_trailPath << m_GP.points[i];										// add that point to the overall path
 			step -= pdist;
 			pdist = m_GP.points[i].point.distance(m_GP.points[i+1].point);
-			i++;
+			i++;												
 		}
 
 		btVector3 v = m_GP.points[i].point - m_GP.points[i-1].point;			// vector between i and i-1
 	
 		memset(&m_startPoint,0,sizeof(rankPoint));								// create a new start point
-		m_startPoint.point = step * v.normalized() + m_GP.points[i-1].point;		
+		m_startPoint.point = step * v.normalized() + m_GP.points[i-1].point;
+		
+		btCollisionObject* object = 0;
+		if(m_GP.points[i-1].object) object = m_GP.points[i-1].object; 
+		else if(m_GP.points[i].object) object = m_GP.points[i].object;
+		
+		if(object){
+			btVector3 offset = m_startPoint.point - object->getWorldTransform().getOrigin();
+			offset = (0.01 * offset.normalized()) * btVector3(1,1,0);			// move over the start point 1cm from the edge of the C-Space
+			m_startPoint.point += offset;
+		}
 		
 		m_GP.length = 0;
 		m_GP.points.clear();
@@ -306,7 +318,7 @@ bool pathPlan::findPathA(float length)
 		if(length < m_GP.length || m_GP.length == 0)							// check if a new shortest path has been found
 		{
 			if(m_firstPath && m_range == 0) {
-				m_view->overlayString("Path Found");
+				m_view->overlayString("First Path Found");
 				m_firstPath = false;
 			}
 			m_GP.length = length;
@@ -381,10 +393,11 @@ void pathPlan::togglePathPoint(int dir)
 
 // get All Visable points
 	rankPoint here = m_GP.points[m_linkViewIndex];
-	m_view->getCamera()->cameraSetDirection(here.point); 			// set the camera view to the path point
-	m_CS = new cSpace(here.point,m_range,m_margin,m_blocks,m_view);					// create a new Configuration Space based on the start point
-	m_CS->drawCspace(true);
 
+	m_view->getCamera()->cameraSetDirection(here.point); 			// set the camera view to the path point
+	m_CS = new cSpace(here.point,m_range,m_margin,m_blocks,m_view);	// create a new Configuration Space based on the start point
+	m_CS->drawCspace(true);
+	
 // gather all objects extreme vertices
 	contactPoints = getVisablePointsFrom(here,0);
 
@@ -557,7 +570,6 @@ QList<rankPoint> pathPlan::getVisablePointsFrom(rankPoint here, float dist)
 		else list << leftMost << rightMost;
 	}
 
-// begin Pruning points from the list
 	i=0;
 	while(i < list.size()){
 		if(this->isRayBlocked(here,list[i])) 							// remove all remaining points that are blocked
@@ -575,34 +587,35 @@ QList<rankPoint> pathPlan::getVisablePointsFrom(rankPoint here, float dist)
 // removes visible points not wanted
 QList<rankPoint> pathPlan::prunePointsFrom(QList<rankPoint> list)
 {
-	int i,j;
-// check each point if it is already on the path
-	for( j = 0; j < m_pointPath.size(); ++j)
+	int i=0,j;
+
+// check each visible point if it is already in the node list, remove it if it is longer, replace the node if it is shorter, add it if it doesn't exist
+	while(i < list.size())
 	{
-		// check all points in the visible list
-		for( i = 0; i < list.size(); ++i)
+		bool newNode = true;
+		for( j = 0; j < m_nodeList.size(); j++)
 		{
-			if(list[i].object == m_pointPath[j].object && list[i].corner == m_pointPath[j].corner)
+			if(list[i].object == m_nodeList[j].object && list[i].corner == m_nodeList[j].corner)
 			{
-				list.removeAt(i);
-				break;
+				if(list[i].length >= m_nodeList[j].length){			// new visible point is farther so remove it
+					list.removeAt(i);
+					newNode = false;
+					break;
+				}
+				else{
+					m_nodeList.replace(j,list[i]);					// new visible point is shorter so replace it
+					newNode = false;
+					i++;
+					break;
+				}
 			}
 		}
-	}
-
-// check each visible point if it is already on the global path, remove it if it is longer
-	for( j = 0; j < m_GP.points.size(); j++)
-	{
-		for( i = 0; i < list.size(); ++i)
-		{
-			if(list[i].object == m_GP.points[j].object && list[i].corner == m_GP.points[j].corner && list[i].length >= m_GP.points[j].length)
-			{
-				list.removeAt(i);
-				break;
-			}
+		if(newNode){ 												// new visible point is not in the node list add it
+			m_nodeList << list[i];
+			i++;
 		}
 	}
-
+	
 // check for spin condition past obstacles and eliminate paths to the left or right depending on spin	
 	if(m_spinDirection != 0){
 		i=0;
@@ -616,13 +629,6 @@ QList<rankPoint> pathPlan::prunePointsFrom(QList<rankPoint> list)
 		}
 	}
 	
-	// remove all points that are farther from the goal
-	// float sqGoalDist = here.point.distance2(m_goalPoint.point);
-	// 	while(i < list.size()){
-	// 		if(here.point.distance2(list[i].point) > sqGoalDist)
-	// 			list.removeAt(i);
-	// 		else i++;
-	// 	}
 	return list;
 }
 
@@ -796,7 +802,7 @@ void pathPlan::drawDebugPath()				// draws test points and lines
 	glEnd();
 
 	glPointSize(3.0);
-	glColor3f(1,1,1);
+	glColor3f(0,0,1);
 	glBegin(GL_POINTS);
 	for(i=0;i<hitPoints.size();i++)
 		glVertex3fv(hitPoints[i].m_floats);

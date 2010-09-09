@@ -69,6 +69,7 @@ private:
 	cSpace*										m_CS;				// the Configuration Space the path is calculated in
 	
 	QList<rankPoint>							m_pointPath;		// global point containter, used while searching for a path
+	QList<rankPoint>							m_nodeList;			// intermediate node list for path search speedup
 	QList<goalPath>								m_pathList;			// contains all the paths if they have been saved
 	goalPath									m_GP;				// the shortest Goal Path
 	QList<rankPoint>							m_trailPath;		// holds the step path for limited range sensor paths
