@@ -109,6 +109,7 @@ private:
 	PathState cycleToGoal();
 	bool searchForPath(float length=0);
 	
+	void smoothPath();
 	btCollisionObject* isRayBlocked(rankPoint from,rankPoint to, btVector3* point = NULL);
 	void getExtremes(btCollisionObject* obj, rankPoint pivotPoint, rankPoint* left, rankPoint* right);
 	QList<rankPoint> angleBasedRank(QList<rankPoint> list, rankPoint pivotPoint);
@@ -116,6 +117,7 @@ private:
 	QList<rankPoint> rangeBasedRank(QList<rankPoint> list, rankPoint pivotPoint);
 	QList<rankPoint> quickSortRankLessthan(QList<rankPoint> list);
 	QList<rankPoint> getVisablePointsFrom(rankPoint here, float dist);
+	QList<rankPoint> getAllVisablePointsFrom(rankPoint here, float dist);
 	QList<rankPoint> prunePointsFrom(QList<rankPoint> list);
 	//bool isNewPoint(rankPoint pt);
 	//bool isNewLink(rankLink link);
