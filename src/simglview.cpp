@@ -42,7 +42,7 @@ simGLView::simGLView(QWidget *parent) : QGLWidget(parent)
 
     m_timer = new QTimer(this);
     connect(m_timer, SIGNAL(timeout()), this, SLOT(updateGL()));
-    m_timer->start(100);
+    m_timer->start(50);
 
     arena = physicsWorld::instance(); // get the physics world object
 }

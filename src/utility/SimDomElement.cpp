@@ -83,7 +83,7 @@ QDomElement SimDomElement::pathToNode(QDomDocument &doc, const pathPlan* p)
 	path.setAttribute( "length", QString::number(gp->length));
 	path.setAttribute( "time", QString::number(gp->time));
 	path.setAttribute( "efficiency", QString::number(gp->efficiency));
-	path.setAttribute( "complete", QString::number(!p->isStuck()));
+	path.setAttribute( "state", QString::number(p->getState()));
 	
 	path.appendChild(colorToNode(doc, p->getColor()));
 	

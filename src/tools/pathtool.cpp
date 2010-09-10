@@ -326,7 +326,7 @@ pathTool::~pathTool()
 void pathTool::tableSetup()
 {
 	this->setUpdatesEnabled(true);
-	pathTableWidget->setColumnCount(6);
+	pathTableWidget->setColumnCount(7);
 	pathTableWidget->setRowCount(0);
 	pathTableWidget->showGrid();
 	pathTableWidget->setAlternatingRowColors(false);
@@ -345,14 +345,17 @@ void pathTool::tableSetup()
 	item = new QTableWidgetItem("Time (s)");				// time
 	pathTableWidget->setHorizontalHeaderItem(3,item);		
 	pathTableWidget->setColumnWidth(3,100);
-	item = new QTableWidgetItem("Comp. Efficiency");		// Gods eye comparison efficiency
+	item = new QTableWidgetItem("Comp. Efficiency");		// Infinite range comparison efficiency
 	pathTableWidget->setHorizontalHeaderItem(4,item);
 	pathTableWidget->setColumnWidth(4,100);
 	item = new QTableWidgetItem("Efficiency");				// efficiency
 	pathTableWidget->setHorizontalHeaderItem(5,item);		
 	pathTableWidget->setColumnWidth(5,100);
+	item = new QTableWidgetItem("State");					// path State
+	pathTableWidget->setHorizontalHeaderItem(6,item);
+	pathTableWidget->setColumnWidth(6,100);
 
-	this->setMaximumWidth(453+39);	// max width of table, all items width + right collumn width
+	this->setMaximumWidth(553+39);	// max width of table, all items width + right collumn width
 }
 
 void pathTool::show()
@@ -449,6 +452,12 @@ void pathTool::on_buttonAdd_clicked()
 	eff->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
 	eff->setToolTip("Efficiency based on straight line distance to goal");
 	pathTableWidget->setItem(selected,5,eff);
+	
+	QTableWidgetItem* state = new QTableWidgetItem("...");				// add the path state item
+	state->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+	state->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+	state->setToolTip("Path computation exit state");
+	pathTableWidget->setItem(selected,6,state);
 }
 
 // when the [-] button is pressed
@@ -493,7 +502,7 @@ void pathTool::processPath(int x)
 	}
 	updateTool();
 	
-	if(pathList[x]->isStuck())
+	if(pathList[x]->getState() != PS_COMPLETE)
 		emit changeBackground(x,QBrush(QColor(Qt::yellow)));
 	else
 		emit changeBackground(x,QBrush(QColor("lightsteelblue")));
@@ -542,6 +551,17 @@ void pathTool::updateTool()
 				case 5:
 				{
 					item->setData(Qt::DisplayRole,QVariant(gp->efficiency));
+					break;
+				}
+				case 6:
+				{
+					int ps = pathList[i]->getState();
+					if(ps == PS_SEARCHING) item->setData(Qt::DisplayRole, "Searching");
+					else if(ps == PS_COMPLETE) item->setData(Qt::DisplayRole, "Complete");
+					else if(ps == PS_PATHNOTFOUND) item->setData(Qt::DisplayRole, "No Path");
+					else if(ps == PS_SWITCHBACK) item->setData(Qt::DisplayRole, "Switchback");
+					else if(ps == PS_NOPROGRESS) item->setData(Qt::DisplayRole, "No Progress");
+					else item->setData(Qt::DisplayRole, "unknown");
 					break;
 				}
 				default:

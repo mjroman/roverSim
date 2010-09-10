@@ -9,6 +9,15 @@ class btCollisionObject;
 /////////////////////////////////////////
 // Path planning structures
 /////////////
+typedef enum _PathState
+{
+	PS_SEARCHING = 0,
+	PS_COMPLETE,
+	PS_PATHNOTFOUND,
+	PS_SWITCHBACK,
+	PS_NOPROGRESS
+} PathState;
+
 typedef struct _rankPoint
 {
 	btCollisionObject* 	object;

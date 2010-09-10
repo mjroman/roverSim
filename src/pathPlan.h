@@ -75,7 +75,7 @@ private:
 	QList<rankPoint>							m_trailPath;		// holds the step path for limited range sensor paths
 	
 	QColor										m_color;
-	float										m_range;			// holds the sensor range or distance, if 0 then Gods eye
+	float										m_range;			// holds the sensor range or distance, if 0 then infinite range
 	float										m_margin;			// the size of obstacle growth for C-Space creation 
 	float										m_step;				// the distance traveled on the path inbetween limited range path readings
 	int											m_breadth;			// holds the number of times the path forks at each midpoint
@@ -94,6 +94,7 @@ private:
 	int											m_spinDirection;	// 0=no path limiting, 1=right side path limiting, -1=left side path limiting
 	float										m_spinProgress;		// the distance driven after a local minima has been reached
 	int											m_spinProgressBase;	// 0 = distance based progress 1 = step based progress
+	PathState									m_state;			// holds the state of the search for a path to the goal
 	
 	QList< ACallback<pathPlan> >				m_drawingList;		// holds all drawing callbacks
 	QList< ACallback<pathPlan>* >				m_displayList;		// holds a pointer to the objects that should be currently drawn
@@ -105,8 +106,8 @@ private:
 
 	void generateCspace();
 	bool isGoalInRange();
-	void cycleToGoal();
-	bool findPathA(float length=0);
+	PathState cycleToGoal();
+	bool searchForPath(float length=0);
 	
 	btCollisionObject* isRayBlocked(rankPoint from,rankPoint to, btVector3* point = NULL);
 	void getExtremes(btCollisionObject* obj, rankPoint pivotPoint, rankPoint* left, rankPoint* right);
@@ -150,7 +151,7 @@ public:
 	int	getSpinBase() { return m_spinProgressBase; }
 	int getBreadth() { return m_breadth; }
 	bool getSaveOn() { return m_saveOn; }
-	const bool isStuck() const { return (m_GP.length > m_progressLimit || m_GP.length < m_straightDistance); }
+	const int getState() const { return m_state; }
 	
 	void setColor(QColor color) { m_color = color; m_color.setAlphaF(0.45); }
 	void setRange(float r) { m_range = fabs(r); }

@@ -21,6 +21,7 @@ m_goalOccluded(NULL),
 m_efficiencyLimit(0.75),
 m_spinProgress(6),
 m_spinProgressBase(0),
+m_state(PS_SEARCHING),
 m_linkViewIndex(0)
 {	
 	// create callbacks to all the drawing methods, these are added to/removed from the display list
@@ -78,6 +79,7 @@ void pathPlan::goForGoal(btVector3 start, btVector3 end)
 	memset(&m_midPoint,0,sizeof(rankPoint));
 	memset(&m_goalPoint,0,sizeof(rankPoint));
 	
+	m_state = PS_SEARCHING;
 	m_startPoint.point = start;
 	m_goalPoint.point = end;
 	m_straightDistance = start.distance(end);
@@ -95,12 +97,26 @@ void pathPlan::goForGoal(btVector3 start, btVector3 end)
 	QTime t;
 	t.start();												// start time of path calculation
 	
-	if(m_range == 0) this->findPathA();						// if Gods eye find the shortest path
-	else this->cycleToGoal();								// step forward on path until the goal is in range
+	if(m_range == 0) {
+		this->searchForPath();								// if infinite range find the shortest path
+		
+		if(m_GP.length == 0) m_state = PS_PATHNOTFOUND;
+		else m_state = PS_COMPLETE;
+	}
+	else {
+		m_state = this->cycleToGoal();						// step forward on path until the goal is in range
+	
+		m_GP.points = m_trailPath + m_GP.points;			// prepend the step trail point list
+		m_trailPath.clear();
+		m_GP.length = 0;
+		for(int i=0; i<m_GP.points.size()-1; i++) 
+			m_GP.length += m_GP.points[i].point.distance(m_GP.points[i+1].point);	// calculate the total length
+		m_startPoint = m_GP.points[0];						// set the starting point for drawing
+	}
 	
 	m_GP.time = t.elapsed();								// get the elapsed time for the path generation
 	
-	if(m_CS) delete m_CS;									// delete the C Space to free up some memory since it is not needed
+	if(m_CS) delete m_CS;									// delete the C Space to free up memory since it is not needed
 	m_CS = 0;
 	m_pointPath.clear();									// clear out the construction point path
 	m_nodeList.clear();										// clear out the node construction list
@@ -109,15 +125,9 @@ void pathPlan::goForGoal(btVector3 start, btVector3 end)
 	displayBuildPath(false);
 	displayPath(true);
 	
-	m_view->printText("Mapping Complete");
 	if(m_saveOn) m_view->printText(QString("%1 paths found").arg(m_pathList.size()));
-	if(m_GP.length == 0 || m_GP.length > m_progressLimit){
-		m_view->printText(QString("No paths to goal found for range %1").arg(m_range));
-		m_view->overlayString("Incomplete Path");
-	}
-
-	m_GP.efficiency = m_straightDistance/m_GP.length;
-	m_view->printText(QString("Range %1 Search Time: %2 s").arg(m_range).arg((float)m_GP.time/1000.0));
+			
+	if(m_GP.length != 0) m_GP.efficiency = m_straightDistance/m_GP.length;
 }
 
 
@@ -157,17 +167,26 @@ bool pathPlan::isGoalInRange()
 /////////////////////////////////////////
 // Path creation
 /////////////
-void pathPlan::cycleToGoal()
+PathState pathPlan::cycleToGoal()
 {
 	int i;
 	float progress = 0;
 	float spinDist = 0;
 	m_trailPath.clear();
 	
-	while( m_range < m_goalDistance )											// while the goal is not in range
+	while( progress <= m_progressLimit )										// looping condition based on path efficiency
 	{
-		this->findPathA();														// calculate the path to the goal
-		if(m_GP.points.size() <= 1) break;										// if only 1 point is in the path list or it is empty then no path is found
+		this->searchForPath();													// calculate the path to the goal
+		if(m_GP.points.size() <= 1){ 											// if only 1 point is in the path list or it is empty then no path is found
+			if(m_spinDirection)
+				return PS_SWITCHBACK;
+			else
+				return PS_PATHNOTFOUND;
+		}
+		
+		if( m_range > m_goalDistance ) 
+			return PS_COMPLETE;													// a complete path has been found and the goal is in range
+			
 		m_trailPath << m_startPoint;											// add the current position of the begining of the path
 		
 		i=1;
@@ -189,7 +208,7 @@ void pathPlan::cycleToGoal()
 		m_startPoint.point = step * v.normalized() + m_GP.points[i-1].point;
 		
 		btCollisionObject* object = 0;
-		if(m_GP.points[i-1].object) object = m_GP.points[i-1].object; 
+		if(m_GP.points[i-1].object) object = m_GP.points[i-1].object; 			// check if the start point is near a C-Space object
 		else if(m_GP.points[i].object) object = m_GP.points[i].object;
 		
 		if(object){
@@ -225,20 +244,8 @@ void pathPlan::cycleToGoal()
 			if(spinDist > d) m_spinDirection = 0;							// once progress past the local minima has been made reset spin direction
 			else spinDist += m_step;
 		}
-		
-		//////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		// looping condition check based on path efficiency
-		if(progress > m_progressLimit) 
-			break;	// current path length is not making progress exit
 	}
-
-	this->findPathA();
-	
-	m_GP.points = m_trailPath + m_GP.points;									// prepend the delt position list
-	m_trailPath.clear();
-	m_GP.length = 0;
-	for(i=0; i<m_GP.points.size()-1; i++) m_GP.length += m_GP.points[i].point.distance(m_GP.points[i+1].point);
-	m_startPoint = m_GP.points[0];
+	return PS_NOPROGRESS;											// current path length is not making progress
 }
 
 
@@ -302,7 +309,7 @@ void pathPlan::constructRoadMap()
 /////////////////////////////////////////
 // first path planner algorithm DFSearch, this is where it all happens
 /////////////
-bool pathPlan::findPathA(float length)
+bool pathPlan::searchForPath(float length)
 {
 	float goalDist = m_midPoint.point.distance(m_goalPoint.point);	// find the distance from the current midpoint to the Goal
 	
@@ -350,7 +357,7 @@ bool pathPlan::findPathA(float length)
 
 		m_view->updateGL();
 		
-		if(this->findPathA(prospectPoints[i].length)){							// recursive check for a path to the goal
+		if(this->searchForPath(prospectPoints[i].length)){							// recursive check for a path to the goal
 			m_pointPath.removeLast();											// remove the goal point from the global list
 			m_pointPath.removeLast();
 			break;																// don't need to do anymore looping since the goal is visible
