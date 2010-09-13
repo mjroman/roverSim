@@ -179,8 +179,10 @@ PathState pathPlan::cycleToGoal()
 		this->searchForPath();													// calculate the path to the goal
 		
 		if(m_GP.points.size() <= 1){ 											// if only 1 point is in the path list or it is empty then no path is found
-			if(m_spinDirection)
-				return PS_SWITCHBACK;
+			if(m_spinDirection == 1)
+				return PS_SWITCHBACKRIGHT;
+			else if(m_spinDirection == -1)
+				return PS_SWITCHBACKLEFT;
 			else
 				return PS_PATHNOTFOUND;
 		}
@@ -225,14 +227,14 @@ PathState pathPlan::cycleToGoal()
 		//////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// local minima work around
 		if(m_spinDirection == 0){
-			i=m_trailPath.size()-1;
+			i = m_trailPath.size()-1;
 			if(i >= 1){																// check for switch back condition
 				btVector3 preVect = m_trailPath[i].point - m_trailPath[i-1].point;	// use the current position to compare the previous step point
 				btVector3 newVect = m_startPoint.point - m_trailPath[i].point;		// to the new startpoint
 				
 				if(preVect.dot(newVect) < 0){										// dot is negative if the angle is greater than 90
-					if(newVect.cross(preVect).z() > 0) m_spinDirection = 1;
-					else m_spinDirection = -1;
+					if(newVect.cross(preVect).z() > 0)	m_spinDirection = 1;		// right side switch
+					else 								m_spinDirection = -1;		// left side switch
 					spinDist = 0;
 				}
 			}
@@ -343,8 +345,8 @@ bool pathPlan::searchForPath(float length)
 	}
 	
 	QList<rankPoint> prospectPoints = getVisablePointsFrom(m_midPoint,length); 	// get all the visable points from the current location
-	prospectPoints = this->progressAngleBasedRank(prospectPoints, m_midPoint);	// compute the ranks based on progress angle from start-goal vector
-	//prospectPoints = this->angleBasedRank(prospectPoints, m_midPoint); 			// compute the ranks based on angle to goal from midPoint
+	if(m_range == 0) prospectPoints = this->progressAngleBasedRank(prospectPoints, m_midPoint);	// compute the ranks based on progress angle from start-goal vector
+	else prospectPoints = this->angleBasedRank(prospectPoints, m_midPoint); 	// compute the ranks based on angle to goal from midPoint
 	prospectPoints = this->prunePointsFrom(prospectPoints);						// remove points that are already in the point path
 		
 	if(prospectPoints.isEmpty()) return false;
@@ -565,24 +567,26 @@ QList<rankPoint> pathPlan::getVisablePointsFrom(rankPoint here, float dist)
 
 // gather all objects extreme vertices
 	for(i = 0; i < ghostList->size(); ++i)										// get all points from individual objects
-	{
+	{		
+		bool lState,rState;
+		lState = rState = true;
 		this->getExtremes(ghostList->at(i),here,&leftMost,&rightMost);			// get the far left and right points around the obstacle
 		
 		if(ghostList->at(i)->getUserPointer())									// check both extremes to make sure they are not inside of a grouped object
 		{
-			bool lState,rState;
-			lState = rState = false;
 			cSpace::overlapGroup* gp = static_cast<cSpace::overlapGroup*>(ghostList->at(i)->getUserPointer());
 			for(int j=0;j<gp->list.size();j++)
 			{
-				if(gp->list[j] == ghostList->at(i)) continue;					// skip the object the extremes are from
-				if(m_CS->isPointInsideObject(leftMost.point,gp->list[j])) lState = true;
-				if(m_CS->isPointInsideObject(rightMost.point,gp->list[j])) rState = true;
+				if( gp->list[j] == ghostList->at(i) ) continue;					// skip the object the extremes are from
+				if( lState && m_CS->isPointInsideObject(leftMost.point,gp->list[j]) )	lState = false;
+				if( rState && m_CS->isPointInsideObject(rightMost.point,gp->list[j]) )	rState = false;
+				if( !lState && !rState ) break;
 			}
-			if(!lState) list << leftMost;
-			if(!rState) list << rightMost;
 		}
-		else list << leftMost << rightMost;
+		
+		// check for spin condition past obstacles and eliminate paths to the left or right depending on spin	
+		if(lState && m_spinDirection >= 0) list << leftMost;					// if spin direction is to the right (1) keep all left extremes
+		if(rState && m_spinDirection <= 0) list << rightMost;					// if spin is to the left (-1) keep all the right extremes
 	}
 
 	i=0;
@@ -694,19 +698,6 @@ QList<rankPoint> pathPlan::prunePointsFrom(QList<rankPoint> list)
 		if(newNode){ 												// new visible point is not in the node list add it
 			m_nodeList << list[i];
 			i++;
-		}
-	}
-	
-// check for spin condition past obstacles and eliminate paths to the left or right depending on spin	
-	if(m_spinDirection != 0){
-		i=0;
-		btVector3 goalVect = m_goalPoint.point - m_midPoint.point;
-		while(i < list.size())
-		{
-			btVector3 ptVect = list[i].point - m_midPoint.point;
-			float dir = ptVect.cross(goalVect).z() * m_spinDirection;	// multiply the two directions to check for sign
-			if(dir < 0)	list.removeAt(i);								// dir will be negative if the directions differ, so remove the point
-			else i++;
 		}
 	}
 	

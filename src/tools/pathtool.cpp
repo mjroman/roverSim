@@ -559,7 +559,8 @@ void pathTool::updateTool()
 					if(ps == PS_SEARCHING) item->setData(Qt::DisplayRole, "Searching");
 					else if(ps == PS_COMPLETE) item->setData(Qt::DisplayRole, "Complete");
 					else if(ps == PS_PATHNOTFOUND) item->setData(Qt::DisplayRole, "No Path");
-					else if(ps == PS_SWITCHBACK) item->setData(Qt::DisplayRole, "Switchback");
+					else if(ps == PS_SWITCHBACKLEFT) item->setData(Qt::DisplayRole, "Switchback LEFT");
+					else if(ps == PS_SWITCHBACKRIGHT) item->setData(Qt::DisplayRole, "Switchback RIGHT");
 					else if(ps == PS_NOPROGRESS) item->setData(Qt::DisplayRole, "No Progress");
 					else item->setData(Qt::DisplayRole, "unknown");
 					break;

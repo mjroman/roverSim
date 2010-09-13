@@ -256,12 +256,12 @@ void MainGUI::keyPressEvent(QKeyEvent *event)
         }
 		case 'X':
 		{
-			SController->showPathView(-1);
+			SController->showPathView(1);
 			return;
 		}
 		case 'Z':
 		{
-			SController->showPathView(1);
+			SController->showPathView(-1);
 			return;
 		}
         case '[':
