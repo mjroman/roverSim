@@ -110,6 +110,7 @@ private:
 	bool searchForPath(float length=0);
 	
 	void smoothPath();
+	void localMinimaCheck(QList<rankPoint> list, int index);
 	btCollisionObject* isRayBlocked(rankPoint from,rankPoint to, btVector3* point = NULL);
 	void getExtremes(btCollisionObject* obj, rankPoint pivotPoint, rankPoint* left, rankPoint* right);
 	QList<rankPoint> angleBasedRank(QList<rankPoint> list, rankPoint pivotPoint);

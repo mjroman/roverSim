@@ -171,11 +171,11 @@ PathState pathPlan::cycleToGoal()
 {
 	int i;
 	float progress = 0;
-	float spinDist = 0;
 	m_trailPath.clear();
+	m_trailPath << m_startPoint;
 	
 	while( progress <= m_progressLimit )										// looping condition based on path efficiency
-	{
+	{	
 		this->searchForPath();													// calculate the path to the goal
 		
 		if(m_GP.points.size() <= 1){ 											// if only 1 point is in the path list or it is empty then no path is found
@@ -188,30 +188,24 @@ PathState pathPlan::cycleToGoal()
 		}
 		else if( m_range > m_goalDistance ) 
 			return PS_COMPLETE;													// a complete path has been found and the goal is in range
-			
-		m_trailPath << m_startPoint;											// add the current position of the begining of the path
 		
-		i=1;
+		i = 1;
 		float step = m_step;
-		float pdist = m_GP.points[0].point.distance(m_GP.points[i].point);		// find the distance to the first point on the path
-		progress += m_step;
+		btVector3 strideVect = m_GP.points[i].point - m_trailPath.last().point;	// get the vector to the next step
 		
-		while(step > pdist)														// while the step distance is longer than the distance to the next point
-		{
-			m_trailPath << m_GP.points[i];										// add that point to the overall path
-			step -= pdist;
-			pdist = m_GP.points[i].point.distance(m_GP.points[i+1].point);
-			i++;												
+		while(step > strideVect.length()){										// while the step distance is longer than the distance to the next point
+			m_trailPath << m_GP.points[i];										// add the current position to the trail path
+			step -= strideVect.length();
+			i++;
+			strideVect = m_GP.points[i].point - m_trailPath.last().point;		// find the vector to the next point on the path
 		}
-
-		btVector3 v = m_GP.points[i].point - m_GP.points[i-1].point;			// vector between i and i-1
 	
 		memset(&m_startPoint,0,sizeof(rankPoint));								// create a new start point
-		m_startPoint.point = step * v.normalized() + m_GP.points[i-1].point;
+		m_startPoint.point = step * strideVect.normalized() + m_trailPath.last().point;	// compute the new point from the end of the trail
 		
 		btCollisionObject* object = 0;
-		if(m_GP.points[i-1].object) object = m_GP.points[i-1].object; 			// check if the start point is near a C-Space object
-		else if(m_GP.points[i].object) object = m_GP.points[i].object;
+		if(m_trailPath.last().object) object = m_trailPath.last().object; 		// check if the end of the trail is near a C-Space object
+		else if(m_GP.points[i].object) object = m_GP.points[i].object;			// or the next point on the path in the direction headed
 		
 		if(object){
 			btVector3 offset = m_startPoint.point - object->getWorldTransform().getOrigin();
@@ -219,35 +213,17 @@ PathState pathPlan::cycleToGoal()
 			m_startPoint.point += offset;
 		}
 		
+		m_trailPath << m_startPoint;
+		
+		progress += m_step;
 		m_GP.length = 0;
 		m_GP.points.clear();
 		
 		this->generateCspace();													// create new C-Space and calculate new goal distance
 		
-		//////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		// local minima work around
-		if(m_spinDirection == 0){
-			i = m_trailPath.size()-1;
-			if(i >= 1){																// check for switch back condition
-				btVector3 preVect = m_trailPath[i].point - m_trailPath[i-1].point;	// use the current position to compare the previous step point
-				btVector3 newVect = m_startPoint.point - m_trailPath[i].point;		// to the new startpoint
-				
-				if(preVect.dot(newVect) < 0){										// dot is negative if the angle is greater than 90
-					if(newVect.cross(preVect).z() > 0)	m_spinDirection = 1;		// right side switch
-					else 								m_spinDirection = -1;		// left side switch
-					spinDist = 0;
-				}
-			}
-		}
-		else{
-			float d;
-			if(m_spinProgressBase == 0) d = m_spinProgress;					// distance based progress
-			else if(m_spinProgressBase == 1) d = m_spinProgress * m_step;	// step based progress
-			if(spinDist > d) m_spinDirection = 0;							// once progress past the local minima has been made reset spin direction
-			else spinDist += m_step;
-		}
+		this->localMinimaCheck(m_trailPath, m_trailPath.size()-1);				// local minima work around
 	}
-	return PS_NOPROGRESS;													// current path length is not making progress
+	return PS_NOPROGRESS;														// current path length is not making progress
 }
 
 
@@ -348,8 +324,6 @@ bool pathPlan::searchForPath(float length)
 	if(m_range == 0) prospectPoints = this->progressAngleBasedRank(prospectPoints, m_midPoint);	// compute the ranks based on progress angle from start-goal vector
 	else prospectPoints = this->angleBasedRank(prospectPoints, m_midPoint); 	// compute the ranks based on angle to goal from midPoint
 	prospectPoints = this->prunePointsFrom(prospectPoints);						// remove points that are already in the point path
-		
-	if(prospectPoints.isEmpty()) return false;
 	
 	int i=0;
 	while(i < prospectPoints.size() && (m_breadth == 0 || i < m_breadth))
@@ -410,20 +384,11 @@ void pathPlan::togglePathPoint(int dir)
 	m_CS->drawCspace(true);
 	
 	contactPoints = getVisablePointsFrom(here,0);							// gather all objects extreme vertices
-	//contactPoints = getAllVisablePointsFrom(here,0);						// gather all visible vertices
-
-	//contactPoints = prunePointsFrom(contactPoints);
-	contactPoints = angleBasedRank(contactPoints, m_GP.points[m_linkViewIndex]);
-	contactPoints = quickSortRankLessthan(contactPoints);
-
-	// qDebug("_______________________");
-	// for(int i=0;i<contactPoints.size();i++){
-	// 	qDebug("rank %f",contactPoints[i].rank);
-	// }
-
+	if(m_range == 0) contactPoints = progressAngleBasedRank(contactPoints, m_GP.points[m_linkViewIndex]);
+	else contactPoints = angleBasedRank(contactPoints, m_GP.points[m_linkViewIndex]);
+	
+	if(!contactPoints.isEmpty()) hitPoints << contactPoints[0].point;
 	contactPoints.prepend(m_GP.points[m_linkViewIndex]);	// push the point the current view is from for drawing
-
-	//if(this->isRayBlocked(m_pointPath[m_linkViewIndex],m_goalPoint) == NULL) qDebug("Clear to GOAL");
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -459,6 +424,32 @@ void pathPlan::smoothPath()
 	for(int k=0; k<m_GP.points.size()-1; k++) 
 		m_GP.length += m_GP.points[k].point.distance(m_GP.points[k+1].point);	// calculate the total length
 		
+}
+
+// checks local minima under limited range sensor paths for switch back condition
+// sets the global spin direction and keeps track of spin progress distance
+void pathPlan::localMinimaCheck(QList<rankPoint> list, int index)
+{
+	static float spinDist = 0;
+	if(list.size() < 3 || index >= list.size() || index < 2) return;	// make sure everything is inbounds
+	
+	if(m_spinDirection == 0){
+		btVector3 preVect = list[index-1].point - list[index-2].point;	// use the previous position to compare
+		btVector3 newVect = list[index].point - list[index-1].point;	// to the new position
+
+		if(preVect.dot(newVect) < 0){									// dot is negative if the angle is greater than 90
+			if(newVect.cross(preVect).z() > 0)	m_spinDirection = 1;	// right side switch
+			else 								m_spinDirection = -1;	// left side switch
+			spinDist = 0;
+		}
+	}
+	else{
+		float d;
+		if(m_spinProgressBase == 0) d = m_spinProgress;					// distance based progress
+		else if(m_spinProgressBase == 1) d = m_spinProgress * m_step;	// step based progress
+		if(spinDist > d) m_spinDirection = 0;							// once progress past the local minima has been made reset spin direction
+		else spinDist += m_step;
+	}
 }
 
 // checks the ray between from and to, if it is clear NULL is returned else returns the object blocking
@@ -873,7 +864,7 @@ void pathPlan::drawDebugPath()				// draws test points and lines
 	}
 	glEnd();
 
-	glPointSize(3.0);
+	glPointSize(6.0);
 	glColor3f(0,0,1);
 	glBegin(GL_POINTS);
 	for(i=0;i<hitPoints.size();i++)
