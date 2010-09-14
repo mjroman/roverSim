@@ -289,6 +289,8 @@ void pathPlan::constructRoadMap()
 /////////////
 bool pathPlan::searchForPath(float length)
 {
+	if(m_GP.length == 0 && m_time.elapsed() > 300000) return false; // 5 minute limit and no path to the goal found exit
+	
 	float goalDist = m_midPoint.point.distance(m_goalPoint.point);	// find the distance from the current midpoint to the Goal
 	
  	if(m_GP.length != 0 && length + goalDist > m_GP.length) 		// incase the new search path is farther than the shortest path
