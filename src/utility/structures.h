@@ -19,6 +19,14 @@ typedef enum _PathState
 	PS_NOPROGRESS
 } PathState;
 
+typedef struct _minimaPoint
+{
+	btVector3			point;
+	float				progress;
+	float				threshold;
+	int					spin;
+}minimaPoint;
+	
 typedef struct _rankPoint
 {
 	btCollisionObject* 	object;

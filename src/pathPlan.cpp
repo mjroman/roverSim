@@ -94,8 +94,7 @@ void pathPlan::goForGoal(btVector3 start, btVector3 end)
 	m_view->overlayString(QString("Searching Range %1").arg(m_range));
 	m_firstPath = true;
 	
-	QTime t;
-	t.start();												// start time of path calculation
+	m_time.start();											// start time of path calculation
 	
 	if(m_range == 0) {
 		this->searchForPath();								// if infinite range find the shortest path
@@ -114,7 +113,7 @@ void pathPlan::goForGoal(btVector3 start, btVector3 end)
 		m_startPoint = m_GP.points[0];						// set the starting point for drawing
 	}
 	
-	m_GP.time = t.elapsed();								// get the elapsed time for the path generation
+	m_GP.time = m_time.elapsed();							// get the elapsed time for the path generation
 	
 	if(m_CS) delete m_CS;									// delete the C Space to free up memory since it is not needed
 	m_CS = 0;
@@ -173,6 +172,7 @@ PathState pathPlan::cycleToGoal()
 	float progress = 0;
 	m_trailPath.clear();
 	m_trailPath << m_startPoint;
+	m_minimaList.clear();
 	
 	while( progress <= m_progressLimit )										// looping condition based on path efficiency
 	{	
@@ -369,6 +369,7 @@ void pathPlan::togglePathPoint(int dir)
 	m_CS = 0;
 	hitPoints.clear();
 	contactPoints.clear();
+	m_spinDirection = 0;
 	
 	m_linkViewIndex += dir;													// increment the index
 	if(m_linkViewIndex >= m_GP.points.size()) m_linkViewIndex = 0;			// make sure the index is in bounds
@@ -387,8 +388,8 @@ void pathPlan::togglePathPoint(int dir)
 	if(m_range == 0) contactPoints = progressAngleBasedRank(contactPoints, m_GP.points[m_linkViewIndex]);
 	else contactPoints = angleBasedRank(contactPoints, m_GP.points[m_linkViewIndex]);
 	
-	if(!contactPoints.isEmpty()) hitPoints << contactPoints[0].point;
-	contactPoints.prepend(m_GP.points[m_linkViewIndex]);	// push the point the current view is from for drawing
+	if(!contactPoints.isEmpty()) hitPoints << contactPoints[0].point;		// show the most likely path choice
+	contactPoints.prepend(m_GP.points[m_linkViewIndex]);					// push the point the current view is from for drawing
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -431,23 +432,34 @@ void pathPlan::smoothPath()
 void pathPlan::localMinimaCheck(QList<rankPoint> list, int index)
 {
 	static float spinDist = 0;
+	
 	if(list.size() < 3 || index >= list.size() || index < 2) return;	// make sure everything is inbounds
 	
 	if(m_spinDirection == 0){
+		if(spinDist > 0){ spinDist = 0; return; }						// skip the next local minima check after spin progress to avoid switchback condition
 		btVector3 preVect = list[index-1].point - list[index-2].point;	// use the previous position to compare
 		btVector3 newVect = list[index].point - list[index-1].point;	// to the new position
 
-		if(preVect.dot(newVect) < 0){									// dot is negative if the angle is greater than 90
-			if(newVect.cross(preVect).z() > 0)	m_spinDirection = 1;	// right side switch
-			else 								m_spinDirection = -1;	// left side switch
+		if(preVect.dot(newVect) < 0){									// A switchback is detected, dot is negative if the angle is greater than 90
+			minimaPoint mp;
+			mp.point = list[index-1].point;
+			mp.threshold = 2*m_step;
+			if(!m_minimaList.isEmpty() && mp.point.distance2(m_minimaList.last().point) < SQ(m_minimaList.last().threshold)){ 
+				mp.progress = m_minimaList.last().progress * 2;				// increase the progress limit by twice the previous
+				mp.spin = m_minimaList.last().spin * -1;					// flip the direction of spin if near the last local minima
+			}
+			else {
+				if(m_spinProgressBase == 0) mp.progress = m_spinProgress;				// distance based progress
+				else if(m_spinProgressBase == 1) mp.progress = m_spinProgress * m_step;	// step based progress
+				mp.spin = (newVect.cross(preVect).z() > 0)? -1 : 1;						// 1 = right side -1 = left side
+			}
+			m_minimaList << mp;
+			m_spinDirection = m_minimaList.last().spin;
 			spinDist = 0;
 		}
 	}
 	else{
-		float d;
-		if(m_spinProgressBase == 0) d = m_spinProgress;					// distance based progress
-		else if(m_spinProgressBase == 1) d = m_spinProgress * m_step;	// step based progress
-		if(spinDist > d) m_spinDirection = 0;							// once progress past the local minima has been made reset spin direction
+		if(spinDist > m_minimaList.last().progress) m_spinDirection = 0;				// once progress past the local minima has been made reset spin direction
 		else spinDist += m_step;
 	}
 }
@@ -560,7 +572,8 @@ QList<rankPoint> pathPlan::getVisablePointsFrom(rankPoint here, float dist)
 	for(i = 0; i < ghostList->size(); ++i)										// get all points from individual objects
 	{		
 		bool lState,rState;
-		lState = rState = true;
+		lState = true;
+		rState = true;
 		this->getExtremes(ghostList->at(i),here,&leftMost,&rightMost);			// get the far left and right points around the obstacle
 		
 		if(ghostList->at(i)->getUserPointer())									// check both extremes to make sure they are not inside of a grouped object
@@ -865,8 +878,8 @@ void pathPlan::drawDebugPath()				// draws test points and lines
 	glEnd();
 
 	glPointSize(6.0);
-	glColor3f(0,0,1);
 	glBegin(GL_POINTS);
+	glColor3f(0,0,1);
 	for(i=0;i<hitPoints.size();i++)
 		glVertex3fv(hitPoints[i].m_floats);
 	glEnd();
@@ -928,13 +941,22 @@ void pathPlan::drawPathBuildLine()
 	glNormal3f(0,0,1);
 	glColor3f(m_color.redF(),m_color.greenF(),m_color.blueF());
 	glEnable(GL_LINE_STIPPLE);
-	glBegin(GL_LINE_STRIP);
+	glBegin(GL_LINE_STRIP);										// draw the dotted line path
 	for(i = 0; i < m_trailPath.size(); i++)
 		glVertex3fv(m_trailPath[i].point.m_floats);
 	for(i = 0; i < m_GP.points.size(); i++)
 		glVertex3fv(m_GP.points[i].point.m_floats);
 	glEnd();
 	glDisable(GL_LINE_STIPPLE);
+	
+	glPointSize(8.0);
+	glNormal3f(0,0,1);
+	if(x)glColor3f(0,0,0);
+	else glColor3f(1,1,1);
+	glBegin(GL_POINTS);
+	for(i = 0; i < m_minimaList.size(); i++)
+		glVertex3fv(m_minimaList[i].point.m_floats);
+	glEnd();
 }
 
 void pathPlan::drawPathBaseLine()			// draws the line on the base of the shortest path in m_color color

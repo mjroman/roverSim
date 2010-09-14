@@ -75,6 +75,7 @@ private:
 	QList<rankPoint>							m_trailPath;		// holds the step path for limited range sensor paths
 	
 	QColor										m_color;
+	QTime										m_time;
 	float										m_range;			// holds the sensor range or distance, if 0 then infinite range
 	float										m_margin;			// the size of obstacle growth for C-Space creation 
 	float										m_step;				// the distance traveled on the path inbetween limited range path readings
@@ -91,9 +92,12 @@ private:
 	btCollisionObject*							m_goalOccluded;		// hold the object the goal is inside if the goal is occluded
 	float										m_progressLimit;	// holds the maximum distance of progress before quitting path search
 	float										m_efficiencyLimit;	// minimum efficiency exit limit for searching a path to the goal
+	
+	QList<minimaPoint>							m_minimaList;		// a list of all local minima locations and spin directions
 	int											m_spinDirection;	// 0=no path limiting, 1=right side path limiting, -1=left side path limiting
 	float										m_spinProgress;		// the distance driven after a local minima has been reached
 	int											m_spinProgressBase;	// 0 = distance based progress 1 = step based progress
+	
 	PathState									m_state;			// holds the state of the search for a path to the goal
 	
 	QList< ACallback<pathPlan> >				m_drawingList;		// holds all drawing callbacks
