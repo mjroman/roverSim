@@ -4,7 +4,7 @@
 
 int main(int argc, char *argv[])
 {
-	physicsWorld::initialize(100,100,20,5);
+	physicsWorld::initialize();
 	
     QApplication a(argc, argv);
 	Q_INIT_RESOURCE(resource);

@@ -54,7 +54,7 @@ void terrain::terrainClear()
 	}
 
    	m_terrainShapes.clear();
-	arena->resetBroadphaseSolver();
+	arena->resetWorld();
 
     if(m_terrainVerts) { delete m_terrainVerts; }
     m_terrainVerts = 0;
@@ -394,7 +394,7 @@ void terrain::generateGround()
 	
     m_worldSize.setValue(m_pixelx,m_pixely,m_terrainMaxHeight);
     m_worldSize *= m_terrainScale;
-    arena->setWorldSize(m_worldSize);
+
     arena->resetWorld();
     // create a plane below the terrain to catch fallen objects, keep in the world
     this->createPlane(btVector3(0,0,1),0,btVector3(m_worldSize.x()/2,m_worldSize.y()/2,SAFETYPLANE));
@@ -498,7 +498,6 @@ void terrain::rescaleTerrain(btVector3 scale)
 	m_terrainScale.setY(m_terrainScale.y() * scale.y());
 	m_terrainScale.setZ(m_terrainScale.z() * scale.z());
 	m_view->printText(QString("new Scale %1,%2,%3").arg(m_terrainScale.x()).arg(m_terrainScale.y()).arg(m_terrainScale.z()));
-    arena->setWorldSize(m_worldSize);
 
     this->terrainRefresh();
 	emit newTerrain();

@@ -65,7 +65,7 @@ void cSpace::deleteGhostGroup()
 	m_ghostObjects.clear();
 	m_ghostGroups.clear();
 	
-	arena->resetBroadphaseSolver();			
+	arena->resetWorld();			
 	arena->toggleIdle(); 					// unpause simulation
 	arena->setDraw(true); 					// draw obstacles
 }
@@ -82,7 +82,7 @@ void cSpace::deleteGhostObject(btCollisionObject* obj)
 	m_ghostShapes.removeAll(shape);
 	m_ghostObjects.removeAll(obj);
 	// should probably remove the pointer in the group list but this function is not used right now
-	arena->resetBroadphaseSolver();
+	arena->resetWorld();
 	arena->toggleIdle(); // unpause simulation
 	arena->setDraw(true); // draw obstacles
 }
@@ -1045,7 +1045,7 @@ void cSpace::compoundCSpace()
 		arena->getDynamicsWorld()->removeCollisionObject(oldObjectList[i]);
 		m_ghostObjects.removeOne(oldObjectList[i]);
 	}
-	arena->resetBroadphaseSolver();
+	arena->resetWorld();
 	arena->toggleIdle(); // unpause simulation
 	arena->setDraw(true); // draw obstacles
 	oldObjectList.clear();

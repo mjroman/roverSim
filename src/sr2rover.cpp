@@ -101,7 +101,7 @@ tiltAngle(-15)
 	for(i=0;i<rpc.motors;i++) m_motorImpulse[i] = 0.1;
 
     // construct SR2rover and suspension constraints
-    this->constructRover(btVector3(1,1,arena->worldSize().z()));
+    this->constructRover();
     this->stopRobot();
 
     if(m_view) {
@@ -162,7 +162,7 @@ SR2rover::~SR2rover()
 	m_view->printText("SR2 deleted");
 }
 
-void SR2rover::constructRover(const btVector3& positionOffset)
+void SR2rover::constructRover()
 {
 //////////////////////////////////////////////////////////////////////////////
 // body shape geometry
@@ -181,7 +181,7 @@ void SR2rover::constructRover(const btVector3& positionOffset)
 
     btTransform offset;
     offset.setIdentity();
-    offset.setOrigin(positionOffset);
+    offset.setOrigin(btVector3(1,1,1));
     btQuaternion rot(0,0,-45*PI/180.);
     offset.setRotation(rot);
 

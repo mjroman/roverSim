@@ -19,12 +19,10 @@
 
 physicsWorld *physicsWorld::m_pWorld = 0;
 
-physicsWorld::physicsWorld(float x, float y, float z, float boundary)
+physicsWorld::physicsWorld()
 :
 m_idle(false),
 m_draw(false),
-m_worldSize(x,y,z),
-m_worldBoundary(boundary),
 m_dynamicsWorld(0),
 simTimeStep(0.1),
 simFixedTimeStep(0.001),
@@ -37,8 +35,8 @@ simSubSteps(15)
 	
 	// Build the broadphase
     //int maxProxies = 5000;
-    btVector3 worldAabbMin(-m_worldBoundary,-m_worldBoundary,0);
-    btVector3 worldAabbMax(m_worldBoundary+m_worldSize.x(),m_worldBoundary+m_worldSize.y(),m_worldSize.z());
+    //btVector3 worldAabbMin(-m_worldBoundary,-m_worldBoundary,0);
+    //btVector3 worldAabbMax = btVector3(m_worldBoundary,m_worldBoundary,0) + m_worldSize;
     //m_broadphase = new btAxisSweep3(worldAabbMin,worldAabbMax,maxProxies);
     m_broadphase = new btDbvtBroadphase();
 
@@ -60,41 +58,13 @@ physicsWorld::~physicsWorld()
     delete m_collisionConfiguration;
 }
 
-void physicsWorld::resetBroadphaseSolver()
-{
+// resets the entire world. Stops drawing and simulation resets the broadphase
+// to the new size and resets the solver.
+void physicsWorld::resetWorld()
+{	
     // reset the broadphase
     m_broadphase->resetPool(m_dispatcher);
     m_solver->reset();
-}
-
-// resets the entire world. Stops drawing and simulation
-// clears all obstacles and shapes and resets the broadphase
-// to the new size and resets the solver.
-void physicsWorld::resetWorld()
-{
-    // Rebuild the broadphase volume
-    //int maxProxies = 5000;
-    btVector3 worldAabbMin(-m_worldBoundary,-m_worldBoundary,-m_worldBoundary);
-    btVector3 worldAabbMax(m_worldBoundary+m_worldSize.x(),m_worldBoundary+m_worldSize.y(),m_worldSize.z());
-    // create a new broadphase with the new volume
-//    btBroadphaseInterface *nBroadphase = new btAxisSweep3(worldAabbMin,worldAabbMax,maxProxies);
-    // set the dynamics world to the new broadphase
-//    m_dynamicsWorld->setBroadphase(nBroadphase);
-	
-    // delete the old broadphase
-//    delete m_broadphase;
-	
-    // set the new pointer to the global pointer
-//    m_broadphase = nBroadphase;
-	
-    resetBroadphaseSolver();
-	
-    qDebug("new world %f,%f,%f",m_worldSize.x(),m_worldSize.y(),m_worldSize.z());
-}
-
-void physicsWorld::setWorldSize(btVector3 xyz)
-{
-    m_worldSize = xyz;
 }
 
 // sets the gravity vector in m/s^2
@@ -102,13 +72,14 @@ void physicsWorld::setGravity(btVector3 gv)
 {
 	m_dynamicsWorld->setGravity(gv);
 	for(int i=0; i<m_dynamicsWorld->getCollisionObjectArray().size(); i++)
-		m_dynamicsWorld->getCollisionObjectArray()[i]->activate();
+		m_dynamicsWorld->getCollisionObjectArray()[i]->activate();			// activate all objects incase they move relative to the new gravity
 }
 
 // Called to simulate a step in the physics world
-void physicsWorld::simulatStep(){
+void physicsWorld::simulatStep()
+{
     ///step the simulation
-    if (m_dynamicsWorld && !m_idle)
+    if (!m_idle)
     {
         m_dynamicsWorld->stepSimulation(simTimeStep,simSubSteps,simFixedTimeStep);
     }
@@ -213,7 +184,7 @@ btRigidBody* physicsWorld::placeShapeAt(btCollisionShape* bodyShape, btVector3 p
 }
 
 /////////////////////////////////////////
-// Obstacle rigid body creation functions
+// Obstacle hull body creation functions
 /////////////
 void physicsWorld::createHullObstacleShape(btVector3* pts, int numPoints)
 {

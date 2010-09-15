@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>300</width>
-    <height>300</height>
+    <height>350</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -25,7 +25,7 @@
   <property name="maximumSize">
    <size>
     <width>300</width>
-    <height>300</height>
+    <height>350</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -46,7 +46,7 @@
      <property name="maximumSize">
       <size>
        <width>16777215</width>
-       <height>30</height>
+       <height>25</height>
       </size>
      </property>
      <property name="text">
@@ -136,6 +136,68 @@
         <set>Qt::AlignCenter</set>
        </property>
       </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_4">
+     <item>
+      <spacer name="horizontalSpacer_3">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="gravityButton">
+       <property name="minimumSize">
+        <size>
+         <width>150</width>
+         <height>25</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>200</width>
+         <height>25</height>
+        </size>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">QPushButton{
+background:rgb(255, 0, 0); 
+color:white; 
+border:2px solid rgb(169, 2, 6); 
+border-radius:10px;
+}
+
+QPushButton:pressed{
+background:grey;
+border-color:darkgrey;
+}</string>
+       </property>
+       <property name="text">
+        <string>Update</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer_4">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
      </item>
     </layout>
    </item>
@@ -260,7 +322,7 @@
       </spacer>
      </item>
      <item>
-      <widget class="QPushButton" name="button_rescale">
+      <widget class="QPushButton" name="rescaleButton">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
          <horstretch>0</horstretch>
@@ -269,7 +331,7 @@
        </property>
        <property name="minimumSize">
         <size>
-         <width>200</width>
+         <width>150</width>
          <height>25</height>
         </size>
        </property>
@@ -293,7 +355,7 @@ border-color:darkgrey;
 }</string>
        </property>
        <property name="text">
-        <string>Rescale World</string>
+        <string>Rescale</string>
        </property>
       </widget>
      </item>
@@ -320,12 +382,28 @@ border-color:darkgrey;
     </widget>
    </item>
    <item>
+    <widget class="QLabel" name="label_11">
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>25</height>
+      </size>
+     </property>
+     <property name="text">
+      <string>Terrain editor tool parameters</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item>
     <layout class="QGridLayout" name="gridLayout">
      <property name="spacing">
       <number>2</number>
      </property>
      <item row="0" column="0" colspan="2">
-      <widget class="QSlider" name="slider_Diameter">
+      <widget class="QSlider" name="diameterSlider">
        <property name="minimum">
         <number>0</number>
        </property>
@@ -414,8 +492,12 @@ border-color:darkgrey;
        </property>
       </widget>
      </item>
-     <item row="3" column="0">
-      <widget class="QPushButton" name="buttonClose">
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_5">
+     <item>
+      <widget class="QPushButton" name="closeButton">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
          <horstretch>0</horstretch>
@@ -424,13 +506,13 @@ border-color:darkgrey;
        </property>
        <property name="minimumSize">
         <size>
-         <width>60</width>
+         <width>100</width>
          <height>25</height>
         </size>
        </property>
        <property name="maximumSize">
         <size>
-         <width>60</width>
+         <width>100</width>
          <height>25</height>
         </size>
        </property>

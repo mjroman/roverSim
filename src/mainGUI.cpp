@@ -25,7 +25,14 @@ m_wTool(this)
 
 	QDir temp(QCoreApplication::applicationDirPath());
 	temp.cdUp();
-	QDir::setCurrent(temp.path());								// set the current directory of the application
+	QDir::setCurrent(temp.path());										// set the current directory of the application
+	temp.cd("../..");
+	
+	textConsole->append(temp.absolutePath());
+	if(QFile::exists(temp.absolutePath() + "/mission/config.txt")){
+		textConsole->append("found config");							// check for config file
+	}
+	
 	
 	QSettings settings(QSettings::IniFormat,QSettings::UserScope,"OUengineering","Rover_Sim");
 	if(!QFile::exists(settings.fileName()) || !settings.contains("MainWindowGeom")){
@@ -36,7 +43,6 @@ m_wTool(this)
 	else
 		this->restoreGeometry(settings.value("MainWindowGeom").toByteArray());
 
-	
     m_tTool.hide();
 	m_wTool.hide();
 
@@ -78,9 +84,7 @@ m_wTool(this)
     connect(actionFlatten_Terrain, SIGNAL(triggered()), SController->getGround(), SLOT(flattenTerrain()));
    	connect(actionTerrain_Parameters, SIGNAL(triggered()), this, SLOT(showTerrainTool()));
 	connect(SController->getGround(), SIGNAL(newTerrain()), this, SLOT(terrainChanged()));
-
-    // tool bar terrain gravity update
-    connect(&m_tTool, SIGNAL(gravityUpdate(btVector3)), SController, SLOT(setGravity(btVector3)));
+	
     // tool bar terrain scale update
     connect(&m_tTool, SIGNAL(scaleUpdate(btVector3)), SController->getGround(), SLOT(rescaleTerrain(btVector3)));
 	// tool bar add waypoint update
@@ -175,8 +179,6 @@ void MainGUI::showObstacleTool()
 void MainGUI::terrainChanged()
 {
 	labelTerrainFilename->setText(SController->getGround()->terrainShortname());
-	m_tTool.setScale(SController->getGround()->terrainScale());
-	SController->setGravity(m_tTool.gravity());
 	menuRoverView->setEnabled(false);
 }
 

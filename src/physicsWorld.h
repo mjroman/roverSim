@@ -44,12 +44,9 @@ struct ShapeCache
 class physicsWorld : public QObject
 {
 private:
-    bool                m_idle;
-    bool                m_draw;
-    btVector3           m_worldSize;
-    float               m_worldBoundary;
-
-protected:
+    bool                						m_idle;
+    bool                						m_draw;
+	
 	btAlignedObjectArray<ShapeCache*>			m_obstacleCaches;
 
     btBroadphaseInterface*						m_broadphase;
@@ -58,8 +55,8 @@ protected:
     btConstraintSolver*                         m_solver;
     btDefaultCollisionConfiguration*			m_collisionConfiguration;
 
-    physicsWorld(float x, float y, float z, float boundary);
-
+protected:
+    physicsWorld();
     static physicsWorld *m_pWorld;
 
 public:
@@ -67,9 +64,9 @@ public:
     float   simFixedTimeStep;
     int     simSubSteps;
 
-    static physicsWorld *initialize(float x, float y, float z, float boundary) {
+    static physicsWorld *initialize() {
         if(!m_pWorld){
-            m_pWorld = new physicsWorld(x, y, z, boundary);
+            m_pWorld = new physicsWorld();
         }
         return m_pWorld;
     }
@@ -90,11 +87,7 @@ public:
 	
     bool canDraw() const { return m_draw; }
 	void setDraw(bool d) { m_draw = d; }
-    void setWorldSize(btVector3 xyz);
-    btVector3 worldSize() { return m_worldSize; }
-    float worldBoundary() { return m_worldBoundary; }
 
-    void resetBroadphaseSolver();
     void setGravity(btVector3 gv);
     
     void simulatStep();

@@ -23,7 +23,7 @@ m_spinProgress(6),
 m_spinProgressBase(0),
 m_state(PS_SEARCHING),
 m_linkViewIndex(0)
-{	
+{
 	// create callbacks to all the drawing methods, these are added to/removed from the display list
 	// make sure these remain in order to match with the enumeration
 	ACallback<pathPlan> drawCB(this, &pathPlan::drawDebugPath);	m_drawingList << drawCB;

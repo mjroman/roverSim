@@ -84,7 +84,7 @@ void robot::deleteRobotGroup()
 	}
 
 	m_robotShapes.clear();
-	arena->resetBroadphaseSolver();
+	arena->resetWorld();
  	arena->toggleIdle(); // unpause simulation
 	arena->setDraw(true); // draw obstacles
 }
@@ -124,7 +124,7 @@ void robot::placeRobotAt(btVector3 here)
 			body->activate(true);
         }
     }
-    arena->resetBroadphaseSolver();
+    arena->resetWorld();
     
 	for(i=0;i<m_partCount.motors;i++)
 		clearMotorAngle(i);

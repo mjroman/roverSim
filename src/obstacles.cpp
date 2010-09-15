@@ -58,7 +58,7 @@ void obstacles::eliminate()
 	m_obstacleObjects.clear();
 	m_obstacleShapes.clear();
 	
-	arena->resetBroadphaseSolver();
+	arena->resetWorld();
 	arena->toggleIdle();
 	arena->setDraw(true);
 	emit obstaclesRemoved();

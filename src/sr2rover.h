@@ -32,7 +32,7 @@ private:
 
 	//GLParticle*		mudParticle;
 
-    void constructRover(const btVector3& positionOffset);
+    void constructRover();
     void generateGLLists();
 
 public:
