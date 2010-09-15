@@ -28,7 +28,10 @@ m_pixelx(100),
 m_pixely(100),
 m_terrainModified(false)
 {
-    arena = physicsWorld::instance(); // get the physics world object
+    arena = physicsWorld::instance(); 					// get the physics world object
+	tTool = new terrainTool(m_view->parentWidget());
+	
+    connect(tTool, SIGNAL(scaleUpdate(btVector3)), this, SLOT(rescaleTerrain(btVector3)));
 
 	this->openTerrain(filename);
 }
@@ -36,6 +39,7 @@ m_terrainModified(false)
 terrain::~terrain()
 {
     terrainClear();
+	delete tTool;
 }
 
 // deletes the terrain vertices, colors, normals and triangle indices
@@ -43,8 +47,8 @@ terrain::~terrain()
 void terrain::terrainClear()
 {
     int i = m_terrainObjects.size();
-	arena->setDraw(false); // do not draw
- 	arena->idle();// pause simulation
+	m_view->stopDrawing();	// do not draw while items are deleted
+ 	arena->stopSimTimer();			// pause simulation
 	
 	while(i>0){
 		btCollisionObject* obj = m_terrainObjects[i-1];
@@ -54,7 +58,6 @@ void terrain::terrainClear()
 	}
 
    	m_terrainShapes.clear();
-	arena->resetWorld();
 
     if(m_terrainVerts) { delete m_terrainVerts; }
     m_terrainVerts = 0;
@@ -65,8 +68,8 @@ void terrain::terrainClear()
     if(m_terrainTriangles) { delete m_terrainTriangles; }
     m_terrainTriangles = 0;
 	
-	arena->toggleIdle(); // unpause simulation
-	arena->setDraw(true); // draw obstacles
+	arena->resetWorld();	// reset the world and unpause simulation	
+	m_view->startDrawing();	// draw obstacles
 }
 
 // loads a BMP file as the height map for the terrain. If the data
@@ -213,77 +216,47 @@ void terrain::buildNormals()
     }
 }
 
-void terrain::terrainRaise(btVector3 dir, float amount, float area)
+// the center of editing takes place at HERE
+// raise terrain DIR = 1, lower terrain DIR = -1
+void terrain::terrainEdit(btVector3 here, int dir)
 {
-    if(area == 0) return;
-    float xp,yp;
-    if(dir.x() < 0) xp = 0;
-    else if(dir.x() > m_worldSize.x()) xp = m_worldSize.x();
-    else xp = dir.x();
+	float area = tTool->diameter();
+	float amount = tTool->increment();
 	
-    if(dir.y() < 0) yp = 0;
-    else if(dir.y() > m_worldSize.y()) yp = m_worldSize.y();
-    else yp = dir.y();
+	if(area <= 0 || amount <= 0) return;
 	
-    for(int i=0; i<m_terrainVertexCount; i++)
+	amount *= dir;															// determine the direction of editing, up or down
+	
+	float xp = here.x();													// make sure the X location of the edit is over the terrain
+    if(xp < 0) xp = 0;
+    else if(xp > m_worldSize.x()) xp = m_worldSize.x();
+	
+	float yp = here.y();													// make sure the Y location of the edit is over the terrain
+    if(yp < 0) yp = 0;
+    else if(yp > m_worldSize.y()) yp = m_worldSize.y();
+	
+	for(int i=0; i<m_terrainVertexCount; i++)								// loop through the terrain vertex array
 	{
-                float x = (i % m_pixelx) * m_terrainScale.x();
-                float y = (i / m_pixelx) * m_terrainScale.y();
+        float x = (i % m_pixelx) * m_terrainScale.x();						// get the X and Y incides of the terrain vertices
+        float y = (i / m_pixelx) * m_terrainScale.y();
 
 		float xd = xp - x;
 		float yd = yp - y;
 
-		float d = (float)sqrt((xd*xd) + (yd*yd));
+		float d = (float)sqrt((xd*xd) + (yd*yd));							// calculate the diameter of the area
+		float a = (m_terrainVerts[i].z + amount) - (amount*(d / area));		// calculate the new height of the vertex
 		
-                float a = (m_terrainVerts[i].z + amount) - (amount*(d / area));
-		
-		if (a > m_terrainVerts[i].z) {
+		if((dir == 1 && a > m_terrainVerts[i].z) || (dir == -1 && a < m_terrainVerts[i].z)) {
 			m_terrainVerts[i].z = a;
 			
 			m_terrainColors[i].x = 0.7 * a / m_terrainMaxHeight;
 			m_terrainColors[i].y = 0.7 * a / m_terrainMaxHeight;
 			m_terrainColors[i].z = 0.6 * a / m_terrainMaxHeight;
-			if(a > m_terrainMaxHeight) m_terrainMaxHeight = a;
+			if(a > m_terrainMaxHeight) 
+				m_terrainMaxHeight = a;
 		}
 	}
-    buildNormals();
-
-    this->terrainRefresh();
-	m_terrainModified = true;
-}
-
-void terrain::terrainLower(btVector3 dir, float amount, float area)
-{
-    if(area == 0) return;
-    float xp,yp;
-    if(dir.x() < 0) xp = 0;
-    else if(dir.x() > m_worldSize.x()) xp = m_worldSize.x();
-    else xp = dir.x();
 	
-    if(dir.y() < 0) yp = 0;
-    else if(dir.y() > m_worldSize.y()) yp = m_worldSize.y();
-    else yp = dir.y();
-	
-    for(int i=0; i<m_terrainVertexCount; i++)
-	{
-                float x = (i % m_pixelx) * m_terrainScale.x();
-                float y = (i / m_pixelx) * m_terrainScale.y();
-		
-		float xd = xp - x;
-		float yd = yp - y;
-		float d = (float)sqrt((xd*xd) + (yd*yd));
-		
-                float a = (m_terrainVerts[i].z - amount) + (amount*(d / area));
-		
-		if (a < m_terrainVerts[i].z) {
-			m_terrainVerts[i].z = a;
-			
-			m_terrainColors[i].x = 0.7 * a / m_terrainMaxHeight;
-			m_terrainColors[i].y = 0.7 * a / m_terrainMaxHeight;
-			m_terrainColors[i].z = 0.6 * a / m_terrainMaxHeight;
-			if(a < m_terrainMinHeight) m_terrainMinHeight = a;
-		}
-	}
 	buildNormals();
 
     this->terrainRefresh();
@@ -391,7 +364,6 @@ void terrain::drawPlane(float x, float y)
 
 void terrain::generateGround()
 {
-	
     m_worldSize.setValue(m_pixelx,m_pixely,m_terrainMaxHeight);
     m_worldSize *= m_terrainScale;
 
@@ -435,6 +407,7 @@ void terrain::openTerrain(QString filename)
 	this->terrainClear();
 	m_terrainFilename = filename;
 	m_terrainScale.setValue(1,1,1);
+	tTool->setScale(m_terrainScale);
 	
 	if(filename != NULL && filename != "NULL" && terrainLoadFile()) 
 	{

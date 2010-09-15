@@ -46,8 +46,8 @@ obstacles::~obstacles()
 /////////////
 void obstacles::eliminate()
 {
-	arena->setDraw(false);
-	arena->idle();
+	m_view->stopDrawing();
+	arena->stopSimTimer();
 	
 	for(int i=0; i<m_obstacleObjects.size(); i++)
 		arena->getDynamicsWorld()->removeCollisionObject(m_obstacleObjects[i]);
@@ -59,8 +59,7 @@ void obstacles::eliminate()
 	m_obstacleShapes.clear();
 	
 	arena->resetWorld();
-	arena->toggleIdle();
-	arena->setDraw(true);
+	m_view->startDrawing();
 	emit obstaclesRemoved();
 }
 
@@ -83,8 +82,8 @@ void obstacles::generate()
 	
     for(i=0;i<oTool->obstacleCount();i++)
     {
-		tempPlace.setX(Randomn()*50);//arena->worldSize().x());							// calculate a random position for the obstacle
-		tempPlace.setY(Randomn()*50);//arena->worldSize().y());
+		tempPlace.setX(Randomn()*50);							// calculate a random position for the obstacle
+		tempPlace.setY(Randomn()*50);
 		tempPlace.setZ(0);
 		// keep all obstacles away from rover start position
         if(tempPlace.x() < 5 && tempPlace.y() < 5){ tempPlace.setX(5);} 
@@ -185,7 +184,7 @@ void obstacles::saveLayout(QString filename)
 	m_layoutName = filename;
 	
 	QFileInfo obstInfo(m_layoutName);
-	arena->idle();																			// pause the simulation so nothing moves while saving
+	arena->stopSimTimer();																	// pause the simulation so nothing moves while saving
 	
 	QDomDocument xmlDoc( "roverSimDoc" );
 	QDomElement root = xmlDoc.createElement( "obstacleLayout" );							// create a root element
@@ -207,7 +206,7 @@ void obstacles::saveLayout(QString filename)
 	
 	obstFile.close();																		// flush data and close file
 	m_view->printText("Obstacle layout saved: " + obstInfo.baseName());
-	arena->toggleIdle();																	// resume the simulation
+	arena->startSimTimer();																	// resume the simulation
 }
 
 void obstacles::loadLayout()

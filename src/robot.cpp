@@ -73,8 +73,8 @@ robot::~robot()
 void robot::deleteRobotGroup()
 {
 	int i = m_robotObjects.size();
-	arena->setDraw(false); // do not draw
- 	arena->idle();// pause simulation
+ 	m_view->stopDrawing(); 			// do not draw
+ 	arena->stopSimTimer();			// pause simulation
 	
 	while(i>0){
 		btRigidBody* obj = m_robotObjects[i-1];
@@ -84,9 +84,8 @@ void robot::deleteRobotGroup()
 	}
 
 	m_robotShapes.clear();
-	arena->resetWorld();
- 	arena->toggleIdle(); // unpause simulation
-	arena->setDraw(true); // draw obstacles
+	arena->resetWorld();			// reset and unpause simulation
+	m_view->startDrawing(); 		// draw obstacles
 }
 
 btTransform robot::getRobotTransform()

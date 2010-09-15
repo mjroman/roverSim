@@ -58,12 +58,10 @@ void terrainTool::setScale(btVector3 scale)
     lineEdit_ScaleWidth->setText(QString::number(scale.x()));
     lineEdit_ScaleLength->setText(QString::number(scale.y()));
     lineEdit_ScaleHeight->setText(QString::number(scale.z()));
-	
-	emit scaleUpdate(m_scale);
 }
 
 void terrainTool::rescale()
-{   
+{
 	m_scale.setX(lineEdit_ScaleWidth->text().toFloat());
     m_scale.setY(lineEdit_ScaleLength->text().toFloat());
     m_scale.setZ(lineEdit_ScaleHeight->text().toFloat());

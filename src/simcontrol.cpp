@@ -40,21 +40,16 @@ glView(vw)
 	
 	glView->setWaypointList(&waypointList);
 	
-	simTimer = new QTimer(this);
-    connect(simTimer, SIGNAL(timeout()), this, SLOT(stepSim()));
-    this->startSimTimer(10);
-
 	connect(ground,SIGNAL(newTerrain()),blocks,SLOT(eliminate()));
 	connect(ground,SIGNAL(newTerrain()),this,SLOT(removeRover()));
 	connect(ground,SIGNAL(newTerrain()),this,SLOT(setWaypointGroundHeight()));
 	blocks->generate();
+	
+	arena->startSimTimer();
 }
 
 simControl::~simControl()
 {
-	simTimer->stop();
-	delete simTimer;
-	
 	this->removeRover();
 	
 	if(sky) delete sky;
@@ -65,19 +60,6 @@ simControl::~simControl()
 /////////////////////////////////////////
 // Simulation timing and gravity functions
 /////////////
-void simControl::startSimTimer(int msec)
-{
-    simTimer->start(msec);
-}
-void simControl::stopSimTimer()
-{
-    simTimer->stop();
-}
-void simControl::stepSim()
-{
-    if(sr2) sr2->updateRobot();
-    arena->simulatStep();
-}
 void simControl::stepTimevals(float tStep,float fixedtStep,int subSteps)
 {
 	//qDebug("tStep=%f fixed=%f sub=%d",tStep,fixedtStep,subSteps);
@@ -87,11 +69,15 @@ void simControl::stepTimevals(float tStep,float fixedtStep,int subSteps)
 }
 void simControl::pauseSim()
 {
-	arena->toggleIdle();
-	if(arena->isIdle())
-		glView->printText("Simulation Paused");
-	else
+	if(arena->isIdle()){
+		arena->startSimTimer();
 		glView->printText("Resumed Simulation");
+	}
+	else{
+		arena->stopSimTimer();
+		glView->printText("Simulation Paused");
+	}
+		
 }
 void simControl::setGravity(btVector3 g)
 {

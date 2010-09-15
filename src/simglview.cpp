@@ -30,21 +30,22 @@ GLfloat obstacleEmission[4] = { 0.02f,0.52f,0.51f, 0.f };
 GLfloat reflectance3[4] = { 0.0f, 0.9f, 0.9f, 1.0f };
 GLfloat ghostColor[4] = { 0.9f, 0.9f, 0.9f, 0.1f};
 
+#define GLFRAMERATE		50		// milliseconds between screen updates
 #define FONTFADERATE	0.01
 
 simGLView::simGLView(QWidget *parent) : QGLWidget(parent)
 {
     this->setMinimumSize(80,50);
 
-	m_paused = false;
     m_viewAngle = 1.0;
     m_eye = new camera(btVector3(-5,-5,5),btVector3(0,0,0));
 
     m_timer = new QTimer(this);
     connect(m_timer, SIGNAL(timeout()), this, SLOT(updateGL()));
-    m_timer->start(50);
 
     arena = physicsWorld::instance(); // get the physics world object
+
+	startDrawing();
 }
 
 QSize simGLView::sizeHint() const
@@ -60,14 +61,22 @@ void simGLView::printText(QString st)
 void simGLView::toggleDrawing()
 {
 	if(!m_paused){
-		m_paused = true;
-		m_timer->stop();
+		stopDrawing();
 		updateGL();
 	}
-	else{
-		m_paused = false;
-		m_timer->start(100);
-	}
+	else
+		startDrawing();
+}
+
+void simGLView::stopDrawing()
+{
+	m_paused = true;
+	m_timer->stop();
+}
+void simGLView::startDrawing()
+{
+	m_paused = false;
+	m_timer->start(GLFRAMERATE);
 }
 
 simGLView::~simGLView()
@@ -163,30 +172,28 @@ void simGLView::setViewAngle(float angle)
 
 void simGLView::paintGL()
 {
-    if(arena->canDraw()){
-        glClearColor(0.07,0.07,0.07,0);
+	glClearColor(0.07,0.07,0.07,0);
 		//glClearColor(0.5,0.5,0.5,0);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glLoadIdentity();
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glLoadIdentity();
 
-        m_eye->cameraUpdate();
+	m_eye->cameraUpdate();
 
-        glLightModelfv(GL_LIGHT_MODEL_AMBIENT, lightAmbient);
-        glLightfv(GL_LIGHT0, GL_DIFFUSE, lightZero);
-        glLightfv(GL_LIGHT0, GL_POSITION, lightZeroPos);
+	glLightModelfv(GL_LIGHT_MODEL_AMBIENT, lightAmbient);
+	glLightfv(GL_LIGHT0, GL_DIFFUSE, lightZero);
+	glLightfv(GL_LIGHT0, GL_POSITION, lightZeroPos);
 
-        glLightfv(GL_LIGHT1, GL_DIFFUSE, lightOne);
-        glLightfv(GL_LIGHT1, GL_POSITION, lightOnePos);
+	glLightfv(GL_LIGHT1, GL_DIFFUSE, lightOne);
+	glLightfv(GL_LIGHT1, GL_POSITION, lightOnePos);
 
-		drawWaypoints();
-		
-        for(int i=0;i<renderList.size();i++)
-            renderList[i]->renderGLObject();
-		
-		if(m_pickObject) drawPickingHalo();
-        overlayGL();
-        emit refreshView();
-    }
+	drawWaypoints();
+
+	for(int i=0;i<renderList.size();i++)
+		renderList[i]->renderGLObject();
+
+	if(m_pickObject) drawPickingHalo();
+	overlayGL();
+	emit refreshView();
 }
 
 void simGLView::overlayGL()

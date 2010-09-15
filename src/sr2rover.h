@@ -44,7 +44,6 @@ public:
     float       panAngle,tiltAngle;
 
 	void resetRobot();
-    void updateRobot();
     int leftEncoder(){ return m_leftEncoder; }
     int rightEncoder(){ return m_rightEncoder; }
     void setRightSpeed(float spd);
@@ -61,6 +60,9 @@ public:
 	float* getProfileLaserHeights();
     void toggleSensors();
     void renderGLObject();
+
+public slots:
+	void updateRobot();
 
 signals:
 	void updated();

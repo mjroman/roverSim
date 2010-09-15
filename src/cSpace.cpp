@@ -49,8 +49,8 @@ cSpace::~cSpace()
 
 void cSpace::deleteGhostGroup()
 {
-	arena->setDraw(false); 					// do not draw
- 	arena->idle();							// pause simulation
+	m_view->stopDrawing(); 					// do not draw
+ 	arena->stopSimTimer();					// pause simulation
 	
 	for(int i=0;i<m_ghostObjects.size();i++ )
 		arena->getDynamicsWorld()->removeCollisionObject(m_ghostObjects[i]);
@@ -65,15 +65,14 @@ void cSpace::deleteGhostGroup()
 	m_ghostObjects.clear();
 	m_ghostGroups.clear();
 	
-	arena->resetWorld();			
-	arena->toggleIdle(); 					// unpause simulation
-	arena->setDraw(true); 					// draw obstacles
+	arena->resetWorld();					// reset and unpause simulation
+	m_view->startDrawing(); 				// draw obstacles
 }
 
 void cSpace::deleteGhostObject(btCollisionObject* obj)
 {
-	arena->setDraw(false); // do not draw
- 	arena->idle();// pause simulation
+	m_view->stopDrawing(); 					// do not draw
+ 	arena->stopSimTimer();					// pause simulation
 	
 	arena->getDynamicsWorld()->removeCollisionObject(obj);
 	
@@ -82,9 +81,8 @@ void cSpace::deleteGhostObject(btCollisionObject* obj)
 	m_ghostShapes.removeAll(shape);
 	m_ghostObjects.removeAll(obj);
 	// should probably remove the pointer in the group list but this function is not used right now
-	arena->resetWorld();
-	arena->toggleIdle(); // unpause simulation
-	arena->setDraw(true); // draw obstacles
+	arena->resetWorld(); 					// reset and unpause simulation
+	m_view->startDrawing(); 				// draw obstacles
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -158,7 +156,7 @@ void cSpace::groupOverlapCSpace()
 	overlapGroup* groupA;
 	overlapGroup* groupB;
 
-	arena->simulatStep();		// run a simulation step to update all the newly added C-Space ghost shapes
+	arena->simulateStep();		// run a simulation step to update all the newly added C-Space ghost shapes
 	
 	int totalManifolds = arena->getDynamicsWorld()->getDispatcher()->getNumManifolds();	// get the number of objects that are in contact with another
 	
@@ -973,7 +971,7 @@ void cSpace::compoundCSpace()
 	btTransform	transB;
 	
 	// run a simulation step to update all the newly added C-Space ghost shapes
-	arena->simulatStep();
+	arena->simulateStep();
 	// get the number of objects that are in contact with another
 	int totalManifolds = arena->getDynamicsWorld()->getDispatcher()->getNumManifolds();
 
@@ -1038,23 +1036,22 @@ void cSpace::compoundCSpace()
 		}
 	}
 	
-	arena->setDraw(false); // do not draw
- 	arena->idle();// pause simulation
+	m_view->stopDrawing(); 		// do not draw
+ 	arena->stopSimTimer();		// pause simulation
 	// delete old base ghost objects that have been reshaped
 	for(i=0;i<oldObjectList.size();i++) {
 		arena->getDynamicsWorld()->removeCollisionObject(oldObjectList[i]);
 		m_ghostObjects.removeOne(oldObjectList[i]);
 	}
-	arena->resetWorld();
-	arena->toggleIdle(); // unpause simulation
-	arena->setDraw(true); // draw obstacles
+	arena->resetWorld();    	// unpause simulation
+	m_view->startDrawing(); 	// draw obstacles
 	oldObjectList.clear();
 }
 // trys to merge CSpace objects together by clipping overlapping portions, doesn't really work well
 void cSpace::mergeCSpace()
 {
 	// run a simulation step to update all the newly added C-Space ghost shapes
-	arena->simulatStep();
+	arena->simulateStep();
 	
 	int i;
 	int shapeChanged;

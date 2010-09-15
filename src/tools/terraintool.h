@@ -20,7 +20,7 @@ public:
     terrainTool(QWidget *parent = 0);
     ~terrainTool();
     void setScale(btVector3 scale);
-    btVector3 scale(){ return m_scale; }
+    btVector3 getScale(){ return m_scale; }
     float diameter(){ return m_toolDiameter; }
     float increment(){ return m_heightIncrement; }
 

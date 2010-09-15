@@ -137,6 +137,8 @@ tiltAngle(-15)
 	m_PRheights = new float[(int)(HALFPI/DEGTORAD(5))];
 	m_laserList << laser;
 	
+	connect(arena, SIGNAL(simCycled()),this,SLOT(updateRobot()));
+	
 	//mudParticle = new GLParticle(1,1,1,glView);
 	m_view->printText("New SR2 rover");
 }

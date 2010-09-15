@@ -7,7 +7,6 @@
 #include <QDataStream>
 #include "simcontrol.h"
 #include "ui_mainGUI.h"
-#include "tools/terraintool.h"
 #include "tools/waypointtool.h"
 
 class simControl;
@@ -65,7 +64,6 @@ enum serverCommand {
 
 			simControl		*SController;
 
-			terrainTool     m_tTool;
 			waypointTool	m_wTool;
 
 			void helpText();

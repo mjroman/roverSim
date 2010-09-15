@@ -20,13 +20,6 @@
 physicsWorld *physicsWorld::m_pWorld = 0;
 
 physicsWorld::physicsWorld()
-:
-m_idle(false),
-m_draw(false),
-m_dynamicsWorld(0),
-simTimeStep(0.1),
-simFixedTimeStep(0.001),
-simSubSteps(15)
 {
 	//collision configuration contains default setup for memory, collision setup
 	m_collisionConfiguration = new btDefaultCollisionConfiguration();
@@ -47,10 +40,18 @@ simSubSteps(15)
 	m_dynamicsWorld = new btDiscreteDynamicsWorld(m_dispatcher,m_broadphase,m_solver,m_collisionConfiguration);
 	
     m_dynamicsWorld->setGravity(btVector3(0,0,-9.8));
+
+	simTimeStep = 0.1;
+	simFixedTimeStep = 0.001;
+	simSubSteps = 15;
+	m_timer = new QTimer(this);
+    connect(m_timer, SIGNAL(timeout()), this, SLOT(simulateStep()));
 }
 
 physicsWorld::~physicsWorld()
 {
+	m_timer->stop();
+	delete m_timer;
     delete m_dynamicsWorld;
     delete m_solver;
     delete m_broadphase;
@@ -58,13 +59,31 @@ physicsWorld::~physicsWorld()
     delete m_collisionConfiguration;
 }
 
+/////////////////////////////////////////
+// Physics simulation timing methods
+/////////////
+void physicsWorld::startSimTimer(int msec)
+{
+	m_timer->start(msec);
+}
+void physicsWorld::stopSimTimer()
+{
+	m_timer->stop();
+}
+void physicsWorld::simulateStep()
+{
+    m_dynamicsWorld->stepSimulation(simTimeStep,simSubSteps,simFixedTimeStep);	///step the simulation
+	emit simCycled();
+}
+
 // resets the entire world. Stops drawing and simulation resets the broadphase
 // to the new size and resets the solver.
 void physicsWorld::resetWorld()
-{	
+{
     // reset the broadphase
     m_broadphase->resetPool(m_dispatcher);
     m_solver->reset();
+	m_timer->start();
 }
 
 // sets the gravity vector in m/s^2
@@ -73,16 +92,6 @@ void physicsWorld::setGravity(btVector3 gv)
 	m_dynamicsWorld->setGravity(gv);
 	for(int i=0; i<m_dynamicsWorld->getCollisionObjectArray().size(); i++)
 		m_dynamicsWorld->getCollisionObjectArray()[i]->activate();			// activate all objects incase they move relative to the new gravity
-}
-
-// Called to simulate a step in the physics world
-void physicsWorld::simulatStep()
-{
-    ///step the simulation
-    if (!m_idle)
-    {
-        m_dynamicsWorld->stepSimulation(simTimeStep,simSubSteps,simFixedTimeStep);
-    }
 }
 
 // used by convex shapes to create indices of triangles that openGL can use to draw the hull

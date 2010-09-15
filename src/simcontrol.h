@@ -26,7 +26,6 @@ class simControl : public QObject
 		SR2rover		*sr2;
 		autoCode		*autoNav;
 		pathTool		*m_pTool;
-		QTimer          *simTimer;
 	    double          delTime;
 		simGLView		*glView;
 		QList<WayPoint>	waypointList;
@@ -35,11 +34,10 @@ class simControl : public QObject
 		simControl(simGLView* vw=0);
 		~simControl();
 		
-		// simulation control functions
-		void startSimTimer(int msec);
-		void stopSimTimer();
-		
+		// simulation control functions	
+		void stepTimevals(float tStep,float fixedtStep,int subSteps);	
 		void pauseSim();
+		void setGravity(btVector3 g);
 	
 		// terrain control functions
 		terrain* getGround() { return ground; }
@@ -49,7 +47,6 @@ class simControl : public QObject
 		
 		// rover control functions
 		SR2rover* getRover() { return sr2; }
-		int	parameterRover(quint8 p);
 		
 		// autonomous rover control object
 		autoCode* getAutoNav() { return autoNav; }
@@ -59,10 +56,6 @@ class simControl : public QObject
 		void addWaypointAt(int uuid, float x,float y, WPstate st=WPstateNew, WPscience sc=WPscienceNone, int i = -1);
 		
 	public slots:
-		void stepSim();
-		void stepTimevals(float tStep,float fixedtStep,int subSteps);
-		void setGravity(btVector3 g);
-		
 		void setWaypointGroundHeight();
 		void addWaypointAt(WayPoint wp, int index);
 		void editWaypoint(int index);

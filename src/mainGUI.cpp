@@ -12,7 +12,6 @@
 MainGUI::MainGUI(QWidget *parent)
 :
 QMainWindow(parent),
-m_tTool(this),
 m_wTool(this)
 {
     setupUi(this);
@@ -43,7 +42,6 @@ m_wTool(this)
 	else
 		this->restoreGeometry(settings.value("MainWindowGeom").toByteArray());
 
-    m_tTool.hide();
 	m_wTool.hide();
 
 	SController = new simControl(glView);
@@ -84,22 +82,20 @@ m_wTool(this)
     connect(actionFlatten_Terrain, SIGNAL(triggered()), SController->getGround(), SLOT(flattenTerrain()));
    	connect(actionTerrain_Parameters, SIGNAL(triggered()), this, SLOT(showTerrainTool()));
 	connect(SController->getGround(), SIGNAL(newTerrain()), this, SLOT(terrainChanged()));
-	
-    // tool bar terrain scale update
-    connect(&m_tTool, SIGNAL(scaleUpdate(btVector3)), SController->getGround(), SLOT(rescaleTerrain(btVector3)));
-	// tool bar add waypoint update
+
+// tool bar add waypoint update
 	connect(&m_wTool, SIGNAL(addedWP(WayPoint,int)), SController, SLOT(addWaypointAt(WayPoint,int)));
 	connect(&m_wTool, SIGNAL(editedWP(int)), SController, SLOT(editWaypoint(int)));
 	connect(&m_wTool, SIGNAL(resetWP()), SController, SLOT(resetWaypointStates()));
+
 // Text Console
 	connect(glView, SIGNAL(outputText(QString)), textConsole, SLOT(append(QString)));
+    connect(glView, SIGNAL(refreshView()), this, SLOT(updateGUI()));
 	
 // server connections
 	//connect(&m_tcpServer, SIGNAL(newConnection()),this, SLOT(serverAcceptConnect()));
 	m_tcpSocket = NULL;
 	//this->serverStart();
-	
-    connect(glView, SIGNAL(refreshView()), this, SLOT(updateGUI()));
 	
 	this->terrainChanged();
 
@@ -160,16 +156,11 @@ void MainGUI::showSimTiming()
 void MainGUI::showTerrainTool()
 {
 	SController->getBlocks()->hideTool();
-
-	if(m_tTool.isVisible())
-		m_tTool.hide();
-	else
-		m_tTool.show();
+	SController->getGround()->showTool();
 }
 void MainGUI::showObstacleTool()
 {
-	m_tTool.hide();
-	
+	SController->getGround()->hideTool();
 	SController->getBlocks()->showTool();
 }
 
@@ -268,12 +259,12 @@ void MainGUI::keyPressEvent(QKeyEvent *event)
 		}
         case '[':
         {
-			SController->getGround()->terrainRaise(glView->getCamera()->cameraDirection(),m_tTool.increment(),m_tTool.diameter());
+			SController->getGround()->terrainEdit(glView->getCamera()->cameraDirection(),1);
             return;
         }
         case ']':
         {
-            SController->getGround()->terrainLower(glView->getCamera()->cameraDirection(),m_tTool.increment(),m_tTool.diameter());
+            SController->getGround()->terrainEdit(glView->getCamera()->cameraDirection(),-1);
             return;
         }
         case '-':
@@ -435,10 +426,6 @@ void MainGUI::updateGUI()
     labelCameraCrosshair->setText(QString("(%1 ,%2)").arg(glView->getCamera()->cameraDirection().x(),0,'f',1)
                                   .arg(glView->getCamera()->cameraDirection().y(),0,'f',1));
 }
-
-/////////////////////////////////////////
-// Save the World
-/////////////
 
 /////////////////////////////////////////
 // network functions

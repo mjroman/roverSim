@@ -21,6 +21,8 @@ class simGLView : public QGLWidget
 		void printText(QString st);
 		void overlayString(QString s);
 		void toggleDrawing();
+		void stopDrawing();
+		void startDrawing();
 
 		camera* getCamera() { return m_eye; }
 		btVector3 getCameraPosition() { return m_eye->cameraPosition(); }
