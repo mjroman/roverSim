@@ -5,6 +5,7 @@
 #include "sr2rover.h"
 #include "autoCode.h"
 #include "pathPlan.h"
+#include "tools/waypointtool.h"
 #include "tools/pathtool.h"
 #include "simGLView.h"
 
@@ -22,7 +23,8 @@ simControl::simControl(simGLView* vw)
 sky(NULL),
 sr2(NULL),
 autoNav(NULL),
-m_pTool(NULL),
+wTool(NULL),
+pTool(NULL),
 glView(vw)
 {
    	arena = physicsWorld::instance(); // get the physics world object
@@ -34,16 +36,16 @@ glView(vw)
 	
 	sky = new skydome(glView);
 	
-	// add a few test waypoints
-	addWaypointAt(657,50.0,50.0);
-	addWaypointAt(658,1.0,14.0);
+	wTool = new waypointTool(ground, glView->parentWidget());
+	glView->setWaypointList(wTool->getList());					// set the waypoint list to be drawn
 	
-	glView->setWaypointList(&waypointList);
+	// add a few test waypoints
+	addWaypoint(657,50.0,50.0);
+	addWaypoint(658,1.0,14.0);
 	
 	connect(ground,SIGNAL(newTerrain()),blocks,SLOT(eliminate()));
 	connect(ground,SIGNAL(newTerrain()),this,SLOT(removeRover()));
-	connect(ground,SIGNAL(newTerrain()),this,SLOT(setWaypointGroundHeight()));
-	blocks->generate();
+	connect(ground,SIGNAL(newTerrain()),this,SLOT(setAllWaypointHeights()));
 	
 	arena->startSimTimer();
 }
@@ -52,6 +54,7 @@ simControl::~simControl()
 {
 	this->removeRover();
 	
+	if(wTool) delete wTool;
 	if(sky) delete sky;
 	if(blocks) delete blocks;
 	if(ground) delete ground;
@@ -91,26 +94,26 @@ void simControl::newRover(QWidget* parent, btVector3 start)
 {
 	if(!sr2) sr2 = new SR2rover(glView);
 	
-	this->resetWaypointStates();
+	wTool->resetStates();
 	
 	start.setZ(ground->terrainHeightAt(btVector3(1,1,0)));
 	sr2->placeRobotAt(start);
 	
-	autoNav = new autoCode(sr2, &waypointList, parent);
-	m_pTool = new pathTool(sr2, blocks, glView);
-	m_pTool->setGoalPoint(autoNav->getCurrentWaypoint().position + btVector3(0,0,0.01));
-	connect(blocks, SIGNAL(obstaclesRemoved()), m_pTool, SLOT(resetPaths()));
-	connect(this, SIGNAL(pathView(int)),m_pTool, SLOT(stepOnPath(int)));
+	autoNav = new autoCode(sr2, wTool->getList(), parent);
+	pTool = new pathTool(sr2, blocks, glView);
+	pTool->setGoalPoint(autoNav->getCurrentWaypoint().position + btVector3(0,0,0.01));
+	connect(blocks, SIGNAL(obstaclesRemoved()), pTool, SLOT(resetPaths()));
+	connect(this, SIGNAL(pathView(int)),pTool, SLOT(stepOnPath(int)));
 	glView->setFocus(Qt::OtherFocusReason);
 }
 bool simControl::removeRover()
 {
     if(sr2){
-		m_pTool->disconnect();
-		delete m_pTool;
+		pTool->disconnect();
+		delete pTool;
 		delete autoNav;
         delete sr2;
-		m_pTool = 0;
+		pTool = 0;
 		autoNav = 0;
         sr2 = 0;
         return true;
@@ -123,7 +126,7 @@ void simControl::showNavTool()
 }
 void simControl::showPathTool()
 {
-	if(m_pTool) m_pTool->show();
+	if(pTool) pTool->show();
 }
 void simControl::showPathView(int dir)
 {
@@ -131,30 +134,9 @@ void simControl::showPathView(int dir)
 }
 
 /////////////////////////////////////////
-// Waypoint editing functions
+// Waypoint access functions
 /////////////
-void simControl::setWaypointGroundHeight()				// sets the waypoint Z height based on height of terrain at wp location
-{
-	int i=0;
-	while(i < waypointList.size()){
-		// set the z position of the waypoint for visability
-		waypointList[i].position.setZ(ground->terrainHeightAt(waypointList[i].position));
-		i++;
-	}
-}
-void simControl::editWaypoint(int index)				// if a waypoint is moved recalculate its Z position
-{
-	WayPoint wp = waypointList[index];
-	wp.position.setZ(ground->terrainHeightAt(wp.position));
-	waypointList.replace(index,wp);
-}
-void simControl::addWaypointAt(WayPoint wp, int index)
-{
-	wp.position.setZ(ground->terrainHeightAt(wp.position));
-	if(index<0) waypointList << wp;
-	else waypointList.insert(index,wp);
-}
-void simControl::addWaypointAt(int uuid, float x,float y, WPstate st, WPscience sc,int i)
+void simControl::addWaypoint(int uuid, float x,float y, WPstate st, WPscience sc)
 {
 	WayPoint wp;
 	wp.uuid = uuid;
@@ -163,16 +145,9 @@ void simControl::addWaypointAt(int uuid, float x,float y, WPstate st, WPscience 
 	wp.position.setZ(ground->terrainHeightAt(wp.position));
 	wp.state = st;
 	wp.science = sc;
-	if(i<0)waypointList << wp;
-	else waypointList.insert(i,wp);
+	wTool->addWaypoint(wp);
 }
-void simControl::resetWaypointStates()					// reset all the waypoint states to NEW
+void simControl::showWaypointTool()
 {
-	WayPoint wp;
-	for(int i = 0; i < waypointList.size(); ++i)
-	{
-		wp = waypointList[i];
-		wp.state = WPstateNew;
-		waypointList.replace(i,wp);
-	}
+	wTool->show();
 }

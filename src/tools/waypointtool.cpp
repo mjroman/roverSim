@@ -1,14 +1,16 @@
 #include "waypointtool.h"
+#include "../terrain.h"
 
-waypointTool::waypointTool(QWidget *parent)
+waypointTool::waypointTool(terrain *t,QWidget *parent)
 :
-QWidget(parent)
+QWidget(parent),
+ground(t)
 {
 	setupUi(this);
 	QWidget::setWindowFlags(Qt::Window | Qt::WindowStaysOnTopHint);
 	setWindowTitle("Waypoint Editor");
 	
-	QSettings settings(QSettings::IniFormat,QSettings::UserScope,"OUengineering","Rover_Sim");
+	QSettings settings(QSettings::IniFormat,QSettings::UserScope,"OUengineering","Rover_Sim");	// set tool window position
 	if(!QFile::exists(settings.fileName()) || !settings.contains("WaypointWindowGeom")){
 		move(20,350);
 		settings.setValue("WaypointWindowGeom", saveGeometry());
@@ -16,17 +18,24 @@ QWidget(parent)
 	else
 		this->restoreGeometry(settings.value("WaypointWindowGeom").toByteArray());
 	
-	cIndex = 0;
 	waypointScienceKeyMapping();
-	setComboScienceList();
+	waypointStateKeyMapping();
 	
-	connect(lineEditPositionX, SIGNAL(editingFinished()), this, SLOT(edited()));
-	connect(lineEditPositionY, SIGNAL(editingFinished()), this, SLOT(edited()));
+	setComboScienceList();
+	setComboStateList();
+	
+	connect(ground, SIGNAL(newTerrain()), this, SLOT(setHeights()));
+	connect(comboWpSelect, SIGNAL(currentIndexChanged(int)), this, SLOT(refreshGUI(int)));
+	connect(lineEditUuid, SIGNAL(editingFinished()), this, SLOT(uuidEdited()));
+	connect(lineEditPositionX, SIGNAL(editingFinished()), this, SLOT(positionEdited()));
+	connect(lineEditPositionY, SIGNAL(editingFinished()), this, SLOT(positionEdited()));
 	connect(buttonReset, SIGNAL(clicked()), this, SLOT(resetStates()));
+	enableGUI(false);
 }
 
 waypointTool::~waypointTool()
 {
+	wayList.clear();
 	QSettings settings(QSettings::IniFormat,QSettings::UserScope,"OUengineering","Rover_Sim");
 	settings.setValue("WaypointWindowGeom", saveGeometry());
 }
@@ -42,13 +51,16 @@ void waypointTool::show()
 	QWidget::show();
 }
 
-void waypointTool::raiseWaypointEditor(QList<WayPoint>* list)
+// reset all the waypoint states to NEW
+void waypointTool::resetStates()
 {
-	WPlist = list;
-	updateComboWaypointList();
-	show();
+	for(int i = 0; i < wayList.size(); ++i)
+		wayList[i].state = WPstateNew;
 }
 
+/////////////////////////////////////////
+// Combo box mapping methods
+/////////////
 void waypointTool::waypointScienceKeyMapping()
 {
 	WSmap[WPscienceNone] = "No Science";
@@ -56,6 +68,14 @@ void waypointTool::waypointScienceKeyMapping()
 	WSmap[WPscienceSpectra] = "Spectra";
 	WSmap[WPsciencePanoramaAndSpectra] = "Pan and Spectra";
 }
+void waypointTool::waypointStateKeyMapping()
+{
+	WPmap[WPstateNew] = "To be visited";
+	WPmap[WPstateOld] = "Visited";
+	WPmap[WPstateCurrent] = "Driving to now";
+	WPmap[WPstateSkipped] = "Skipped";
+}
+
 void waypointTool::setComboScienceList()
 {
 	QMapIterator<int, QString> i(WSmap);
@@ -65,127 +85,111 @@ void waypointTool::setComboScienceList()
 		comboScience->addItem(i.value(), QVariant(i.key()));
 	}
 }
-void waypointTool::waypointStateKeyMapping()
+void waypointTool::setComboStateList()
 {
-	WPmap[WPstateNew] = "To be visited";
-	WPmap[WPstateOld] = "Visited";
-	WPmap[WPstateCurrent] = "Driving to now";
-	WPmap[WPstateSkipped] = "Skipped";
-}
-void waypointTool::updateComboWaypointList() // clears then fills the combobox
-{
-	comboWpSelect->clear();
-	if(WPlist->isEmpty()){
-		cIndex = 0;
-		buttonDelete->setEnabled(false);
-		lineEditUuid->setText(QString::number(1));
-	}
-	else{
-		int first = WPlist->at(0).uuid;
-		for(int i = 0; i < WPlist->size(); ++i)
-		{
-			WayPoint wp = WPlist->at(i);
-			wp.uuid = i+first;
-			WPlist->replace(i,wp);
-			comboWpSelect->addItem(QString::number(WPlist->at(i).uuid),QVariant(i));
-		}
-		on_comboWpSelect_activated(cIndex);
-		comboWpSelect->setCurrentIndex(cIndex);		
+	QMapIterator<int, QString> i(WPmap);
+	
+	while(i.hasNext()){
+		i.next();
+		comboState->addItem(i.value(), QVariant(i.key()));
 	}
 }
 
-void waypointTool::on_comboWpSelect_activated(int index)
+void waypointTool::on_comboScience_activated(int s)
 {
-	cIndex = index;
-	WayPoint wp = WPlist->at(index);
+	int index = comboWpSelect->currentIndex();
+	wayList[index].science = (WPscience)s;
+}
+void waypointTool::on_comboState_activated(int s)
+{
+	int index = comboWpSelect->currentIndex();
+	wayList[index].state = (WPstate)s;
+}
+
+void waypointTool::enableGUI(bool state)
+{
+	buttonDelete->setEnabled(state);
+	lineEditUuid->setEnabled(state);
+	comboScience->setEnabled(state);
+	comboState->setEnabled(state);
+	lineEditPositionX->setEnabled(state);
+	lineEditPositionY->setEnabled(state);
+}
+// updates the GUI when the waypoint combo box is activated
+void waypointTool::refreshGUI(int index)
+{
+	if(index < 0) return;
+	
+	WayPoint wp = wayList[index];
 	lineEditUuid->setText(QString::number(wp.uuid));
 	lineEditPositionX->setText(QString::number(wp.position.x(),'f',3));
 	lineEditPositionY->setText(QString::number(wp.position.y(),'f',3));
 	comboScience->setCurrentIndex(wp.science);
+	comboState->setCurrentIndex(wp.state);
+}
+
+void waypointTool::addWaypoint(WayPoint wp)
+{
+	if(wayList.isEmpty())
+		enableGUI(true);
+		
+	int index = comboWpSelect->currentIndex() + 1;							// add waypoints after the selected item
+	wayList.insert(index, wp);												// add the waypoint to the list
+	comboWpSelect->insertItem(index,QString::number(wayList[index].uuid));	// add the item to the combo box
+	comboWpSelect->setCurrentIndex(index);									// signals to refresh the GUI as well
 }
 
 void waypointTool::on_buttonAdd_clicked()
 {
-	if(WPlist->isEmpty()) buttonDelete->setEnabled(true);
-		
-	cIndex = comboWpSelect->currentIndex();
-	WayPoint wp;
-	
-	wp.uuid = lineEditUuid->text().toInt();	
+	WayPoint wp;	
+	wp.uuid = lineEditUuid->text().toInt() + 1;	
 	wp.position.setX(lineEditPositionX->text().toFloat());
 	wp.position.setY(lineEditPositionY->text().toFloat());
-	wp.position.setZ(0);
+	wp.position.setZ(ground->terrainHeightAt(wp.position));
 	wp.state = WPstateNew;
 	wp.science = WPscienceNone;
 	
-	cIndex++;
-	emit addedWP(wp,cIndex);
-	updateComboWaypointList();
+	addWaypoint(wp);
 }
 
 void waypointTool::on_buttonDelete_clicked()
 {
-	cIndex--;
-	if(cIndex < 0) cIndex = 0;
-	WPlist->removeAt(comboWpSelect->currentIndex());
-	updateComboWaypointList();
+	int index = comboWpSelect->currentIndex();
+	wayList.removeAt(index);						// remove the waypoint from the list
+	comboWpSelect->removeItem(index);				// remove the item fromt the combo box
+	
+	if(wayList.isEmpty()){
+		enableGUI(false);
+		return;
+	}
+	
+	index --;
+	if(index < 0) index = 0;
+	comboWpSelect->setCurrentIndex(index);
 }
 
-void waypointTool::on_comboScience_activated(int index)
+void waypointTool::uuidEdited()
 {
-	this->edited();
+	int index = comboWpSelect->currentIndex();
+	wayList[index].uuid = lineEditUuid->text().toInt();
+	comboWpSelect->setItemText(index, QString::number(wayList[index].uuid));
 }
-
-void waypointTool::edited()
+void waypointTool::positionEdited()
 {
-	if(WPlist->isEmpty()) return;
-	WayPoint wp = WPlist->at(cIndex);
-	wp.science = (WPscience)comboScience->currentIndex();
-	wp.position.setX(lineEditPositionX->text().toFloat());
-	wp.position.setY(lineEditPositionY->text().toFloat());
-	WPlist->replace(cIndex,wp);
-	emit editedWP(cIndex);
+	int index = comboWpSelect->currentIndex();
+	btVector3 pos;
+	
+	pos.setX(lineEditPositionX->text().toFloat());
+	pos.setY(lineEditPositionY->text().toFloat());
+	pos.setZ(ground->terrainHeightAt(pos));
+	wayList[index].position = pos;
 }
 
-void waypointTool::resetStates()
+void waypointTool::setHeights()
 {
-	emit resetWP();
+	for(int i=0; i < wayList.size(); i++){
+		btVector3 pos = wayList[i].position;
+		pos.setZ(ground->terrainHeightAt(pos));	// set the z position of the waypoint for visability
+		wayList[i].position = pos;
+	}
 }
-
-// void navigationTool::displayCurrentWaypoint()
-// {
-// 	currentWaypointDisplay = true;
-// 	updateGUI();
-// }
-// 
-// void navigationTool::on_comboWpSelect_activated(int index)
-// {
-// 	updateGUI();
-// 	if(buttonRunning->isChecked()) QTimer::singleShot(5000,this, SLOT(displayCurrentWaypoint()));
-// }
-// 
-// void navigationTool::updateGUI()
-// {
-// 	labelState->setText(RSmap[state]);
-// 	label_error->setText(REmap[error]);
-// 	label_wpCount->setText(QString::number(wpIndex));
-// 	
-// 	if(blockedDirection == 0.0) label_obstDirection->setText("No Obstacles");
-// 	else label_obstDirection->setText(QString::number(blockedDirection,'f',4));
-// 	
-// 	int i;
-// 	if(currentWaypointDisplay) {
-// 		i = wpIndex;
-// 		combo_wpSelect->setCurrentIndex(i);
-// 	}
-// 	else i = combo_wpSelect->currentIndex();
-// 	
-// 	WayPoint w = sr2->waypointList[i];
-// 	label_wpState->setText(WPmap[w.state]);
-// 	label_wpScience->setText(WSmap[w.science]);
-// 	label_wpPosition->setText(QString("(%1, %2, %3)")
-// 								.arg(w.position.x,0,'f',2)
-// 								.arg(w.position.y,0,'f',2)
-// 								.arg(w.position.z,0,'f',2));
-// 	label_wpDistance->setText(QString::number(distanceToWaypoint(i),'f',3));
-// }

@@ -11,8 +11,7 @@
 
 MainGUI::MainGUI(QWidget *parent)
 :
-QMainWindow(parent),
-m_wTool(this)
+QMainWindow(parent)
 {
     setupUi(this);
 
@@ -42,9 +41,8 @@ m_wTool(this)
 	else
 		this->restoreGeometry(settings.value("MainWindowGeom").toByteArray());
 
-	m_wTool.hide();
-
 	SController = new simControl(glView);
+	//SController->getBlocks()->generate();
 	
     // menu bar connections
 // view menu
@@ -55,7 +53,7 @@ m_wTool(this)
 
 // rover menu
 	connect(actionNew_Rover, SIGNAL(triggered()), this, SLOT(newRover()));
-	connect(actionShow_Waypoint_Editor, SIGNAL(triggered()), this, SLOT(waypointSetup()));
+	connect(actionShow_Waypoint_Editor, SIGNAL(triggered()), SController, SLOT(showWaypointTool()));
 	connect(actionShow_Rover_Info, SIGNAL(triggered()), SController, SLOT(showNavTool()));
 	connect(actionShow_Path_Info, SIGNAL(triggered()), SController, SLOT(showPathTool()));
 	actionShow_Rover_Info->setEnabled(false);
@@ -82,11 +80,6 @@ m_wTool(this)
     connect(actionFlatten_Terrain, SIGNAL(triggered()), SController->getGround(), SLOT(flattenTerrain()));
    	connect(actionTerrain_Parameters, SIGNAL(triggered()), this, SLOT(showTerrainTool()));
 	connect(SController->getGround(), SIGNAL(newTerrain()), this, SLOT(terrainChanged()));
-
-// tool bar add waypoint update
-	connect(&m_wTool, SIGNAL(addedWP(WayPoint,int)), SController, SLOT(addWaypointAt(WayPoint,int)));
-	connect(&m_wTool, SIGNAL(editedWP(int)), SController, SLOT(editWaypoint(int)));
-	connect(&m_wTool, SIGNAL(resetWP()), SController, SLOT(resetWaypointStates()));
 
 // Text Console
 	connect(glView, SIGNAL(outputText(QString)), textConsole, SLOT(append(QString)));
@@ -192,11 +185,6 @@ void MainGUI::newRover()
 	menuRoverView->setEnabled(state);
 	actionShow_Rover_Info->setEnabled(state);
 	actionShow_Path_Info->setEnabled(state);
-}
-
-void MainGUI::waypointSetup()
-{
-	m_wTool.raiseWaypointEditor(SController->getWaypointList());
 }
 
 void MainGUI::cameraFreeView(){glView->getCamera()->cameraFreeView(); glView->setViewAngle(1.0);}

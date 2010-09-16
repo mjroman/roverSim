@@ -5,39 +5,43 @@
 #include "ui_waypointtool.h"
 #include "../utility/structures.h"
 
+class terrain;
+
 class waypointTool : public QWidget, private Ui::waypointtool 
 {
 	Q_OBJECT
 	public:
-		waypointTool(QWidget *parent = 0);
+		waypointTool(terrain *t,QWidget *parent = 0);
 		~waypointTool();
-		void updateComboWaypointList();
-
+		
+		QList<WayPoint>* getList() { return &wayList; }
+		void addWaypoint(WayPoint);
+		
 	public slots:
 		void show();
+		void resetStates();
+		void refreshGUI(int index);
 		void on_buttonAdd_clicked();
 		void on_buttonDelete_clicked();
-		void on_comboWpSelect_activated(int index);
-		void on_comboScience_activated(int index);
-		void raiseWaypointEditor(QList<WayPoint>* list);
-		void edited();
-		void resetStates();
-
-	signals:
-		void addedWP(WayPoint wp,int index);
-		void editedWP(int index);
-		void resetWP();
+		void uuidEdited();
+		void positionEdited();
+		void on_comboScience_activated(int s);
+		void on_comboState_activated(int s);
+		void setHeights();
 
 	private:
-		int					cIndex;
+		terrain				*ground;
+		QList<WayPoint>		wayList;
+		int					currentIndex;
 		bool				currentWaypointDisplay;
-		QList<WayPoint>		*WPlist;
 		
+		QMap<int, QString>  WPmap;	// waypoint state map
+		QMap<int, QString>	WSmap;	// waypoint science map
 		void waypointScienceKeyMapping();
 		void waypointStateKeyMapping();
 		void setComboScienceList();
-		QMap<int, QString>  WPmap;	// waypoint state map
-		QMap<int, QString>	WSmap;	// waypoint science map
+		void setComboStateList();
+		void enableGUI(bool state);
 };
 
 #endif //WAYPOINTTOOL_H

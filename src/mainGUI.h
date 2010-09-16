@@ -7,7 +7,6 @@
 #include <QDataStream>
 #include "simcontrol.h"
 #include "ui_mainGUI.h"
-#include "tools/waypointtool.h"
 
 class simControl;
 
@@ -39,7 +38,6 @@ enum serverCommand {
 			void terrainChanged();
 
 			void newRover();
-			void waypointSetup();
 
 			void cameraFreeView();
 			void cameraRoverCenter();
@@ -63,8 +61,6 @@ enum serverCommand {
 			QDataStream		outStream;
 
 			simControl		*SController;
-
-			waypointTool	m_wTool;
 
 			void helpText();
 			void serverStart();

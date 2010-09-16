@@ -33,7 +33,7 @@ class simGLView : public QGLWidget
 		void registerGLObject(simGLObject *obj);
 		void unregisterGLObject(simGLObject *obj);
 
-		void setWaypointList(QList<WayPoint> *list) { WPlist = list; };
+		void setWaypointList(QList<WayPoint> *list) { WPlist = list; }
 		void toggleFog();
 		btVector3 mouseRayTo(QPoint mousePoint);
 		void setPickObject(pickValue* pk){ m_pickObject = pk; }
@@ -79,9 +79,9 @@ class simGLView : public QGLWidget
 		QPoint              m_lastMousePoint;
 		QList<simGLObject*> renderList;
 		QList<GLuint>		m_textureList;
-		QList<WayPoint>		*WPlist;
+		QList<WayPoint>*	WPlist;
 		pickValue*			m_pickObject;
 		QList<renderString> m_overlayStringList;
-	};
+};
 
 #endif // SIMGLVIEW_H
