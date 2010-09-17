@@ -56,6 +56,13 @@ void waypointTool::resetStates()
 {
 	for(int i = 0; i < wayList.size(); ++i)
 		wayList[i].state = WPstateNew;
+	refreshGUI(comboWpSelect->currentIndex());
+}
+
+void waypointTool::on_buttonSetCurrent_clicked()
+{
+	if(wayList.isEmpty()) return;
+	emit currentWaypoint(comboWpSelect->currentIndex());
 }
 
 /////////////////////////////////////////
@@ -143,8 +150,8 @@ void waypointTool::on_buttonAdd_clicked()
 {
 	WayPoint wp;	
 	wp.uuid = lineEditUuid->text().toInt() + 1;	
-	wp.position.setX(lineEditPositionX->text().toFloat());
-	wp.position.setY(lineEditPositionY->text().toFloat());
+	wp.position.setX(lineEditPositionX->text().toFloat()+0.5);
+	wp.position.setY(lineEditPositionY->text().toFloat()+0.5);
 	wp.position.setZ(ground->terrainHeightAt(wp.position));
 	wp.state = WPstateNew;
 	wp.science = WPscienceNone;

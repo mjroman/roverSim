@@ -21,17 +21,6 @@ QMainWindow(parent)
 	QCoreApplication::setOrganizationDomain("i-borg.engr.ou.edu");
 	QCoreApplication::setApplicationName("Rover_Sim");
 
-	QDir temp(QCoreApplication::applicationDirPath());
-	temp.cdUp();
-	QDir::setCurrent(temp.path());										// set the current directory of the application
-	temp.cd("../..");
-	
-	textConsole->append(temp.absolutePath());
-	if(QFile::exists(temp.absolutePath() + "/mission/config.txt")){
-		textConsole->append("found config");							// check for config file
-	}
-	
-	
 	QSettings settings(QSettings::IniFormat,QSettings::UserScope,"OUengineering","Rover_Sim");
 	if(!QFile::exists(settings.fileName()) || !settings.contains("MainWindowGeom")){
 		move(240,22);
@@ -40,10 +29,13 @@ QMainWindow(parent)
 	}
 	else
 		this->restoreGeometry(settings.value("MainWindowGeom").toByteArray());
-
-	SController = new simControl(glView);
-	//SController->getBlocks()->generate();
+		
+	QDir temp(QCoreApplication::applicationDirPath());
+	temp.cdUp();
+	QDir::setCurrent(temp.path());										// set the current directory of the application
 	
+	SController = new simControl(glView);
+		
     // menu bar connections
 // view menu
 	connect(actionFullScreen, SIGNAL(triggered()), this, SLOT(screenSize()));
@@ -89,6 +81,21 @@ QMainWindow(parent)
 	//connect(&m_tcpServer, SIGNAL(newConnection()),this, SLOT(serverAcceptConnect()));
 	m_tcpSocket = NULL;
 	//this->serverStart();
+
+// check for config file	
+	temp.cd("../..");
+	textConsole->append(temp.absolutePath());
+	if(QFile::exists(temp.absolutePath() + "/mission/config.txt")){
+		textConsole->append("found config");
+		// emit a signal to sim controller						
+	}
+	// else{
+	// 		// toss out a few obstacles
+	// 		SController->getBlocks()->generate();
+	// 		// add a few test waypoints
+	// 		SController->addWaypoint(657,50.0,50.0);
+	// 		SController->addWaypoint(658,1.0,14.0);
+	// 	}
 	
 	this->terrainChanged();
 

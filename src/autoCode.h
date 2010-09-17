@@ -21,6 +21,7 @@ class autoCode : public QWidget, private Ui::navigationtool
 		void closeEvent(QCloseEvent *event);
 		void goAutonomous();
 		void stopAutonomous(RoverState rs);
+		void setCurrentWaypointIndex(int index);
 		void moveToWaypoint();
 		void quickObstacleCheck();
 		void on_buttonRunning_clicked(bool checked = false);

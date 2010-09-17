@@ -89,6 +89,7 @@ class pathTool : public QWidget, private Ui::pathtool
 		void on_buttonAdd_clicked();
 		void on_buttonDelete_clicked();
 		void on_buttonGenerate_clicked();
+		void on_buttonGenAll_clicked();
 		void processPath(int x);
 		void updateTool();
 		void updateCompEfficiency(float gLength);
@@ -99,7 +100,7 @@ class pathTool : public QWidget, private Ui::pathtool
 		
 	signals:
 		void changeBackground(int,QBrush);
-		void computePaths(int);
+		void computePath(int);
 	
 	private:
 		robot				*rover;
@@ -108,6 +109,7 @@ class pathTool : public QWidget, private Ui::pathtool
 		QList<pathPlan*>	pathList;
 		btVector3			goalPoint;
 		int					m_selectedPath;
+		bool				m_allPaths;
 		QSound				m_foundSound;
 		int					m_runCount;
 		QString				m_filename;

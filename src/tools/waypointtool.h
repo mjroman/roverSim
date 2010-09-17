@@ -20,6 +20,7 @@ class waypointTool : public QWidget, private Ui::waypointtool
 	public slots:
 		void show();
 		void resetStates();
+		void on_buttonSetCurrent_clicked();
 		void refreshGUI(int index);
 		void on_buttonAdd_clicked();
 		void on_buttonDelete_clicked();
@@ -28,6 +29,8 @@ class waypointTool : public QWidget, private Ui::waypointtool
 		void on_comboScience_activated(int s);
 		void on_comboState_activated(int s);
 		void setHeights();
+	signals:
+		void currentWaypoint(int);
 
 	private:
 		terrain				*ground;

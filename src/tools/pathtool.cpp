@@ -294,7 +294,7 @@ m_xmlDoc( "roverSimDoc" )
 	QSettings settings(QSettings::IniFormat,QSettings::UserScope,"OUengineering","Rover_Sim");
 	if(!QFile::exists(settings.fileName()) || !settings.contains("PathToolWindowGeom")){
 		move(20,540);
-		resize(300,150);
+		resize(380,150);
 		settings.setValue("PathToolWindowGeom", saveGeometry());
 	}
 	else
@@ -309,7 +309,7 @@ m_xmlDoc( "roverSimDoc" )
 	checkBoxSave->setToolTip("Check this box BEFORE generating paths to save them!");
 	
 	connect(this,SIGNAL(changeBackground(int,QBrush)),this,SLOT(setRowBackground(int,QBrush)));
-	connect(this,SIGNAL(computePaths(int)),this,SLOT(processPath(int)));
+	connect(this,SIGNAL(computePath(int)),this,SLOT(processPath(int)));
 	connect(pathTableWidget, SIGNAL(cellClicked(int,int)),this,SLOT(tableDataChange(int,int)));
 	connect(pathTableWidget, SIGNAL(cellDoubleClicked(int,int)),this,SLOT(tableDataEdit(int,int)));	
 	show();
@@ -405,7 +405,7 @@ void pathTool::on_buttonAdd_clicked()
 	if(!pathList.isEmpty() && path->getRange() == 0){
 		if(pathList.last()->getRange() == 0) return;
 		selected = pathList.size();
-		pathList << path;											// add the gods eye path last
+		pathList << path;											// add the infinite range path last
 	}
 	else{
 		selected = m_selectedPath;
@@ -474,17 +474,29 @@ void pathTool::on_buttonDelete_clicked()
 void pathTool::on_buttonGenerate_clicked()
 {
 	if(pathList.isEmpty()) return;
+	pathList[m_selectedPath]->reset();
+	
+	m_allPaths = false;
+	emit changeBackground(m_selectedPath,QBrush(QColor("springgreen")));
+	emit computePath(m_selectedPath);
+}
+
+void pathTool::on_buttonGenAll_clicked()
+{
+	if(pathList.isEmpty()) return;
 	resetPaths();
 	if(!initSaveFile()) return;
 	
+	m_allPaths = true;
 	emit changeBackground(0,QBrush(QColor("springgreen")));
-	emit computePaths(0);
+	emit computePath(0);
 }
 
 void pathTool::processPath(int x)
 {
 	qApp->processEvents();
 	if(x >= pathList.size()){																		// finished computing paths
+		m_allPaths = false;
 		QSound::play(QDir::currentPath() + "/Resources/sounds/singleBell.wav");
 		if(pathList.last()->getRange() == 0)
 			updateCompEfficiency(pathList.last()->getShortestLength());								// updates comparison efficiency and writes data to file
@@ -506,10 +518,13 @@ void pathTool::processPath(int x)
 		emit changeBackground(x,QBrush(QColor(Qt::yellow)));
 	else
 		emit changeBackground(x,QBrush(QColor("lightsteelblue")));
-	x++;
-	emit changeBackground(x,QBrush(QColor("springgreen")));
-	if(x < pathList.size()) pathTableWidget->scrollToItem(pathTableWidget->item(x,0));				// scroll the table view down
-	emit computePaths(x);
+		
+	if(m_allPaths){																						// if all paths are being generated
+		x++;																							// increment to the next path in the list
+		emit changeBackground(x,QBrush(QColor("springgreen")));
+		if(x < pathList.size()) pathTableWidget->scrollToItem(pathTableWidget->item(x,0));				// scroll the table view down
+		emit computePath(x);
+	}
 }
 
 // update the data in the table, this is called after the paths are generated

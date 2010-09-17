@@ -39,10 +39,6 @@ glView(vw)
 	wTool = new waypointTool(ground, glView->parentWidget());
 	glView->setWaypointList(wTool->getList());					// set the waypoint list to be drawn
 	
-	// add a few test waypoints
-	addWaypoint(657,50.0,50.0);
-	addWaypoint(658,1.0,14.0);
-	
 	connect(ground,SIGNAL(newTerrain()),blocks,SLOT(eliminate()));
 	connect(ground,SIGNAL(newTerrain()),this,SLOT(removeRover()));
 	connect(ground,SIGNAL(newTerrain()),this,SLOT(setAllWaypointHeights()));
@@ -102,6 +98,7 @@ void simControl::newRover(QWidget* parent, btVector3 start)
 	autoNav = new autoCode(sr2, wTool->getList(), parent);
 	pTool = new pathTool(sr2, blocks, glView);
 	pTool->setGoalPoint(autoNav->getCurrentWaypoint().position + btVector3(0,0,0.01));
+	connect(wTool, SIGNAL(currentWaypoint(int)), autoNav, SLOT(setCurrentWaypointIndex(int)));
 	connect(blocks, SIGNAL(obstaclesRemoved()), pTool, SLOT(resetPaths()));
 	connect(this, SIGNAL(pathView(int)),pTool, SLOT(stepOnPath(int)));
 	glView->setFocus(Qt::OtherFocusReason);
@@ -109,6 +106,7 @@ void simControl::newRover(QWidget* parent, btVector3 start)
 bool simControl::removeRover()
 {
     if(sr2){
+		autoNav->disconnect();
 		pTool->disconnect();
 		delete pTool;
 		delete autoNav;

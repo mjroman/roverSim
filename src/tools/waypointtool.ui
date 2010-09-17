@@ -380,20 +380,25 @@ border-color:white;
        <property name="minimumSize">
         <size>
          <width>100</width>
-         <height>25</height>
+         <height>20</height>
         </size>
        </property>
        <property name="maximumSize">
         <size>
          <width>100</width>
-         <height>25</height>
+         <height>20</height>
         </size>
+       </property>
+       <property name="font">
+        <font>
+         <pointsize>13</pointsize>
+        </font>
        </property>
        <property name="styleSheet">
         <string notr="true">QPushButton{
 background:blue;
-border: 2px solid lightblue;
-border-radius:12px;
+border: 2px solid darkblue;
+border-radius:10px;
 color:white;}
 
 QPushButton:pressed{
@@ -404,6 +409,48 @@ border-color: yellow;
        </property>
        <property name="text">
         <string>Reset States</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="buttonSetCurrent">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>100</width>
+         <height>20</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>100</width>
+         <height>20</height>
+        </size>
+       </property>
+       <property name="font">
+        <font>
+         <pointsize>13</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">QPushButton{
+background:green;
+border: 2px solid darkgreen;
+border-radius:10px;
+color:white;}
+
+QPushButton:pressed{
+background:white;
+border-color: yellow;
+}</string>
+       </property>
+       <property name="text">
+        <string>Set Current</string>
        </property>
       </widget>
      </item>

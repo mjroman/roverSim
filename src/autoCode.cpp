@@ -47,7 +47,6 @@ simSettings(QSettings::IniFormat,QSettings::UserScope,"OUengineering","Rover_Sim
 	roverErrorKeyMapping();
 	
 	currentWaypoint.uuid = 0;
-	currentWaypoint = WPlist->first();
 	
 	stopAutonomous(RSInTeleopMode);
 	hide();
@@ -370,7 +369,10 @@ void autoCode::avoidingTurn()
 
 void autoCode::goAutonomous()
 {
-	if(WPlist->isEmpty()) return;
+	if(WPlist->isEmpty()) {
+		buttonRunning->setChecked(false);
+		return;
+	}
 	if(wpIndex > WPlist->size()) wpIndex = WPlist->size()-1;
 	
 	currentWaypoint = WPlist->at(wpIndex);
@@ -398,6 +400,11 @@ void autoCode::stopAutonomous(RoverState rs)
 	updateTool();
 	buttonRunning->setText("Go Auto");
 	buttonRunning->setChecked(false);
+}
+
+void autoCode::setCurrentWaypointIndex(int index)
+{
+	wpIndex = index;
 }
 
 /////////////////////////////////////////
