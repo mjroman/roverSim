@@ -43,6 +43,28 @@ void obstacleTool::show()
 	QWidget::show();
 }
 
+void obstacleTool::setCount(int c)
+{
+	SpinBoxObstCount->setValue(c);
+}
+void obstacleTool::setMinSize(btVector3 m)
+{
+	LineEditMinLength->setText(QString::number(m.x()));
+	LineEditMinWidth->setText(QString::number(m.y()));
+	LineEditMinHeight->setText(QString::number(m.z()));
+}
+void obstacleTool::setMaxSize(btVector3 m)
+{
+	LineEditMaxLength->setText(QString::number(m.x()));
+	LineEditMaxWidth->setText(QString::number(m.y()));
+	LineEditMaxHeight->setText(QString::number(m.z()));
+}
+void obstacleTool::setYawRange(float min,float max)
+{
+	LineEditMinYaw->setText(QString::number(min));
+	LineEditMaxYaw->setText(QString::number(max));
+}
+
 void obstacleTool::updateLabels(int index)
 {
     switch(index){

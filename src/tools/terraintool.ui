@@ -217,7 +217,7 @@ border-color:darkgrey;
       </size>
      </property>
      <property name="text">
-      <string>Terrain map pixel scale factor</string>
+      <string>Terrain map size</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignCenter</set>
@@ -240,7 +240,7 @@ border-color:darkgrey;
       </widget>
      </item>
      <item>
-      <widget class="QLineEdit" name="lineEdit_ScaleWidth">
+      <widget class="QLineEdit" name="lineEdit_Width">
        <property name="maximumSize">
         <size>
          <width>60</width>
@@ -266,7 +266,7 @@ border-color:darkgrey;
       </widget>
      </item>
      <item>
-      <widget class="QLineEdit" name="lineEdit_ScaleLength">
+      <widget class="QLineEdit" name="lineEdit_Length">
        <property name="maximumSize">
         <size>
          <width>60</width>
@@ -292,7 +292,7 @@ border-color:darkgrey;
       </widget>
      </item>
      <item>
-      <widget class="QLineEdit" name="lineEdit_ScaleHeight">
+      <widget class="QLineEdit" name="lineEdit_Height">
        <property name="maximumSize">
         <size>
          <width>60</width>
@@ -322,7 +322,7 @@ border-color:darkgrey;
       </spacer>
      </item>
      <item>
-      <widget class="QPushButton" name="rescaleButton">
+      <widget class="QPushButton" name="resizeButton">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
          <horstretch>0</horstretch>
@@ -355,7 +355,7 @@ border-color:darkgrey;
 }</string>
        </property>
        <property name="text">
-        <string>Rescale</string>
+        <string>Resize</string>
        </property>
       </widget>
      </item>

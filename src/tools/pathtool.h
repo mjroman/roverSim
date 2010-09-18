@@ -81,6 +81,8 @@ class pathTool : public QWidget, private Ui::pathtool
 		
 		void tableSetup();
 		void setGoalPoint(btVector3 goal) { goalPoint = goal; }
+		void addToTable(pathPlan *path);
+		void addPath(float range, float step, float csSize, float effLimit, float spinProgress);
 		
 	public slots:
 		void show();

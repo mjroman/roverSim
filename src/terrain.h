@@ -21,7 +21,7 @@ public:
 	void showTool() { tTool->show(); }
 	void hideTool() { tTool->hide(); }
 	
-    btVector3 terrainScale() { return m_terrainScale; }
+	btVector3 terrainSize() { return m_terrainSize; }
     QString terrainFilename() { return m_terrainFilename; }
 	QString terrainShortname() { return m_terrainShortname; }
     float maxHeight() { return m_terrainMaxHeight; }
@@ -35,7 +35,7 @@ public:
 public slots:
 	void openTerrain(QString filename = NULL);
     void saveTerrain();
-	void rescaleTerrain(btVector3 scale);
+	void setTerrainSize(btVector3 size);
 	void flattenTerrain();
 
 signals:
@@ -55,11 +55,10 @@ private:
     Triangle        		*m_terrainTriangles;
     int             		m_terrainTriangleCount;
     int             		m_terrainVertexCount;
-    btVector3       		m_terrainScale;
     float           		m_terrainMaxHeight;
     float           		m_terrainMinHeight;
-    btVector3       		m_worldSize;
-    int             		m_pixelx,m_pixely;
+    btVector3       		m_terrainSize;
+    QSize             		m_pixelSize;
     QString        			m_terrainFilename;
 	QString					m_terrainShortname;
 	bool					m_terrainModified;

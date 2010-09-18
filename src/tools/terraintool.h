@@ -11,7 +11,8 @@ class terrainTool : public QWidget, private Ui::terraintool {
     Q_OBJECT
 private:
 	physicsWorld    *arena;
-    btVector3       m_scale;
+    btVector3       m_size;
+
     float           m_heightLimit;
     float           m_heightIncrement;
     float           m_toolDiameter;
@@ -19,19 +20,19 @@ private:
 public:
     terrainTool(QWidget *parent = 0);
     ~terrainTool();
-    void setScale(btVector3 scale);
-    btVector3 getScale(){ return m_scale; }
+    void setSize(btVector3 size);
+    btVector3 getSize(){ return m_size; }
     float diameter(){ return m_toolDiameter; }
     float increment(){ return m_heightIncrement; }
 
 public slots:
     void setGravity();
-    void rescale();
+    void resize();
     void setToolProps();
     void setToolDiameter();
 
 signals:
-    void scaleUpdate(btVector3);
+    void sizeUpdate(btVector3);
 
 };
 

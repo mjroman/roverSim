@@ -52,6 +52,8 @@ enum serverCommand {
 			void screenSize();
 			void closeEvent(QCloseEvent *event);
 			void updateGUI();
+		signals:
+			void executeMission(QString);
 
 		private:
 			QTcpServer		m_tcpServer;

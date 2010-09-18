@@ -18,6 +18,12 @@ class obstacleTool : public QWidget, private Ui::obstacleTool
 			obstCount.stuff.setValue(num);
 			SpinBoxObstCount->setValue(num);
 		}
+		
+		void setCount(int c);
+		void setMinSize(btVector3 m);
+		void setMaxSize(btVector3 m);
+		void setYawRange(float min,float max);
+		
 		int obstacleCount(){ return obstCount.stuff.toInt(); }
 		int obstacleType(){ return obstShape.stuff.toInt(); }
 		float minOLength(){ return obstMinLength.stuff.toFloat(); }

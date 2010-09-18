@@ -3,6 +3,7 @@
 
 terrainTool::terrainTool(QWidget *parent) :
 QWidget(parent),
+m_size(100,100,10),
 m_heightLimit(10),
 m_heightIncrement(0.1),
 m_toolDiameter(0.02)
@@ -12,10 +13,9 @@ m_toolDiameter(0.02)
 
 	arena = physicsWorld::instance(); // get the physics world object
 	
-    m_scale.setValue(1,1,1);
-    lineEdit_ScaleWidth->setText(QString::number(m_scale.x()));
-    lineEdit_ScaleLength->setText(QString::number(m_scale.y()));
-    lineEdit_ScaleHeight->setText(QString::number(m_scale.z()));
+    lineEdit_Width->setText(QString::number(m_size.x()));
+    lineEdit_Length->setText(QString::number(m_size.y()));
+    lineEdit_Height->setText(QString::number(m_size.z()));
 
 	btVector3 gravity(0,0,-9.8);
     lineEdit_GX->setText(QString::number(gravity.x()));
@@ -34,7 +34,7 @@ m_toolDiameter(0.02)
 	
 	// GUI buttons
 	connect(gravityButton,SIGNAL(clicked()),this,SLOT(setGravity()));
-    connect(rescaleButton,SIGNAL(clicked()),this,SLOT(rescale()));
+    connect(resizeButton,SIGNAL(clicked()),this,SLOT(resize()));
 	connect(closeButton, SIGNAL(clicked()),this, SLOT(close()));
 }
 
@@ -52,21 +52,21 @@ void terrainTool::setGravity()
 	arena->setGravity(gravity);
 }
 
-void terrainTool::setScale(btVector3 scale)
+void terrainTool::setSize(btVector3 size)
 {
-    m_scale = scale;
-    lineEdit_ScaleWidth->setText(QString::number(scale.x()));
-    lineEdit_ScaleLength->setText(QString::number(scale.y()));
-    lineEdit_ScaleHeight->setText(QString::number(scale.z()));
+    m_size = size;
+    lineEdit_Width->setText(QString::number(size.x()));
+    lineEdit_Length->setText(QString::number(size.y()));
+    lineEdit_Height->setText(QString::number(size.z()));
 }
 
-void terrainTool::rescale()
+void terrainTool::resize()
 {
-	m_scale.setX(lineEdit_ScaleWidth->text().toFloat());
-    m_scale.setY(lineEdit_ScaleLength->text().toFloat());
-    m_scale.setZ(lineEdit_ScaleHeight->text().toFloat());
+	m_size.setX(lineEdit_Width->text().toFloat());
+    m_size.setY(lineEdit_Length->text().toFloat());
+    m_size.setZ(lineEdit_Height->text().toFloat());
 	
-    emit scaleUpdate(m_scale);
+    emit sizeUpdate(m_size);
 }
 
 void terrainTool::setToolProps()

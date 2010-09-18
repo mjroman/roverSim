@@ -35,6 +35,7 @@ QMainWindow(parent)
 	QDir::setCurrent(temp.path());										// set the current directory of the application
 	
 	SController = new simControl(glView);
+	connect(this, SIGNAL(executeMission(QString)), SController, SLOT(runConfigFile(QString)));
 		
     // menu bar connections
 // view menu
@@ -87,7 +88,7 @@ QMainWindow(parent)
 	textConsole->append(temp.absolutePath());
 	if(QFile::exists(temp.absolutePath() + "/mission/config.txt")){
 		textConsole->append("found config");
-		// emit a signal to sim controller						
+		//emit executeMission(temp.absolutePath() + "/mission/config.txt");	// emit a signal to sim controller
 	}
 	// else{
 	// 		// toss out a few obstacles

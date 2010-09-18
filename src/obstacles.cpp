@@ -42,6 +42,17 @@ obstacles::~obstacles()
 }
 
 /////////////////////////////////////////
+// Obstacle parameter settings
+/////////////
+void obstacles::setParameters(int count, btVector3 min, btVector3 max, QVector2D yaw)
+{
+	oTool->setCount(count);
+	oTool->setMinSize(min);
+	oTool->setMaxSize(max);
+	oTool->setYawRange(yaw.x(),yaw.y());
+}
+
+/////////////////////////////////////////
 // Obstacle generation functions
 /////////////
 void obstacles::eliminate()
@@ -82,12 +93,12 @@ void obstacles::generate()
 	
     for(i=0;i<oTool->obstacleCount();i++)
     {
-		tempPlace.setX(Randomn()*50);							// calculate a random position for the obstacle
-		tempPlace.setY(Randomn()*50);
+		tempPlace.setX(Randomn()*ground->terrainSize().x());				// calculate a random position for the obstacle
+		tempPlace.setY(Randomn()*ground->terrainSize().y());
 		tempPlace.setZ(0);
 		// keep all obstacles away from rover start position
         if(tempPlace.x() < 5 && tempPlace.y() < 5){ tempPlace.setX(5);} 
-        //tempPlace.setZ(ground->maxHeight() + m_dropHeight);
+
 		tempPlace.setZ(ground->terrainHeightAt(tempPlace) + dpht);
 		
 		alphaYaw = (oTool->minOYaw() + Randomn()*(oTool->maxOYaw() - oTool->minOYaw()));

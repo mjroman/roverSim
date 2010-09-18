@@ -2,6 +2,7 @@
 #include "../robot.h"
 #include "../obstacles.h"
 #include "../pathPlan.h"
+#include "utility/rngs.h"
 #include "utility/SimDomElement.h"
 #include <QSound>
 
@@ -358,46 +359,8 @@ void pathTool::tableSetup()
 	this->setMaximumWidth(553+39);	// max width of table, all items width + right collumn width
 }
 
-void pathTool::show()
+void pathTool::addToTable(pathPlan *path)
 {
-	QPropertyAnimation *anim = new QPropertyAnimation(this,"pos");
-	anim->setDuration(1000);
-	anim->setStartValue(QPoint(pos().x(),pos().y()-25));
-	anim->setEndValue(pos());
-	anim->setEasingCurve(QEasingCurve::OutElastic);
-	anim->start();
-	QWidget::show();
-}
-
-void pathTool::removePaths()
-{
-	if(pathList.isEmpty()) return;
-	int i;
-	for(i=0; i<pathList.size(); i++) delete pathList[i];
-	pathList.clear();
-	pathTableWidget->clearContents();
-}
-
-void pathTool::resetPaths()
-{
-	int i;
-	for(i=0; i<pathList.size(); i++){
-		pathList[i]->reset();									// delete all old paths before creating new ones
-		emit changeBackground(i,QBrush(QColor(Qt::white)));
-	}
-}
-
-// when the [+] button is pressed
-void pathTool::on_buttonAdd_clicked()
-{
-	// execute a dialog here to create a new path
-	pathPlan *path = new pathPlan(blocks,view);
-	pathEditDialog eDialog(path,this);
-	if(eDialog.exec() == QDialog::Rejected){
-		delete path;
-		return;
-	}
-	
 	int selected;
 	
 	if(pathList.isEmpty()) buttonDelete->setEnabled(true);				// enable the delete button if the list is empty
@@ -458,6 +421,65 @@ void pathTool::on_buttonAdd_clicked()
 	state->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
 	state->setToolTip("Path computation exit state");
 	pathTableWidget->setItem(selected,6,state);
+}
+
+void pathTool::show()
+{
+	QPropertyAnimation *anim = new QPropertyAnimation(this,"pos");
+	anim->setDuration(1000);
+	anim->setStartValue(QPoint(pos().x(),pos().y()-25));
+	anim->setEndValue(pos());
+	anim->setEasingCurve(QEasingCurve::OutElastic);
+	anim->start();
+	QWidget::show();
+}
+
+void pathTool::removePaths()
+{
+	if(pathList.isEmpty()) return;
+	int i;
+	for(i=0; i<pathList.size(); i++) delete pathList[i];
+	pathList.clear();
+	pathTableWidget->clearContents();
+}
+
+void pathTool::resetPaths()
+{
+	int i;
+	for(i=0; i<pathList.size(); i++){
+		pathList[i]->reset();									// delete all old paths before creating new ones
+		emit changeBackground(i,QBrush(QColor(Qt::white)));
+	}
+}
+
+// when the [+] button is pressed
+void pathTool::on_buttonAdd_clicked()
+{
+	// execute a dialog here to create a new path
+	pathPlan *path = new pathPlan(blocks,view);
+	pathEditDialog eDialog(path,this);
+	if(eDialog.exec() == QDialog::Rejected){
+		delete path;
+		return;
+	}
+	addToTable(path);
+}
+
+void pathTool::addPath(float range, float step, float csSize, float effLimit, float spinProgress)
+{
+	QStringList colorNames = QColor::colorNames();
+	int r = Randomn()*colorNames.size();					// find a random color
+	QColor color(colorNames[r]);
+	
+	pathPlan *path = new pathPlan(blocks,view);
+	path->setRange(range);
+	path->setStep(step);
+	path->setMargin(csSize);
+	path->setEffLimit(effLimit);
+	path->setSpinLimit(spinProgress);
+	path->setColor(color);
+	
+	addToTable(path);
 }
 
 // when the [-] button is pressed

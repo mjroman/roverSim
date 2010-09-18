@@ -22,16 +22,15 @@ m_terrainVerts(0),
 m_terrainColors(0),
 m_terrainNormals(0),
 m_terrainTriangles(0),
-m_terrainMaxHeight(3),
+m_terrainMaxHeight(0),
 m_terrainMinHeight(0),
-m_pixelx(100),
-m_pixely(100),
+m_pixelSize(100,100),
 m_terrainModified(false)
 {
     arena = physicsWorld::instance(); 					// get the physics world object
 	tTool = new terrainTool(m_view->parentWidget());
 	
-    connect(tTool, SIGNAL(scaleUpdate(btVector3)), this, SLOT(rescaleTerrain(btVector3)));
+    connect(tTool, SIGNAL(sizeUpdate(btVector3)), this, SLOT(setTerrainSize(btVector3)));
 
 	this->openTerrain(filename);
 }
@@ -76,8 +75,6 @@ void terrain::terrainClear()
 // from filename is valid the world is reset and new terrain is created.
 int terrain::terrainLoadFile()
 {
-    unsigned int status = 1;
-	
     QImage heightMap(m_terrainFilename);
     if(heightMap.isNull()){
         m_view->printText("Terrain File could not open");
@@ -85,39 +82,37 @@ int terrain::terrainLoadFile()
     }
 
     QStringList keyList = heightMap.textKeys();
-     if(keyList.contains("scalex")) m_terrainScale.setX(heightMap.text("scalex").toFloat());
-     if(keyList.contains("scaley")) m_terrainScale.setY(heightMap.text("scaley").toFloat());
-     if(keyList.contains("scalez")) m_terrainScale.setZ(heightMap.text("scalez").toFloat());
+    if(keyList.contains("sizex")) m_terrainSize.setX(heightMap.text("sizex").toFloat());	// import the size of the terrain from the image
+    if(keyList.contains("sizey")) m_terrainSize.setY(heightMap.text("sizey").toFloat());
+    if(keyList.contains("sizez")) m_terrainSize.setZ(heightMap.text("sizez").toFloat());
+	
+	tTool->setSize(m_terrainSize);															// write the new size to the tool
+	
+    m_pixelSize = heightMap.size();															// set the pixel size of the map
 
-    m_pixelx = heightMap.width();
-    m_pixely = heightMap.height();
-    // get the number of pixels
-    int imgSize = m_pixelx*m_pixely;
+    int imgSize = m_pixelSize.width()*m_pixelSize.height();									// get the number of pixels
 
-    // create a new array to hold all the height data from the image
-    unsigned int *imgData = new unsigned int[imgSize+1];
+    unsigned int *imgData = new unsigned int[imgSize+1];									// create a new array to hold all the height data from the image
     if(imgData == NULL) {
         m_view->printText("Memory error");
         return 0;
     }
-    unsigned int tHeight;
-    imgData[imgSize] = 0; // the last element in the array contains the maximum height
+
+    imgData[imgSize] = 0; 																	// the last element in the array contains the maximum height
 	
-    // load all the height data from the gray scale part of the height image
-    for(int j=0;j<m_pixely;j++){
-        for(int i=0;i<m_pixelx;i++){
-            int k = i + j*m_pixelx;
-            tHeight = qGray(heightMap.pixel(i,j));
-            imgData[k] = tHeight;
-            if(tHeight > imgData[imgSize]) imgData[imgSize] = tHeight;
+    for(int j=0; j<m_pixelSize.height(); j++){													// load all the height data from the gray scale part of the height image
+        for(int i=0; i<m_pixelSize.width(); i++){
+            int k = i + j * m_pixelSize.width();
+            imgData[k] = qGray(heightMap.pixel(i,j));										// get the height of the pixel
+            if(imgData[k] > imgData[imgSize]) 
+				imgData[imgSize] = imgData[k];												// save the highest height as the last element
         }
     }
 
-    // if data is ok
-    if(status) terrainCreateMesh(imgData); // create the new terrain mesh
+	terrainCreateMesh(imgData); 															// create the new terrain mesh
 	
-    delete imgData;
-    return status;
+    delete imgData;																			// free the temporary height data
+    return 1;
 }
 
 // creates a new triangle based terrain mesh, be sure heightData is large enough
@@ -126,41 +121,47 @@ int terrain::terrainLoadFile()
 void terrain::terrainCreateMesh(unsigned int *heightData)
 {
     int i,j,k;
-    float temp;
-    int xWorld = m_pixelx;
-    int yWorld = m_pixely;
+	btVector3 scale;
+    int xWorld = m_pixelSize.width();
+    int yWorld = m_pixelSize.height();
 	
-    m_terrainVertexCount = xWorld * yWorld;   // calculate the number of verticies
-    m_terrainTriangleCount = (xWorld-1) * (yWorld-1)*2; // calculate the number of triangles
+	scale.setX(m_terrainSize.x() / m_pixelSize.width());
+	scale.setY(m_terrainSize.y() / m_pixelSize.height());
+	if(heightData != NULL) scale.setZ(m_terrainSize.z() / (float)heightData[m_terrainVertexCount]);
+	else scale.setZ(1);
+	
+    m_terrainVertexCount = xWorld * yWorld;   				// calculate the number of verticies
+    m_terrainTriangleCount = (xWorld-1) * (yWorld-1)*2; 	// calculate the number of triangles
 	
     // allocate new data arrays
     m_terrainVerts = new Vertex[m_terrainVertexCount];
     m_terrainColors = new Vertex[m_terrainVertexCount];
     m_terrainNormals = new Vertex[m_terrainVertexCount];
     m_terrainTriangles = new Triangle[m_terrainTriangleCount];
-    m_terrainMaxHeight = m_terrainMinHeight = 0;
+	m_terrainMaxHeight = m_terrainSize.z();
+	m_terrainMinHeight = 0;
 	
     // generate the vertices for the triangle mesh
     // This sets the proper coordinates for the vertices that
     // will make up the terrain triangle mesh. The color of
     // each vertex is based on the height of from the BMP
-    for(i=0;i<m_terrainVertexCount;i++)
+    for(i=0; i<m_terrainVertexCount; i++)
     {
-        m_terrainVerts[i].x = (i % xWorld) * m_terrainScale.x();
-        m_terrainVerts[i].y = (i / xWorld) * m_terrainScale.y();
-        if(heightData != NULL) temp = (float)heightData[i]/(float)heightData[m_terrainVertexCount]; // get the height from the image data
-		else temp = 0.5;
-        m_terrainVerts[i].z = temp * m_terrainScale.z();  // scale the height
-        if(m_terrainVerts[i].z > m_terrainMaxHeight) m_terrainMaxHeight = m_terrainVerts[i].z;
-		
-        // set the color based on the terrain height
-        m_terrainColors[i].x = 0.7 * temp;
-        m_terrainColors[i].y = 0.7 * temp;
-        m_terrainColors[i].z = 0.7 * temp;
+        m_terrainVerts[i].x = (i % xWorld) * scale.x();
+        m_terrainVerts[i].y = (i / xWorld) * scale.y();
+
+		if(heightData != NULL) 
+			m_terrainVerts[i].z = heightData[i] * scale.z();	// get the height from the image data and scale it
+		else 
+			m_terrainVerts[i].z = m_terrainSize.z();
+			
+        m_terrainColors[i].x = 0.7 * m_terrainVerts[i].z / m_terrainMaxHeight;		// set the color based on the terrain height
+        m_terrainColors[i].y = 0.7 * m_terrainVerts[i].z / m_terrainMaxHeight;
+        m_terrainColors[i].z = 0.7 * m_terrainVerts[i].z / m_terrainMaxHeight;
     }
 	
     // generate the indices which point to the vertices of the triangle mesh
-    // the m_terrainTriangle array is used to tell OpenGL and the Bullet
+    // the m_terrainTriangle array is used to tell OpenGL and Bullet
     // what vertices make up each triangle. This is done so the same vertices
     // can be re-used for different triangles
     k=0;
@@ -195,23 +196,22 @@ void terrain::buildNormals()
 {
     int i,j;
 	
-    for(j=0;j<m_pixely;j++)
+    for(j=0;j<m_pixelSize.height();j++)
     {
-        for(i=0;i<m_pixelx;i++)
+        for(i=0;i<m_pixelSize.width();i++)
         {
-            int v0 = j*m_pixelx + i;
-            int v1 = (j-1)*m_pixelx + i;
-            int v2 = j*m_pixelx + (i+1);
-            int v3 = (j+1)*m_pixelx + i;
-            int v4 = j*m_pixelx + (i-1);
+            int v0 = j*m_pixelSize.width() + i;					// get the middle vertex and the four vertices surrounding it
+            int v1 = (j-1)*m_pixelSize.width() + i;
+            int v2 = j*m_pixelSize.width() + (i+1);
+            int v3 = (j+1)*m_pixelSize.width() + i;
+            int v4 = j*m_pixelSize.width() + (i-1);
 			
-            if(j-1 < 0){ v1 = -1; }
-            if(i+1 == m_pixelx) { v2 = -1; }
-            if(j+1 == m_pixely) { v3 = -1;}
-            if(i-1 < 0) { v4 = -1;}
+            if(j-1 < 0)					{ v1 = -1; }		// if a middle vertex is near an edge discard the corresponding vertex
+            if(i+1 == m_pixelSize.width()) 	{ v2 = -1; }
+            if(j+1 == m_pixelSize.height()) 	{ v3 = -1; }
+            if(i-1 < 0) 				{ v4 = -1; }
 			
             m_terrainNormals[v0] = sumNormals(v0,v1,v2,v3,v4,m_terrainVerts);
-            //qDebug("x:%f y:%f z:%f",m_terrainNormals[v0].x,m_terrainNormals[v0].y,m_terrainNormals[v0].z);
         }
     }
 }
@@ -229,16 +229,16 @@ void terrain::terrainEdit(btVector3 here, int dir)
 	
 	float xp = here.x();													// make sure the X location of the edit is over the terrain
     if(xp < 0) xp = 0;
-    else if(xp > m_worldSize.x()) xp = m_worldSize.x();
+    else if(xp > m_terrainSize.x()) xp = m_terrainSize.x();
 	
 	float yp = here.y();													// make sure the Y location of the edit is over the terrain
     if(yp < 0) yp = 0;
-    else if(yp > m_worldSize.y()) yp = m_worldSize.y();
+    else if(yp > m_terrainSize.y()) yp = m_terrainSize.y();
 	
 	for(int i=0; i<m_terrainVertexCount; i++)								// loop through the terrain vertex array
 	{
-        float x = (i % m_pixelx) * m_terrainScale.x();						// get the X and Y incides of the terrain vertices
-        float y = (i / m_pixelx) * m_terrainScale.y();
+        float x = (i % m_pixelSize.width()) * m_terrainSize.x()/m_pixelSize.width();// get the X and Y incides of the terrain vertices
+        float y = (i / m_pixelSize.width()) * m_terrainSize.y()/m_pixelSize.height();
 
 		float xd = xp - x;
 		float yd = yp - y;
@@ -249,11 +249,14 @@ void terrain::terrainEdit(btVector3 here, int dir)
 		if((dir == 1 && a > m_terrainVerts[i].z) || (dir == -1 && a < m_terrainVerts[i].z)) {
 			m_terrainVerts[i].z = a;
 			
+			if(a > m_terrainMaxHeight) 
+				m_terrainMaxHeight = a;
+			else if(a < m_terrainMinHeight)
+				m_terrainMinHeight = a;
+				
 			m_terrainColors[i].x = 0.7 * a / m_terrainMaxHeight;
 			m_terrainColors[i].y = 0.7 * a / m_terrainMaxHeight;
 			m_terrainColors[i].z = 0.6 * a / m_terrainMaxHeight;
-			if(a > m_terrainMaxHeight) 
-				m_terrainMaxHeight = a;
 		}
 	}
 	
@@ -267,28 +270,28 @@ float terrain::terrainHeightAt(btVector3 pt)
 {
 	float avgHeight;
 	
-	int px = pt.x() / m_terrainScale.x();
-	int py = pt.y() / m_terrainScale.y();
+	int px = (pt.x() / m_terrainSize.x()) * m_pixelSize.width();								// get the array indices of the point
+	int py = (pt.y() / m_terrainSize.y()) * m_pixelSize.height();
 	
-    int index = px + py*m_pixelx;	
+    int index = px + py * m_pixelSize.width();	
 	if(px <= 0){
-		if(py <= 0) return m_terrainVerts[0].z;	// return the lower left corner height
-		if(py >= m_pixely) return m_terrainVerts[(m_pixely-1)*m_pixelx].z;	// return the upper left corner height
-		return m_terrainVerts[py*m_pixelx].z;	// return height of point on left edge of terrain
+		if(py <= 0) return m_terrainVerts[0].z;												// return the lower left corner height
+		if(py >= m_pixelSize.height()) return m_terrainVerts[(m_pixelSize.height()-1)*m_pixelSize.width()].z;	// return the upper left corner height
+		return m_terrainVerts[py * m_pixelSize.width()].z;										// return height of point on left edge of terrain
 	}
-	else if(px >= m_pixelx-1){
-		if(py <= 0) return m_terrainVerts[m_pixelx-1].z; // return the lower right corner heigth
-		if(py >= m_pixely) return m_terrainVerts[(m_pixely-1)*(m_pixelx-1)].z; // return the upper right corner height
-		return m_terrainVerts[py*m_pixelx - 1].z; 	// return height of point on right edge of terrain
+	else if(px >= m_pixelSize.width()-1){
+		if(py <= 0) return m_terrainVerts[m_pixelSize.width()-1].z; 									// return the lower right corner heigth
+		if(py >= m_pixelSize.height()) return m_terrainVerts[(m_pixelSize.height()-1)*(m_pixelSize.width()-1)].z; // return the upper right corner height
+		return m_terrainVerts[py*m_pixelSize.width() - 1].z; 											// return height of point on right edge of terrain
 	}
-	if(py <= 0) return m_terrainVerts[px].z;								// return height of point on bottom edge of terrain
-	else if(py >= m_pixely-1) return m_terrainVerts[px + (m_pixely-1)*m_pixelx].z; // return height of point on top edge
+	if(py <= 0) return m_terrainVerts[px].z;															// return height of point on bottom edge of terrain
+	else if(py >= m_pixelSize.height()-1) return m_terrainVerts[px + (m_pixelSize.height()-1)*m_pixelSize.width()].z; // return height of point on top edge
 
 	// otherwise take an average of the heights on the corners of a square containing the point
     avgHeight = m_terrainVerts[index].z;
     avgHeight += m_terrainVerts[index+1].z;
-    avgHeight += m_terrainVerts[index+m_pixelx].z;
-    avgHeight += m_terrainVerts[index+1+m_pixelx].z;
+    avgHeight += m_terrainVerts[index+m_pixelSize.width()].z;
+    avgHeight += m_terrainVerts[index+1+m_pixelSize.width()].z;
 
     return avgHeight/4;
 }
@@ -297,7 +300,7 @@ float terrain::terrainHeightAt(btVector3 pt)
 void terrain::terrainRefresh()
 {
     arena->getDynamicsWorld()->updateAabbs();
-    m_triMesh->refitTree(btVector3(0,0,m_terrainMinHeight),btVector3(m_worldSize.x(),m_worldSize.y(),m_terrainMaxHeight));
+    m_triMesh->refitTree(btVector3(0,0,m_terrainMinHeight),btVector3(m_terrainSize.x(),m_terrainSize.y(),m_terrainMaxHeight));
     //m_broadphase->cleanProxyFromPairs(m_meshBody->getBroadphaseHandle()); // not sure what this does
 }
 
@@ -317,8 +320,8 @@ void terrain::renderGLObject()
     glDisableClientState(GL_VERTEX_ARRAY);
     glDisableClientState(GL_COLOR_ARRAY);
 
-    float side = m_worldSize.x();
-    if(side < m_worldSize.y()) side = m_worldSize.y();
+    float side = m_terrainSize.x();
+    if(side < m_terrainSize.y()) side = m_terrainSize.y();
     side /= 2;
     glColor3f(0.3,0.3,0.3);
     this->drawPlane(side,side);
@@ -364,12 +367,9 @@ void terrain::drawPlane(float x, float y)
 
 void terrain::generateGround()
 {
-    m_worldSize.setValue(m_pixelx,m_pixely,m_terrainMaxHeight);
-    m_worldSize *= m_terrainScale;
-
     arena->resetWorld();
     // create a plane below the terrain to catch fallen objects, keep in the world
-    this->createPlane(btVector3(0,0,1),0,btVector3(m_worldSize.x()/2,m_worldSize.y()/2,SAFETYPLANE));
+    this->createPlane(btVector3(0,0,1),0,btVector3(m_terrainSize.x()/2,m_terrainSize.y()/2,SAFETYPLANE));
 
     btTriangleIndexVertexArray *meshInterface = new btTriangleIndexVertexArray(m_terrainTriangleCount,
                                                                                &(m_terrainTriangles[0].v1),
@@ -406,17 +406,17 @@ void terrain::openTerrain(QString filename)
 	QFileInfo terrainInfo(filename);
 	this->terrainClear();
 	m_terrainFilename = filename;
-	m_terrainScale.setValue(1,1,1);
-	tTool->setScale(m_terrainScale);
+	m_terrainSize = tTool->getSize();										// set the terrain size, loading a file will overwrite it
 	
-	if(filename != NULL && filename != "NULL" && terrainLoadFile()) 
+	if(filename != NULL && filename != "NULL" && terrainLoadFile()) 		// image data is good create terrain
 	{
 		m_terrainShortname = terrainInfo.baseName();
-		this->generateGround();  // if the image data is good create terrain
+		this->generateGround();
 	}
-    else {
+    else {																	// no image file, create flat terrain
 		m_terrainShortname = "NULL";
 		m_terrainFilename = "NULL";
+		
         this->terrainCreateMesh(NULL);
         this->generateGround();
     }
@@ -438,39 +438,52 @@ void terrain::saveTerrain()
 	QFileInfo terrainInfo(filename);
 	m_terrainShortname = terrainInfo.baseName();
     m_terrainFilename = filename;
-    QImage modTerrain(m_pixelx,m_pixely,QImage::Format_ARGB32);
+    QImage modTerrain(m_pixelSize,QImage::Format_ARGB32);
 
-    for(int j=0;j<m_pixely;j++){
-        for(int i=0;i<m_pixelx;i++){
-            int k = i+j*m_pixelx;
-            int value = (m_terrainVerts[k].z - m_terrainMinHeight)/(m_terrainMaxHeight - m_terrainMinHeight) * 255;
-            modTerrain.setPixel(i,j, qRgba(value,value,value,255));
+    for(int j=0;j<m_pixelSize.height();j++){
+        for(int i=0;i<m_pixelSize.width();i++){
+            int k = i+j*m_pixelSize.width();
+            int value = (m_terrainVerts[k].z - m_terrainMinHeight)/(m_terrainMaxHeight - m_terrainMinHeight) * 255;	// Minimum height should be negative
+            modTerrain.setPixel(i,j, qRgba(value,value,value,255));													// set the color of the pixel
         }
     }
-    modTerrain.setText("scalex",QString::number(m_terrainScale.x()));
-    modTerrain.setText("scaley",QString::number(m_terrainScale.y()));
-    modTerrain.setText("scalez",QString::number(m_terrainScale.z()));
+    modTerrain.setText("sizex",QString::number(m_terrainSize.x()));
+    modTerrain.setText("sizey",QString::number(m_terrainSize.y()));
+	modTerrain.setText("sizez",QString::number(m_terrainMaxHeight - m_terrainMinHeight));
+    //modTerrain.setText("sizez",QString::number(m_terrainSize.z()));
     modTerrain.save(m_terrainFilename,"png");
 	m_terrainModified = false;
 }
 
-void terrain::rescaleTerrain(btVector3 scale)
+void terrain::setTerrainSize(btVector3 size)
 {
-    m_worldSize *= scale;
-    m_terrainMaxHeight *= scale.z();
-    m_terrainMinHeight *= scale.z();
+	if(size == m_terrainSize) return;
+	
+	btVector3 modscale = (size - m_terrainSize) / m_terrainSize;	// the difference between the new and old size divided by the old size
+	
+	if(m_terrainSize.z() == 0) modscale.setZ(size.z());				// incase of NAN
+	
+	m_terrainMinHeight = m_terrainMaxHeight = 0;
+    for(int i=0; i<m_terrainVertexCount; i++){
+        m_terrainVerts[i].x += modscale.x() * m_terrainVerts[i].x;
+        m_terrainVerts[i].y += modscale.y() * m_terrainVerts[i].y;
+        
+		if(m_terrainSize.z() == 0)
+			m_terrainVerts[i].z = size.z();
+		else
+			m_terrainVerts[i].z += modscale.z() * m_terrainVerts[i].z;
 
-    for(int i=0;i<m_terrainVertexCount;i++){
-        m_terrainVerts[i].x *= scale.x();
-        m_terrainVerts[i].y *= scale.y();
-        m_terrainVerts[i].z *= scale.z();
+		if(m_terrainVerts[i].z > m_terrainMaxHeight)
+			m_terrainMaxHeight = m_terrainVerts[i].z;
+		else if(m_terrainVerts[i].z < m_terrainMinHeight)
+			m_terrainMinHeight = m_terrainVerts[i].z;
     }
     buildNormals();
 
-	m_terrainScale.setX(m_terrainScale.x() * scale.x());
-	m_terrainScale.setY(m_terrainScale.y() * scale.y());
-	m_terrainScale.setZ(m_terrainScale.z() * scale.z());
-	m_view->printText(QString("new Scale %1,%2,%3").arg(m_terrainScale.x()).arg(m_terrainScale.y()).arg(m_terrainScale.z()));
+	m_terrainSize = size;
+	tTool->setSize(m_terrainSize);
+	
+	m_view->printText(QString("Terrain Resized %1,%2,%3").arg(m_terrainSize.x()).arg(m_terrainSize.y()).arg(m_terrainSize.z()));
 
     this->terrainRefresh();
 	emit newTerrain();

@@ -45,6 +45,7 @@ class simControl : public QObject
 		void addWaypoint(int uuid, float x,float y, WPstate st=WPstateNew, WPscience sc=WPscienceNone);
 
 	public slots:
+		void runConfigFile(QString filename);
 		void newRover(QWidget* parent, btVector3 start = btVector3(1,1,0));
 		bool removeRover();
 		

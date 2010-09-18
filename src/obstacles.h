@@ -23,6 +23,7 @@ class obstacles : public simGLObject
 		obstacles(terrain* gnd,simGLView* glView=0);
 		~obstacles();
 		
+		void setParameters(int count, btVector3 min, btVector3 max, QVector2D yaw);
 		QList<btCollisionObject*>* getObstacles() { return &m_obstacleObjects; }
 		bool isSaved() { return m_saved; }
 		QString getLayoutName() { return m_layoutName; }

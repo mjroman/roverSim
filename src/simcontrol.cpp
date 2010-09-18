@@ -84,6 +84,33 @@ void simControl::setGravity(btVector3 g)
 }
 
 /////////////////////////////////////////
+// configure automation file method
+/////////////
+void simControl::runConfigFile(QString filename)
+{
+	QString tfile;
+	btVector3 roverstart(1,1,1);
+	int count;
+	btVector3 minSize, maxSize, worldsize;
+	QVector2D yawrange;
+	float range,step,cssize,efflimit,sprogress;
+	
+	// set the random number seed
+	ground->openTerrain(tfile);								// load the terrain
+	ground->setTerrainSize(worldsize);						// set the size of the world, scale
+	blocks->setParameters(count, minSize, maxSize, yawrange);// set obstacle parameters
+	blocks->generate();										// generate obstacles
+	addWaypoint(1,50,50);									// add goal waypoint
+	newRover(glView->parentWidget(),roverstart);			// create a new rover
+	pTool->addPath(range,step,cssize,efflimit,sprogress);	// create the paths with the parameters
+	// set the number of iterations to perform
+	
+	// in the iteration loop
+		// randomize the start and goal waypoint
+		// make sure the robot starts outside of obstacles
+}
+
+/////////////////////////////////////////
 // Rover generation functions, includes AutoNavigation and PathPlanning Tools
 /////////////
 void simControl::newRover(QWidget* parent, btVector3 start)
