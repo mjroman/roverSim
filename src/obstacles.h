@@ -25,6 +25,7 @@ class obstacles : public simGLObject
 		
 		void setParameters(int count, btVector3 min, btVector3 max, QVector2D yaw);
 		QList<btCollisionObject*>* getObstacles() { return &m_obstacleObjects; }
+		bool areObstaclesActive();
 		bool isSaved() { return m_saved; }
 		QString getLayoutName() { return m_layoutName; }
 		void showTool() { oTool->show(); }

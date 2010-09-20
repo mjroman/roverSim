@@ -191,6 +191,10 @@ void waypointTool::positionEdited()
 	pos.setZ(ground->terrainHeightAt(pos));
 	wayList[index].position = pos;
 }
+void waypointTool::moveWaypoint(int index, btVector3 pos)
+{
+	wayList[index].position = pos;
+}
 
 void waypointTool::setHeights()
 {

@@ -33,7 +33,10 @@ GLfloat ghostColor[4] = { 0.9f, 0.9f, 0.9f, 0.1f};
 #define GLFRAMERATE		50		// milliseconds between screen updates
 #define FONTFADERATE	0.01
 
-simGLView::simGLView(QWidget *parent) : QGLWidget(parent)
+simGLView::simGLView(QWidget *parent) 
+:
+QGLWidget(parent),
+m_pickObject(NULL)
 {
     this->setMinimumSize(80,50);
 

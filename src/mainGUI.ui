@@ -735,6 +735,7 @@
      <string>World</string>
     </property>
     <addaction name="actionSim_Timing"/>
+    <addaction name="actionAutomator_Setup"/>
    </widget>
    <widget class="QMenu" name="menuRover">
     <property name="title">
@@ -922,6 +923,11 @@
   <action name="actionShow_Path_Info">
    <property name="text">
     <string>Show Path Info</string>
+   </property>
+  </action>
+  <action name="actionAutomator_Setup">
+   <property name="text">
+    <string>Automator Setup</string>
    </property>
   </action>
  </widget>

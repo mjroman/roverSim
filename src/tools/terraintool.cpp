@@ -3,7 +3,7 @@
 
 terrainTool::terrainTool(QWidget *parent) :
 QWidget(parent),
-m_size(100,100,10),
+m_size(100,100,1),
 m_heightLimit(10),
 m_heightIncrement(0.1),
 m_toolDiameter(0.02)

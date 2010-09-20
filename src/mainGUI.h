@@ -34,11 +34,13 @@ enum serverCommand {
 			void showSimTiming();
 			void showTerrainTool();
 			void showObstacleTool();
+			void showAutomatorTool();
 
 			void terrainChanged();
 
 			void newRover();
-
+			void roverMenuState(bool state);
+			
 			void cameraFreeView();
 			void cameraRoverCenter();
 			void cameraRoverFollow();
@@ -53,7 +55,7 @@ enum serverCommand {
 			void closeEvent(QCloseEvent *event);
 			void updateGUI();
 		signals:
-			void executeMission(QString);
+			void executeMission();
 
 		private:
 			QTcpServer		m_tcpServer;

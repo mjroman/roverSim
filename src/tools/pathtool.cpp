@@ -522,6 +522,7 @@ void pathTool::processPath(int x)
 		QSound::play(QDir::currentPath() + "/Resources/sounds/singleBell.wav");
 		if(pathList.last()->getRange() == 0)
 			updateCompEfficiency(pathList.last()->getShortestLength());								// updates comparison efficiency and writes data to file
+		emit pathsFinished();
 		return;
 	}
 	
@@ -664,6 +665,12 @@ void pathTool::stepOnPath(int dir)
 		pathList[m_selectedPath]->togglePathPoint(dir);
 }
 
+void pathTool::setTrialname(QString f)
+{
+	if(m_filename != f) m_runCount = 0;
+	m_filename = f; 
+}
+
 // sets up an XML file to save path data too
 // returns FALSE if there is an error
 bool pathTool::initSaveFile()
@@ -682,7 +689,7 @@ bool pathTool::initSaveFile()
 		m_runCount++;																				// increment the filename
 		m_xmlDoc.clear();
 	}
-
+	
 	int hyp = m_filename.lastIndexOf("-");															// remove old file endings
 	if(hyp != -1) m_filename.truncate(hyp);
 	if(m_filename.endsWith(".xml")) m_filename.replace(".xml","");

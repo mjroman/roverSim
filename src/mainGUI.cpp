@@ -6,6 +6,7 @@
 #include "autoCode.h"
 #include "utility/definitions.h"
 #include "tools/simtool.h"
+#include "tools/automatortool.h"
 
 #define GUIGROUP	"GUI_windows" // settings group key value
 
@@ -31,18 +32,20 @@ QMainWindow(parent)
 		this->restoreGeometry(settings.value("MainWindowGeom").toByteArray());
 		
 	QDir temp(QCoreApplication::applicationDirPath());
-	temp.cdUp();
+	temp.cd("../../..");
 	QDir::setCurrent(temp.path());										// set the current directory of the application
 	
-	SController = new simControl(glView);
-	connect(this, SIGNAL(executeMission(QString)), SController, SLOT(runConfigFile(QString)));
-		
+	SController = new simControl(this,glView);
+	connect(this, SIGNAL(executeMission()), SController, SLOT(runConfigFile()));
+	connect(SController, SIGNAL(roverState(bool)), this, SLOT(roverMenuState(bool)));
+	
     // menu bar connections
 // view menu
 	connect(actionFullScreen, SIGNAL(triggered()), this, SLOT(screenSize()));
 
 // world menu
     connect(actionSim_Timing, SIGNAL(triggered()), this, SLOT(showSimTiming()));
+	connect(actionAutomator_Setup, SIGNAL(triggered()), this, SLOT(showAutomatorTool()));
 
 // rover menu
 	connect(actionNew_Rover, SIGNAL(triggered()), this, SLOT(newRover()));
@@ -83,23 +86,19 @@ QMainWindow(parent)
 	m_tcpSocket = NULL;
 	//this->serverStart();
 
-// check for config file	
-	temp.cd("../..");
-	textConsole->append(temp.absolutePath());
-	if(QFile::exists(temp.absolutePath() + "/mission/config.txt")){
+	textConsole->append(QDir::currentPath());
+	if(QFile::exists(QDir::currentPath() + "/mission/config")){			// check for config file
 		textConsole->append("found config");
-		//emit executeMission(temp.absolutePath() + "/mission/config.txt");	// emit a signal to sim controller
+		QTimer::singleShot(1000, SController, SLOT(runConfigFile())); 	// wait for system to startup then signal the sim controller
 	}
-	// else{
-	// 		// toss out a few obstacles
-	// 		SController->getBlocks()->generate();
-	// 		// add a few test waypoints
-	// 		SController->addWaypoint(657,50.0,50.0);
-	// 		SController->addWaypoint(658,1.0,14.0);
-	// 	}
-	
-	this->terrainChanged();
+	else{
+		SController->getBlocks()->generate();							// toss out a few obstacles
+		SController->addWaypoint(657,50.0,50.0);						// add a few test waypoints
+		SController->addWaypoint(658,1.0,14.0);
+	}
 
+	this->terrainChanged();
+	
 	//glView->setFocus(Qt::OtherFocusReason);
 	glView->setFocusPolicy(Qt::StrongFocus);
 	
@@ -165,6 +164,19 @@ void MainGUI::showObstacleTool()
 	SController->getBlocks()->showTool();
 }
 
+void MainGUI::showAutomatorTool()
+{
+	automatorTool aDialog(this);
+	int ret = aDialog.exec();		// open dialog to set sim configuration settings
+	if( ret == 2){	// if run is pressed execute the automation file
+		emit executeMission();
+		textConsole->append("executing mission");
+	}
+	else
+		textConsole->append("cancel or save pressed");
+	// if cancel or save is pressed just close the dialog
+}
+
 /////////////////////////////////////////
 // Terrain editing functions
 /////////////
@@ -181,15 +193,19 @@ void MainGUI::newRover()
 {
 	bool state = (SController->getRover() == 0) ? true : false;			// if there is no rover then create a new one
 	
-	if(state){
-		SController->newRover(this);
-		actionNew_Rover->setText("Remove Rover");
-	}
-	else{
+	if(state)
+		SController->newRover();
+	else
 		SController->removeRover();
+}
+
+void MainGUI::roverMenuState(bool state)
+{	
+	if(state)
+		actionNew_Rover->setText("Remove Rover");
+	else
 		actionNew_Rover->setText("New Rover");
-	}
-		
+
 	menuRoverView->setEnabled(state);
 	actionShow_Rover_Info->setEnabled(state);
 	actionShow_Path_Info->setEnabled(state);

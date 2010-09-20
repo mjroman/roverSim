@@ -55,6 +55,7 @@ SOURCES += main.cpp \
 	src/cSpace.cpp \
 	src/pathPlan.cpp \
 	src/tools/pathtool.cpp \
+	src/tools/automatortool.cpp \
 	src/utility/SimDomElement.cpp
 	
 HEADERS += src/mainGUI.h \
@@ -83,9 +84,11 @@ HEADERS += src/mainGUI.h \
 	src/cSpace.h \
 	src/pathPlan.h \
 	src/tools/pathtool.h \
+	src/tools/automatortool.h \
 	src/utility/SimDomElement.h
 	
 FORMS += src/mainGUI.ui \
+	src/tools/automatortool.ui \
     src/tools/terraintool.ui \
     src/tools/obstacletool.ui \
 	src/tools/waypointtool.ui \

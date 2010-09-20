@@ -47,6 +47,7 @@ simSettings(QSettings::IniFormat,QSettings::UserScope,"OUengineering","Rover_Sim
 	roverErrorKeyMapping();
 	
 	currentWaypoint.uuid = 0;
+	if(!WPlist->isEmpty())	currentWaypoint = WPlist->at(wpIndex);
 	
 	stopAutonomous(RSInTeleopMode);
 	hide();

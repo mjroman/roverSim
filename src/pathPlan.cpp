@@ -392,6 +392,7 @@ void pathPlan::togglePathPoint(int dir)
 	
 	if(!contactPoints.isEmpty()) hitPoints << contactPoints[0].point;		// show the most likely path choice
 	contactPoints.prepend(m_GP.points[m_linkViewIndex]);					// push the point the current view is from for drawing
+	m_view->updateGL();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

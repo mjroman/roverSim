@@ -253,10 +253,14 @@ void terrain::terrainEdit(btVector3 here, int dir)
 				m_terrainMaxHeight = a;
 			else if(a < m_terrainMinHeight)
 				m_terrainMinHeight = a;
-				
-			m_terrainColors[i].x = 0.7 * a / m_terrainMaxHeight;
-			m_terrainColors[i].y = 0.7 * a / m_terrainMaxHeight;
-			m_terrainColors[i].z = 0.6 * a / m_terrainMaxHeight;
+			
+			float avgheight = (m_terrainMaxHeight + m_terrainMinHeight)/2.0;
+			
+			if(a > avgheight) m_terrainColors[i].x = 0.8;			// set red color
+			else m_terrainColors[i].x = 0.;
+			m_terrainColors[i].y = 0.;								// set green color
+			if(a < avgheight) m_terrainColors[i].z = 0.8;			// set blue color
+			else m_terrainColors[i].z = 0.;
 		}
 	}
 	
@@ -320,11 +324,11 @@ void terrain::renderGLObject()
     glDisableClientState(GL_VERTEX_ARRAY);
     glDisableClientState(GL_COLOR_ARRAY);
 
-    float side = m_terrainSize.x();
-    if(side < m_terrainSize.y()) side = m_terrainSize.y();
-    side /= 2;
-    glColor3f(0.3,0.3,0.3);
-    this->drawPlane(side,side);
+    // 	   float side = m_terrainSize.x();
+    //     if(side < m_terrainSize.y()) side = m_terrainSize.y();
+    //     side /= 2;
+    //     glColor3f(0.3,0.3,0.3);
+    //     this->drawPlane(side,side);
 }
 
 void terrain::createPlane(btVector3 norm, float cons, btVector3 orig)

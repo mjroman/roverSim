@@ -21,7 +21,7 @@ class simControl : public QObject
 	Q_OBJECT
 
 	public:
-		simControl(simGLView* vw=0);
+		simControl(QWidget* parent, simGLView* vw=0);
 		~simControl();
 
 		// simulation control functions	
@@ -45,8 +45,9 @@ class simControl : public QObject
 		void addWaypoint(int uuid, float x,float y, WPstate st=WPstateNew, WPscience sc=WPscienceNone);
 
 	public slots:
-		void runConfigFile(QString filename);
-		void newRover(QWidget* parent, btVector3 start = btVector3(1,1,0));
+		void runConfigFile();
+		void runIteration();
+		void newRover(btVector3 start = btVector3(1,1,0));
 		bool removeRover();
 		
 		void showWaypointTool();
@@ -56,8 +57,11 @@ class simControl : public QObject
 
 	signals:
 		void pathView(int);
+		void genPaths();
+		void roverState(bool);
 
 	private:
+		QWidget			*m_parent;
 		physicsWorld    *arena;
 		terrain         *ground;
 		obstacles		*blocks;
@@ -68,5 +72,8 @@ class simControl : public QObject
 		pathTool		*pTool;
 		double          delTime;
 		simGLView		*glView;
+		
+		int 			m_iterations;
+		float			m_pathSizeMin,m_pathSizeMax;
 	};
 #endif  //SIMCONTROL_H

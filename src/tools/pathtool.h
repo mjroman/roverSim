@@ -83,6 +83,8 @@ class pathTool : public QWidget, private Ui::pathtool
 		void setGoalPoint(btVector3 goal) { goalPoint = goal; }
 		void addToTable(pathPlan *path);
 		void addPath(float range, float step, float csSize, float effLimit, float spinProgress);
+		void setTrialname(QString f);
+		QString getTrialname() { return m_filename; }
 		
 	public slots:
 		void show();
@@ -103,6 +105,7 @@ class pathTool : public QWidget, private Ui::pathtool
 	signals:
 		void changeBackground(int,QBrush);
 		void computePath(int);
+		void pathsFinished();
 	
 	private:
 		robot				*rover;

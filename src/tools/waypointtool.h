@@ -16,6 +16,7 @@ class waypointTool : public QWidget, private Ui::waypointtool
 		
 		QList<WayPoint>* getList() { return &wayList; }
 		void addWaypoint(WayPoint);
+		void moveWaypoint(int index, btVector3 pos);
 		
 	public slots:
 		void show();

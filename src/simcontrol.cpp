@@ -5,6 +5,7 @@
 #include "sr2rover.h"
 #include "autoCode.h"
 #include "pathPlan.h"
+#include "utility/rngs.h"
 #include "tools/waypointtool.h"
 #include "tools/pathtool.h"
 #include "simGLView.h"
@@ -18,8 +19,9 @@
 
 #define LAYOUTHEADER	"RoverSim Obstacle Layout File"
 
-simControl::simControl(simGLView* vw)
+simControl::simControl(QWidget* parent, simGLView* vw)
 :
+m_parent(parent),
 sky(NULL),
 sr2(NULL),
 autoNav(NULL),
@@ -36,13 +38,13 @@ glView(vw)
 	
 	sky = new skydome(glView);
 	
-	wTool = new waypointTool(ground, glView->parentWidget());
+	wTool = new waypointTool(ground, m_parent);
 	glView->setWaypointList(wTool->getList());					// set the waypoint list to be drawn
 	
 	connect(ground,SIGNAL(newTerrain()),blocks,SLOT(eliminate()));
 	connect(ground,SIGNAL(newTerrain()),this,SLOT(removeRover()));
 	connect(ground,SIGNAL(newTerrain()),this,SLOT(setAllWaypointHeights()));
-	
+
 	arena->startSimTimer();
 }
 
@@ -86,34 +88,111 @@ void simControl::setGravity(btVector3 g)
 /////////////////////////////////////////
 // configure automation file method
 /////////////
-void simControl::runConfigFile(QString filename)
+void simControl::runConfigFile()
 {
-	QString tfile;
-	btVector3 roverstart(1,1,1);
+	QSettings configFile(QDir::currentPath() + "/mission/config",QSettings::IniFormat);		// pullup the config file
+
 	int count;
 	btVector3 minSize, maxSize, worldsize;
 	QVector2D yawrange;
-	float range,step,cssize,efflimit,sprogress;
+	float step,cssize,efflimit,sprogress;
 	
-	// set the random number seed
-	ground->openTerrain(tfile);								// load the terrain
-	ground->setTerrainSize(worldsize);						// set the size of the world, scale
-	blocks->setParameters(count, minSize, maxSize, yawrange);// set obstacle parameters
-	blocks->generate();										// generate obstacles
-	addWaypoint(1,50,50);									// add goal waypoint
-	newRover(glView->parentWidget(),roverstart);			// create a new rover
-	pTool->addPath(range,step,cssize,efflimit,sprogress);	// create the paths with the parameters
-	// set the number of iterations to perform
+	long seed = configFile.value("Seed").toLongLong();	// set the random number seed
+	PutSeed(seed);
 	
-	// in the iteration loop
-		// randomize the start and goal waypoint
-		// make sure the robot starts outside of obstacles
+	QString tfile = configFile.value("Terrain").toString();
+	ground->openTerrain(tfile);									// load the terrain
+	
+	worldsize.setX(configFile.value("World_Size_X").toFloat());
+	worldsize.setY(configFile.value("World_Size_Y").toFloat());
+	worldsize.setZ(configFile.value("World_Size_Z").toFloat());
+	ground->setTerrainSize(worldsize);							// set the size of the world, scale
+	
+	count = configFile.value("Obstacle_Count").toInt();
+	minSize.setX(configFile.value("Obstacle_Min_X").toFloat());
+	minSize.setY(configFile.value("Obstacle_Min_Y").toFloat());
+	minSize.setZ(configFile.value("Obstacle_Min_Z").toFloat());
+	maxSize.setX(configFile.value("Obstacle_Max_X").toFloat());
+	maxSize.setY(configFile.value("Obstacle_Max_Y").toFloat());
+	maxSize.setZ(configFile.value("Obstacle_Max_Z").toFloat());
+	yawrange.setX(configFile.value("Obstacle_Yaw_Min").toFloat());
+	yawrange.setY(configFile.value("Obstacle_Yaw_Max").toFloat());
+	blocks->setParameters(count, minSize, maxSize, yawrange);	// set obstacle parameters
+	blocks->generate();											// generate obstacles
+	
+	btVector3 roverstart(1,1,1);
+	addWaypoint(1,50,50);										// add a waypoint for viewing
+	newRover(roverstart);										// create a new rover
+	
+	step = configFile.value("Sensor_Step").toFloat();
+	cssize = configFile.value("Sensor_Cspace").toFloat();
+	efflimit = configFile.value("Path_Eff_Limit").toFloat();
+	sprogress = configFile.value("Path_Spin_Progress").toFloat();
+	
+	QStringList rangeList = configFile.value("Sensor_Ranges").toString().split(",");
+	for(int i=0; i<rangeList.size(); i++)
+	{
+		float range = rangeList[i].toFloat();
+		pTool->addPath(range,step,cssize,efflimit,sprogress);				// create the paths with the parameters
+	}
+	
+	m_iterations = configFile.value("Iterations").toInt();					// set the number of iterations to perform
+	m_pathSizeMin = configFile.value("Path_Size_Min").toFloat();
+	m_pathSizeMax = configFile.value("Path_Size_Max").toFloat();
+
+	QString trialname = configFile.value("Trial_Name").toString();			// get the name of the current trial
+	QDir triallocation(QDir::currentPath() + "/mission/" + trialname);		// create a folder of the trial name in the mission dir
+	pTool->setTrialname(triallocation.absolutePath() + "/" + trialname);	// set the base name of the XML save file
+
+	glView->printText(pTool->getTrialname());
+	
+	connect(pTool, SIGNAL(pathsFinished()), this, SLOT(runIteration()));
+	connect(this, SIGNAL(genPaths()), pTool, SLOT(on_buttonGenAll_clicked()));
+	
+	runIteration();
+}
+
+void simControl::runIteration()
+{
+	if(m_iterations < 0){
+		disconnect(pTool, SIGNAL(pathFinished()), this, SLOT(runIteration()));
+		return;
+	}
+	if(blocks->areObstaclesActive()){										// wait until obstacles are at rest
+		QTimer::singleShot(1000, this, SLOT(runIteration()));				// wait a second and call this method again
+		return;
+	}
+	glView->printText(QString("iterations %1").arg(m_iterations));
+	
+	btVector3 tempStart;
+	tempStart.setX(Randomn()*ground->terrainSize().x());					// calculate a random start position
+	tempStart.setY(Randomn()*ground->terrainSize().y());		
+	tempStart.setZ(ground->terrainHeightAt(tempStart));			
+																			// make sure the robot starts outside of obstacles
+	sr2->placeRobotAt(tempStart);
+	arena->simulateStep();
+	
+	btVector3 tempGoal;
+	float d;							
+	do{																		// randomize the start and goal points
+		tempGoal.setX(Randomn()*ground->terrainSize().x());					// calculate a random goal position
+		tempGoal.setY(Randomn()*ground->terrainSize().y());
+		d = tempStart.distance(tempGoal);
+	}while(d < m_pathSizeMin || d > m_pathSizeMax);							// the straight line distance is within range
+	
+	tempGoal.setZ(ground->terrainHeightAt(tempGoal));						// set the Z height of the goal point
+	pTool->setGoalPoint(tempGoal);
+	wTool->moveWaypoint(0, tempGoal);
+	glView->updateGL();
+	
+	m_iterations -= 1;
+	emit genPaths();
 }
 
 /////////////////////////////////////////
 // Rover generation functions, includes AutoNavigation and PathPlanning Tools
 /////////////
-void simControl::newRover(QWidget* parent, btVector3 start)
+void simControl::newRover(btVector3 start)
 {
 	if(!sr2) sr2 = new SR2rover(glView);
 	
@@ -122,16 +201,18 @@ void simControl::newRover(QWidget* parent, btVector3 start)
 	start.setZ(ground->terrainHeightAt(btVector3(1,1,0)));
 	sr2->placeRobotAt(start);
 	
-	autoNav = new autoCode(sr2, wTool->getList(), parent);
+	autoNav = new autoCode(sr2, wTool->getList(), m_parent);
 	pTool = new pathTool(sr2, blocks, glView);
 	pTool->setGoalPoint(autoNav->getCurrentWaypoint().position + btVector3(0,0,0.01));
 	connect(wTool, SIGNAL(currentWaypoint(int)), autoNav, SLOT(setCurrentWaypointIndex(int)));
 	connect(blocks, SIGNAL(obstaclesRemoved()), pTool, SLOT(resetPaths()));
-	connect(this, SIGNAL(pathView(int)),pTool, SLOT(stepOnPath(int)));
+	connect(this, SIGNAL(pathView(int)), pTool, SLOT(stepOnPath(int)));
 	glView->setFocus(Qt::OtherFocusReason);
+	emit roverState(true);
 }
 bool simControl::removeRover()
 {
+	emit roverState(false);
     if(sr2){
 		autoNav->disconnect();
 		pTool->disconnect();

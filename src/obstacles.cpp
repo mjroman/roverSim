@@ -176,6 +176,14 @@ btRigidBody* obstacles::createObstacleObject(float mass, btCollisionShape* cShap
 	return body;
 }
 
+bool obstacles::areObstaclesActive()
+{
+	for(int i=0; i<m_obstacleObjects.size(); i++)
+		if(m_obstacleObjects[i]->isActive()) return true;
+
+	return false;
+}
+
 /////////////////////////////////////////
 // XML file Creation functions
 /////////////
