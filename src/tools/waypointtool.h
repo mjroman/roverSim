@@ -17,6 +17,7 @@ class waypointTool : public QWidget, private Ui::waypointtool
 		QList<WayPoint>* getList() { return &wayList; }
 		void addWaypoint(WayPoint);
 		void moveWaypoint(int index, btVector3 pos);
+		void removeWaypoints();
 		
 	public slots:
 		void show();
@@ -36,7 +37,6 @@ class waypointTool : public QWidget, private Ui::waypointtool
 	private:
 		terrain				*ground;
 		QList<WayPoint>		wayList;
-		int					currentIndex;
 		bool				currentWaypointDisplay;
 		
 		QMap<int, QString>  WPmap;	// waypoint state map

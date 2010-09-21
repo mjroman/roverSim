@@ -495,6 +495,7 @@ void pathTool::on_buttonDelete_clicked()
 
 void pathTool::on_buttonGenerate_clicked()
 {
+	startPoint = rover->position - btVector3(0,0,0.34);
 	if(pathList.isEmpty()) return;
 	pathList[m_selectedPath]->reset();
 	
@@ -505,7 +506,19 @@ void pathTool::on_buttonGenerate_clicked()
 
 void pathTool::on_buttonGenAll_clicked()
 {
+	startPoint = rover->position - btVector3(0,0,0.34);
 	if(pathList.isEmpty()) return;
+	resetPaths();
+	if(!initSaveFile()) return;
+	
+	m_allPaths = true;
+	emit changeBackground(0,QBrush(QColor("springgreen")));
+	emit computePath(0);
+}
+
+void pathTool::generateAndSave()
+{
+	checkBoxSave->setChecked(true);
 	resetPaths();
 	if(!initSaveFile()) return;
 	
@@ -527,8 +540,7 @@ void pathTool::processPath(int x)
 	}
 	
 	if(x != 0) m_foundSound.play();
-
-	pathList[x]->goForGoal(rover->position - btVector3(0,0,0.34),goalPoint);						// find the shortest path from start to goal points
+	pathList[x]->goForGoal(startPoint,goalPoint);													// find the shortest path from start to goal points
 	
 	if(checkBoxSave->isChecked()){
 		m_xmlDoc.documentElement().appendChild(SimDomElement::pathToNode(m_xmlDoc,pathList[x]));	// write the data to the xml document
@@ -537,7 +549,7 @@ void pathTool::processPath(int x)
 	}
 	updateTool();
 	
-	if(pathList[x]->getState() != PS_COMPLETE)
+	if(pathList[x]->getState() > PS_GOALOCCLUDED)
 		emit changeBackground(x,QBrush(QColor(Qt::yellow)));
 	else
 		emit changeBackground(x,QBrush(QColor("lightsteelblue")));
@@ -596,6 +608,7 @@ void pathTool::updateTool()
 					int ps = pathList[i]->getState();
 					if(ps == PS_SEARCHING) item->setData(Qt::DisplayRole, "Searching");
 					else if(ps == PS_COMPLETE) item->setData(Qt::DisplayRole, "Complete");
+					else if(ps == PS_GOALOCCLUDED) item->setData(Qt::DisplayRole, "Goal Occluded");
 					else if(ps == PS_PATHNOTFOUND) item->setData(Qt::DisplayRole, "No Path");
 					else if(ps == PS_SWITCHBACKLEFT) item->setData(Qt::DisplayRole, "Switchback LEFT");
 					else if(ps == PS_SWITCHBACKRIGHT) item->setData(Qt::DisplayRole, "Switchback RIGHT");
@@ -613,9 +626,25 @@ void pathTool::updateTool()
 void pathTool::updateCompEfficiency(float gLength)
 {
 	int i;
+	float straightLine = startPoint.distance(goalPoint);
 	for(i=0; i<pathList.size(); i++){
+		pathPlan *p = pathList[i];
+		float compEff = 0;
+		if(p->getShortestLength() != 0) compEff = gLength/p->getShortestLength();
 		QTableWidgetItem* item = pathTableWidget->item(i,4);
-		item->setData(Qt::DisplayRole,QVariant(gLength/pathList[i]->getShortestLength()));
+		item->setData(Qt::DisplayRole,QVariant(compEff));
+		
+		if(m_statsStream.device()){																	// write path statistics to file		
+			m_statsStream << p->getRange() << ",";													// range
+			m_statsStream << p->getShortestLength() << ",";											// path distance
+			m_statsStream << straightLine << ",";													// straight line distance
+			m_statsStream << compEff << ",";														// comparison efficiency
+			m_statsStream << p->getShortestPath()->efficiency << ",";								// pure efficiency
+			m_statsStream << p->getShortestPath()->time << ",";										// time of calculation in ms
+			m_statsStream << p->getState() << ",";													// path state of completion
+			QString name(m_filename + "_" + QString::number(m_runCount));
+			m_statsStream << name.section('/',-1) << "\n";											// the path filename
+		}
 	}
 	if(m_xmlStream.device()){
 		m_xmlStream.seek(0);																			// start writing data to the begining of the file
@@ -711,7 +740,6 @@ bool pathTool::initSaveFile()
 	
 	root.setAttribute( "layoutFile", blocks->getLayoutName());										// write layout name
 	
-	btVector3 startPoint = rover->position - btVector3(0,0,0.34);
 	QDomElement goalLine = m_xmlDoc.createElement( "startgoal" );
 	goalLine.setAttribute( "distance", QString::number(startPoint.distance(goalPoint)));			// write straight line distance
 	goalLine.appendChild(SimDomElement::vectorToNode(m_xmlDoc,startPoint));							// write start point

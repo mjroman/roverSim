@@ -14,6 +14,7 @@ class autoCode;
 class waypointTool;
 class pathTool;
 class pathPlan;
+class QFile;
 
 
 class simControl : public QObject
@@ -57,7 +58,6 @@ class simControl : public QObject
 
 	signals:
 		void pathView(int);
-		void genPaths();
 		void roverState(bool);
 
 	private:
@@ -75,5 +75,6 @@ class simControl : public QObject
 		
 		int 			m_iterations;
 		float			m_pathSizeMin,m_pathSizeMax;
+		QFile			*m_statsFile;
 	};
 #endif  //SIMCONTROL_H

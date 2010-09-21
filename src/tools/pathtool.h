@@ -79,10 +79,10 @@ class pathTool : public QWidget, private Ui::pathtool
 		pathTool(robot *bot, obstacles *obs, simGLView* glView = NULL);
 		~pathTool();
 		
-		void tableSetup();
+		void setStartPoint(btVector3 start) { startPoint = start; }
 		void setGoalPoint(btVector3 goal) { goalPoint = goal; }
-		void addToTable(pathPlan *path);
 		void addPath(float range, float step, float csSize, float effLimit, float spinProgress);
+		void setStatisticsDevice(QIODevice *f) { m_statsStream.setDevice(f); }
 		void setTrialname(QString f);
 		QString getTrialname() { return m_filename; }
 		
@@ -94,6 +94,7 @@ class pathTool : public QWidget, private Ui::pathtool
 		void on_buttonDelete_clicked();
 		void on_buttonGenerate_clicked();
 		void on_buttonGenAll_clicked();
+		void generateAndSave();
 		void processPath(int x);
 		void updateTool();
 		void updateCompEfficiency(float gLength);
@@ -112,6 +113,7 @@ class pathTool : public QWidget, private Ui::pathtool
 		obstacles			*blocks;
 		simGLView			*view;
 		QList<pathPlan*>	pathList;
+		btVector3			startPoint;
 		btVector3			goalPoint;
 		int					m_selectedPath;
 		bool				m_allPaths;
@@ -121,7 +123,10 @@ class pathTool : public QWidget, private Ui::pathtool
 		QFile				*m_file;
 		QDomDocument		m_xmlDoc;
 		QTextStream			m_xmlStream;
+		QTextStream			m_statsStream;
 		
+		void tableSetup();
+		void addToTable(pathPlan *path);
 		bool initSaveFile();
 };
 #endif //PATHTOOL_H

@@ -113,6 +113,9 @@ void pathPlan::goForGoal(btVector3 start, btVector3 end)
 		m_startPoint = m_GP.points[0];						// set the starting point for drawing
 	}
 	
+	if(m_goalOccluded && m_state == PS_COMPLETE) 			// path is complete but the goal is occluded
+		m_state = PS_GOALOCCLUDED;							// set the state
+	
 	m_GP.time = m_time.elapsed();							// get the elapsed time for the path generation
 	
 	if(m_CS) delete m_CS;									// delete the C Space to free up memory since it is not needed
@@ -138,13 +141,16 @@ void pathPlan::generateCspace()
 	if(m_CS) delete m_CS;
 	m_CS = new cSpace(m_startPoint.point,m_range,m_margin,m_blocks,m_view);		// create a new Configuration Space based on the start point
 	m_CS->drawCspace(m_displayCS);
+	m_goalOccluded = NULL;
 	
 	if(isGoalInRange()){
 		QList<btCollisionObject*>* ghostList = m_CS->getGhostList();
 		for(int i=0; i < ghostList->size(); i++)							// check if goal point is inside of a cspace object
 		{
-			if(m_CS->isPointInsideObject(m_goalPoint.point,ghostList->at(i)))
+			if(m_CS->isPointInsideObject(m_goalPoint.point,ghostList->at(i))){
 				m_goalOccluded = ghostList->at(i);
+				break;
+			}
 		}
 	}
 	

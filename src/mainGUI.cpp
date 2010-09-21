@@ -88,7 +88,6 @@ QMainWindow(parent)
 
 	textConsole->append(QDir::currentPath());
 	if(QFile::exists(QDir::currentPath() + "/mission/config")){			// check for config file
-		textConsole->append("found config");
 		QTimer::singleShot(1000, SController, SLOT(runConfigFile())); 	// wait for system to startup then signal the sim controller
 	}
 	else{
@@ -170,10 +169,7 @@ void MainGUI::showAutomatorTool()
 	int ret = aDialog.exec();		// open dialog to set sim configuration settings
 	if( ret == 2){	// if run is pressed execute the automation file
 		emit executeMission();
-		textConsole->append("executing mission");
 	}
-	else
-		textConsole->append("cancel or save pressed");
 	// if cancel or save is pressed just close the dialog
 }
 
@@ -200,7 +196,7 @@ void MainGUI::newRover()
 }
 
 void MainGUI::roverMenuState(bool state)
-{	
+{
 	if(state)
 		actionNew_Rover->setText("Remove Rover");
 	else

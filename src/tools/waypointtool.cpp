@@ -175,6 +175,13 @@ void waypointTool::on_buttonDelete_clicked()
 	comboWpSelect->setCurrentIndex(index);
 }
 
+void waypointTool::removeWaypoints()
+{
+	wayList.clear();
+	comboWpSelect->clear();
+	enableGUI(false);
+}
+
 void waypointTool::uuidEdited()
 {
 	int index = comboWpSelect->currentIndex();

@@ -36,7 +36,7 @@ m_margin(margin)
 
 	arena = physicsWorld::instance();
 	
-	drawCspace(false);
+	if(glView) drawCspace(false);
 	
 	generateCSpace();
 	groupOverlapCSpace();
@@ -49,7 +49,7 @@ cSpace::~cSpace()
 
 void cSpace::deleteGhostGroup()
 {
-	m_view->stopDrawing(); 					// do not draw
+	if(m_view) m_view->stopDrawing(); 		// do not draw
  	arena->stopSimTimer();					// pause simulation
 	
 	for(int i=0;i<m_ghostObjects.size();i++ )
@@ -66,7 +66,7 @@ void cSpace::deleteGhostGroup()
 	m_ghostGroups.clear();
 	
 	arena->resetWorld();					// reset and unpause simulation
-	m_view->startDrawing(); 				// draw obstacles
+	if(m_view) m_view->startDrawing(); 		// draw obstacles
 }
 
 void cSpace::deleteGhostObject(btCollisionObject* obj)
@@ -245,6 +245,13 @@ bool cSpace::isPointInsideObject(btVector3 pt, btCollisionObject* obj)
 {
 	QList<btVector3> list = this->getTopShapePoints(obj);
 	return isPointInsidePoly(pt,list);
+}
+bool cSpace::isPointInsideCSpace(btVector3 pt)
+{
+	for(int i=0; i<m_ghostObjects.size(); i++){
+		if(isPointInsideObject(pt,m_ghostObjects[i])) return true;
+	}
+	return false;
 }
 
 void cSpace::movePointOutsideObject(btVector3& pt, btCollisionObject* obj)
