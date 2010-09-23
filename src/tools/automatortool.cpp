@@ -49,6 +49,8 @@ configFile(QDir::currentPath() + "/mission/config",QSettings::IniFormat)
 	lineEditIterations->setText(QString::number(configFile.value("Iterations",10).toInt()));
 	lineEditSeed->setText(QString::number(configFile.value("Seed",333).toLongLong()));
 	lineEditTrialName->setText(configFile.value("Trial_Name","trial").toString());
+	
+	checkBoxPathDrawing->setChecked(configFile.value("Path_Drawing",0).toInt());
 }
 
 void automatorTool::acceptData()
@@ -87,6 +89,8 @@ void automatorTool::acceptData()
 	configFile.setValue("Iterations",lineEditIterations->text().toInt());
 	configFile.setValue("Seed",lineEditSeed->text().toLongLong());
 	configFile.setValue("Trial_Name",lineEditTrialName->text());
+	
+	configFile.setValue("Path_Drawing",checkBoxPathDrawing->isChecked());
 	configFile.sync();
 }
 

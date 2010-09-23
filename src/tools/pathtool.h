@@ -81,10 +81,11 @@ class pathTool : public QWidget, private Ui::pathtool
 		
 		void setStartPoint(btVector3 start) { startPoint = start; }
 		void setGoalPoint(btVector3 goal) { goalPoint = goal; }
-		void addPath(float range, float step, float csSize, float effLimit, float spinProgress);
+		void addPath(float range, float step, float csSize, float effLimit, float spinProgress, int drawgl = 1);
 		void setStatisticsDevice(QIODevice *f) { m_statsStream.setDevice(f); }
 		void setTrialname(QString f);
 		QString getTrialname() { return m_filename; }
+		void loadPath(QString filename = NULL);
 		
 	public slots:
 		void show();
@@ -111,7 +112,7 @@ class pathTool : public QWidget, private Ui::pathtool
 	private:
 		robot				*rover;
 		obstacles			*blocks;
-		simGLView			*view;
+		simGLView			*m_view;
 		QList<pathPlan*>	pathList;
 		btVector3			startPoint;
 		btVector3			goalPoint;

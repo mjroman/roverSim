@@ -46,6 +46,7 @@ void obstacleTool::show()
 void obstacleTool::setCount(int c)
 {
 	SpinBoxObstCount->setValue(c);
+	obstCount.stuff.setValue(c);
 }
 void obstacleTool::setMinSize(btVector3 m)
 {

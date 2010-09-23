@@ -32,9 +32,10 @@ QMainWindow(parent)
 		this->restoreGeometry(settings.value("MainWindowGeom").toByteArray());
 		
 	QDir temp(QCoreApplication::applicationDirPath());
+	textConsole->append(temp.absolutePath());
 	temp.cd("../../..");
 	QDir::setCurrent(temp.path());										// set the current directory of the application
-	
+	textConsole->append(QDir::currentPath());
 	SController = new simControl(this,glView);
 	connect(this, SIGNAL(executeMission()), SController, SLOT(runConfigFile()));
 	connect(SController, SIGNAL(roverState(bool)), this, SLOT(roverMenuState(bool)));

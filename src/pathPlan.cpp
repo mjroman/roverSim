@@ -22,6 +22,7 @@ m_efficiencyLimit(0.3),
 m_spinProgress(6),
 m_spinProgressBase(0),
 m_state(PS_SEARCHING),
+m_drawSwitch(true),
 m_linkViewIndex(0)
 {
 	// create callbacks to all the drawing methods, these are added to/removed from the display list
@@ -339,7 +340,7 @@ bool pathPlan::searchForPath(float length)
 		m_midPoint = prospectPoints[i];											// change the midPoint to the lowest rank point
 		m_pointPath << m_midPoint;												// add the potential point to the global path list
 
-		m_view->updateGL();
+		 if(m_drawSwitch) m_view->updateGL();
 		
 		if(this->searchForPath(prospectPoints[i].length)){						// recursive check for a path to the goal
 			m_pointPath.removeLast();											// remove the goal point from the global list

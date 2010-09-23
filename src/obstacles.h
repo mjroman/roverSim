@@ -36,7 +36,7 @@ class obstacles : public simGLObject
 		void eliminate();
 		void generate();
 		void saveLayout(QString filename = NULL);
-		void loadLayout();
+		void loadLayout(QString filename = NULL);
 		
 		// pick and place functions
 		void pickObstacle(btVector3 camPos, btVector3 mousePos);

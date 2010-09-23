@@ -211,7 +211,8 @@ void obstacles::saveLayout(QString filename)
 	QString docInfo = "This XML document represents an obstacle layout for the RoverSim application";
 	root.appendChild(xmlDoc.createComment(docInfo));
 	
-	root.setAttribute( "terrain", ground->terrainFilename());								// add the terrain filename and obstacle quantity as attributes
+	root.setAttribute( "terrain", ground->terrainFilename());								// add the terrain filename and size as attributes
+	root.setAttribute( "size", QString("%1,%2,%3").arg(ground->terrainSize().x()).arg(ground->terrainSize().y()).arg(ground->terrainSize().z()));
 	root.setAttribute( "quantity", QString::number(m_obstacleObjects.size()));				// add the number of obstacles in the layout
 	
 	for(int i=0; i<m_obstacleObjects.size(); i++){
@@ -228,10 +229,12 @@ void obstacles::saveLayout(QString filename)
 	arena->startSimTimer();																	// resume the simulation
 }
 
-void obstacles::loadLayout()
+void obstacles::loadLayout(QString filename)
 {
-	QString filename = QFileDialog::getOpenFileName(m_view->parentWidget(),"Open Obstacle Layout", QDir::homePath());
-	if(filename == NULL) return;
+	if(filename == NULL){
+		filename = QFileDialog::getOpenFileName(m_view->parentWidget(),"Open Obstacle Layout", QDir::homePath());
+		if(filename == NULL) return;					// cancel is pressed on the file dialog
+	}
 	
 	m_layoutName = filename;
 	
@@ -248,14 +251,14 @@ void obstacles::loadLayout()
 	obstFile.close();
 	
 	QDomElement root = xmlDoc.documentElement();
-	if(root.tagName() != "obstacleLayout"){
+	if(root.tagName() != "obstacleLayout")
+	{
 		m_view->printText("File is not an obstacle layout: " + obstInfo.baseName());
 		return;
 	}
 	
 	this->eliminate();							// remove all obstacles
 	
-	//int count = root.attribute( "quantity", "0").toInt();
 	QString	tName = root.attribute( "terrain", "NULL");
 	
 	if(tName != ground->terrainFilename()){			// if the terrain filename is different than what is loaded
@@ -272,6 +275,13 @@ void obstacles::loadLayout()
 		}
 		else m_saved = false;
 	}
+	
+	btVector3 size;														// set the terrain to the proper size
+	QStringList ss = root.attribute( "size","100,100,5").split(",");
+	size.setX(ss[0].toFloat());
+	size.setY(ss[1].toFloat());
+	size.setZ(ss[2].toFloat());
+	ground->setTerrainSize(size);
 	
 	QDomNode obst = root.firstChild();
 	while(!obst.isNull()){

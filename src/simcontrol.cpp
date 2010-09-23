@@ -98,6 +98,7 @@ void simControl::runConfigFile()
 	btVector3 minSize, maxSize, worldsize;
 	QVector2D yawrange;
 	float step,cssize,efflimit,sprogress;
+	int draw;
 	
 	long seed = configFile.value("Seed").toLongLong();						
 	
@@ -142,12 +143,15 @@ void simControl::runConfigFile()
 	cssize = configFile.value("Sensor_Cspace").toFloat();
 	efflimit = configFile.value("Path_Eff_Limit").toFloat();
 	sprogress = configFile.value("Path_Spin_Progress").toFloat();
+	draw = configFile.value("Path_Drawing").toInt();
+	
+	if(!draw) glView->stopDrawing(); 
 	
 	QStringList rangeList = configFile.value("Sensor_Ranges").toString().split(",");
 	for(int i=0; i<rangeList.size(); i++)
 	{
 		float range = rangeList[i].toFloat();
-		pTool->addPath(range,step,cssize,efflimit,sprogress);				// create the paths with the parameters
+		pTool->addPath(range,step,cssize,efflimit,sprogress,draw);				// create the paths with the parameters
 	}
 	
 	m_iterations = configFile.value("Iterations").toInt();					// set the number of iterations to perform
@@ -177,6 +181,7 @@ void simControl::runIteration()
 	if(m_iterations <= 0){
 		disconnect(pTool, SIGNAL(pathFinished()), this, SLOT(runIteration()));
 		m_statsFile->close();
+		m_parent->close();
 		return;
 	}
 	if(blocks->areObstaclesActive()){										// wait until obstacles are at rest
@@ -209,7 +214,7 @@ void simControl::runIteration()
 	tempGoal.setZ(ground->terrainHeightAt(tempGoal));						// set the Z height of the goal point
 	pTool->setGoalPoint(tempGoal + btVector3(0,0,0.01));
 	wTool->moveWaypoint(0, tempGoal);
-	glView->updateGL();
+	//glView->updateGL();
 	
 	glView->printText(QString("iterations %1").arg(m_iterations));
 	m_iterations -= 1;

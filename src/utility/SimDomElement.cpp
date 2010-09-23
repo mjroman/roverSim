@@ -85,6 +85,13 @@ QDomElement SimDomElement::pathToNode(QDomDocument &doc, const pathPlan* p)
 	path.setAttribute( "efficiency", QString::number(gp->efficiency));
 	path.setAttribute( "state", QString::number(p->getState()));
 	
+	QDomElement params = doc.createElement( "limits" );
+	params.setAttribute( "cspace", p->getMargin());
+	params.setAttribute( "step", p->getStep());
+	params.setAttribute( "eff", p->getEffLimit());
+	params.setAttribute( "spin", p->getSpinLimit());
+	path.appendChild(params);
+	
 	path.appendChild(colorToNode(doc, p->getColor()));
 	
 	QDomElement ptPath = doc.createElement( "pointPath" );

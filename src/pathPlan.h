@@ -100,6 +100,7 @@ private:
 	
 	PathState									m_state;			// holds the state of the search for a path to the goal
 	
+	bool										m_drawSwitch;
 	QList< ACallback<pathPlan> >				m_drawingList;		// holds all drawing callbacks
 	QList< ACallback<pathPlan>* >				m_displayList;		// holds a pointer to the objects that should be currently drawn
 	
@@ -152,9 +153,9 @@ public:
 	const QColor getColor() const { QColor c = m_color; c.setAlphaF(1.0); return c; }
 	const float getRange() const { return m_range; }
 	const float getMargin() const { return m_margin; }
-	float getStep() { return m_step; }
-	float getEffLimit() { return m_efficiencyLimit; }
-	float getSpinLimit() { return m_spinProgress; }
+	const float getStep() const { return m_step; }
+	const float getEffLimit() const { return m_efficiencyLimit; }
+	const float getSpinLimit() const { return m_spinProgress; }
 	int	getSpinBase() { return m_spinProgressBase; }
 	int getBreadth() { return m_breadth; }
 	bool getSaveOn() { return m_saveOn; }
@@ -169,7 +170,8 @@ public:
 	void setSpinBase(int b) { m_spinProgressBase = b; }
 	void setBreadth(int b) { m_breadth = b; }
 	void setSaveOn(bool x) { m_saveOn = x; }
-
+	void setDrawSwitch(bool x) { m_drawSwitch = x; }
+	
 	bool  m_displayDebug;
 	bool  m_displayCrowFly;
 	bool  m_displaySavedPaths;

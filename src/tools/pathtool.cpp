@@ -281,9 +281,9 @@ pathTool::pathTool(robot *bot, obstacles *obs, simGLView* glView)
 QWidget(glView->parentWidget()),
 rover(bot),
 blocks(obs),
-view(glView),
+m_view(glView),
 m_selectedPath(0),
-m_foundSound(QDir::currentPath() + "/Resources/sounds/singleBeep2.wav"),
+m_foundSound("QtRoverSimulator.app/Contents/Resources/sounds/singleBeep2.wav"),
 m_filename(NULL),
 m_file(NULL),
 m_xmlDoc( "roverSimDoc" )
@@ -456,7 +456,7 @@ void pathTool::resetPaths()
 void pathTool::on_buttonAdd_clicked()
 {
 	// execute a dialog here to create a new path
-	pathPlan *path = new pathPlan(blocks,view);
+	pathPlan *path = new pathPlan(blocks,m_view);
 	pathEditDialog eDialog(path,this);
 	if(eDialog.exec() == QDialog::Rejected){
 		delete path;
@@ -465,19 +465,20 @@ void pathTool::on_buttonAdd_clicked()
 	addToTable(path);
 }
 
-void pathTool::addPath(float range, float step, float csSize, float effLimit, float spinProgress)
+void pathTool::addPath(float range, float step, float csSize, float effLimit, float spinProgress, int drawgl)
 {
 	QStringList colorNames = QColor::colorNames();
 	int r = Randomn()*colorNames.size();					// find a random color
 	QColor color(colorNames[r]);
 	
-	pathPlan *path = new pathPlan(blocks,view);
+	pathPlan *path = new pathPlan(blocks,m_view);
 	path->setRange(range);
 	path->setStep(step);
 	path->setMargin(csSize);
 	path->setEffLimit(effLimit);
 	path->setSpinLimit(spinProgress);
 	path->setColor(color);
+	path->setDrawSwitch(drawgl);
 	
 	addToTable(path);
 }
@@ -532,7 +533,7 @@ void pathTool::processPath(int x)
 	qApp->processEvents();
 	if(x >= pathList.size()){																		// finished computing paths
 		m_allPaths = false;
-		QSound::play(QDir::currentPath() + "/Resources/sounds/singleBell.wav");
+		QSound::play("QtRoverSimulator.app/Contents/Resources/sounds/singleBell.wav");
 		if(pathList.last()->getRange() == 0)
 			updateCompEfficiency(pathList.last()->getShortestLength());								// updates comparison efficiency and writes data to file
 		emit pathsFinished();
@@ -707,7 +708,7 @@ bool pathTool::initSaveFile()
 	if(!checkBoxSave->isChecked()) return true;
 
 	if(m_filename == NULL){
-		m_filename = QFileDialog::getSaveFileName(view->parentWidget(),"Save Path Data", QDir::homePath());	// open a Save File dialog and select location and filename
+		m_filename = QFileDialog::getSaveFileName(m_view->parentWidget(),"Save Path Data", QDir::homePath());	// open a Save File dialog and select location and filename
 		if(m_filename == NULL){
 			checkBoxSave->setChecked(false);														// if cancel is pressed turn off saving
 			return true;
@@ -728,7 +729,7 @@ bool pathTool::initSaveFile()
 	
 	m_file = new QFile(m_filename + "_" + QString::number(m_runCount) + ".xml");
 	if (!m_file->open(QIODevice::WriteOnly)){														// open XML file
-		view->printText("Save File Error - " + m_filename);
+		m_view->printText("Save File Error - " + m_filename);
 		return false;
 	}
 	m_xmlStream.setDevice(m_file);																	// set the stream device
@@ -747,4 +748,33 @@ bool pathTool::initSaveFile()
 	root.appendChild(goalLine);
 	
 	return true;
+}
+
+void pathTool::loadPath(QString filename)
+{
+	if(filename == NULL){
+		filename = QFileDialog::getOpenFileName(this,"Open Path", QDir::homePath());
+		if(filename == NULL) return;					// cancel is pressed on the file dialog
+	}
+	
+	QDomDocument xmlDoc( "roverSimDoc" );
+	QFile pathFile(filename);
+	QFileInfo pathInfo(filename);
+	if(!pathFile.open(QIODevice::ReadOnly))
+		return;
+	
+	if(!xmlDoc.setContent(&pathFile)){			// set the content of the file to an XML document
+		pathFile.close();
+		return;
+	}
+	pathFile.close();
+	
+	QDomElement root = xmlDoc.documentElement();
+	if(root.tagName() != "PathData")
+	{
+		m_view->printText("File does not contain path data: " + pathInfo.baseName());
+		return;
+	}
+	
+	//blocks->loadLayout(layoutName);
 }
