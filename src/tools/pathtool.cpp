@@ -635,7 +635,9 @@ void pathTool::updateCompEfficiency(float gLength)
 		QTableWidgetItem* item = pathTableWidget->item(i,4);
 		item->setData(Qt::DisplayRole,QVariant(compEff));
 		
-		if(m_statsStream.device()){																	// write path statistics to file		
+		/////////////////////////////
+		// Write data to Statistics file
+		if(m_statsStream.device()){		
 			m_statsStream << p->getRange() << ",";													// range
 			m_statsStream << p->getShortestLength() << ",";											// path distance
 			m_statsStream << straightLine << ",";													// straight line distance

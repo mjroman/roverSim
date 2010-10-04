@@ -158,9 +158,16 @@ void simControl::runConfigFile()
 	m_pathSizeMin = configFile.value("Path_Size_Min").toFloat();
 	m_pathSizeMax = configFile.value("Path_Size_Max").toFloat();
 
+/////////////////////////////////////////
+// Statistic CSV file header
+/////////////
 	m_statsFile = new QFile(triallocation.absolutePath() + "/stats.csv");
-	if (m_statsFile->open(QIODevice::WriteOnly | QIODevice::Text)){			// if a statistics file can be opened
+	if (m_statsFile->open(QIODevice::WriteOnly | QIODevice::Text)){				// if a statistics file can be opened
 		QTextStream statsStream(m_statsFile);									// create a stream
+		statsStream << "Obsts #," << count << ",";
+		statsStream << "Rand Seed," << seed << ",";
+		statsStream << "Iterations," << m_iterations << ",";
+		statsStream << "Trial Name," << trialname << "\n";
 		statsStream << "Step," << step << ",";
 		statsStream << "CSpace," << cssize << ",";
 		statsStream << "EffLimit," << efflimit << ",";
@@ -168,7 +175,8 @@ void simControl::runConfigFile()
 		statsStream << "Range,Path Len,Strait Len,Comp Eff,Pure Eff,Time ms,State,Path File\n";
 		pTool->setStatisticsDevice(m_statsFile);
 	}
-	
+///////////////////////////////
+
 	pTool->setTrialname(triallocation.absolutePath() + "/" + trialname);	// set the base name of the XML save file
 	
 	connect(pTool, SIGNAL(pathsFinished()), this, SLOT(runIteration()));
