@@ -92,7 +92,7 @@ void pathPlan::goForGoal(btVector3 start, btVector3 end)
 	
 	this->generateCspace();									// create the C-Space to compute the path in
 	
-	m_view->overlayString(QString("Searching Range %1").arg(m_range));
+	if(m_view) m_view->overlayString(QString("Searching Range %1").arg(m_range));
 	m_firstPath = true;
 	
 	m_time.start();											// start time of path calculation
@@ -128,7 +128,7 @@ void pathPlan::goForGoal(btVector3 start, btVector3 end)
 	displayBuildPath(false);
 	displayPath(true);
 	
-	if(m_saveOn) m_view->printText(QString("%1 paths found").arg(m_pathList.size()));
+	if(m_saveOn && m_view) m_view->printText(QString("%1 paths found").arg(m_pathList.size()));
 			
 	if(m_GP.length != 0) m_GP.efficiency = m_straightDistance/m_GP.length;
 }
@@ -141,7 +141,7 @@ void pathPlan::generateCspace()
 {
 	if(m_CS) delete m_CS;
 	m_CS = new cSpace(m_startPoint.point,m_range,m_margin,m_blocks,m_view);		// create a new Configuration Space based on the start point
-	m_CS->drawCspace(m_displayCS);
+	if(m_view) m_CS->drawCspace(m_displayCS);
 	m_goalOccluded = NULL;
 	
 	if(isGoalInRange()){
@@ -312,7 +312,7 @@ bool pathPlan::searchForPath(float length)
 		if(length < m_GP.length || m_GP.length == 0)							// check if a new shortest path has been found
 		{
 			if(m_firstPath && m_range == 0) {
-				m_view->overlayString("First Path Found");
+				if(m_view) m_view->overlayString("First Path Found");
 				m_firstPath = false;
 			}
 			m_GP.length = length;
@@ -340,7 +340,7 @@ bool pathPlan::searchForPath(float length)
 		m_midPoint = prospectPoints[i];											// change the midPoint to the lowest rank point
 		m_pointPath << m_midPoint;												// add the potential point to the global path list
 
-		 if(m_drawSwitch) m_view->updateGL();
+		 if(m_drawSwitch && m_view) m_view->updateGL();
 		
 		if(this->searchForPath(prospectPoints[i].length)){						// recursive check for a path to the goal
 			m_pointPath.removeLast();											// remove the goal point from the global list
@@ -391,7 +391,7 @@ void pathPlan::togglePathPoint(int dir)
 
 	m_view->getCamera()->cameraSetDirection(here.point); 					// set the camera view to the path point
 	m_CS = new cSpace(here.point,m_range,m_margin,m_blocks,m_view);			// create a new Configuration Space based on the start point
-	m_CS->drawCspace(true);
+	if(m_view) m_CS->drawCspace(true);
 	
 	contactPoints = getVisablePointsFrom(here,0);							// gather all objects extreme vertices
 	if(m_range == 0) contactPoints = progressAngleBasedRank(contactPoints, m_GP.points[m_linkViewIndex]);

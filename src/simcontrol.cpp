@@ -21,7 +21,7 @@
 
 #define LAYOUTHEADER	"RoverSim Obstacle Layout File"
 
-simControl::simControl(QWidget* parent, simGLView* vw)
+simControl::simControl(MainGUI* parent, simGLView* glView)
 :
 m_parent(parent),
 sky(NULL),
@@ -29,19 +29,19 @@ sr2(NULL),
 autoNav(NULL),
 wTool(NULL),
 pTool(NULL),
-glView(vw)
+m_view(glView)
 {
    	arena = physicsWorld::instance(); // get the physics world object
 	
-	//ground = new terrain(QString(":/textures/src/textures/defaultTerrain.png"), glView);
-	ground = new terrain("NULL", glView);
+	//ground = new terrain(QString(":/textures/src/textures/defaultTerrain.png"), m_view);
+	ground = new terrain("NULL", m_view);
 	
-	blocks = new obstacles(ground,glView);
+	blocks = new obstacles(ground,m_view);
 	
-	sky = new skydome(glView);
+	sky = new skydome(m_view);
 	
 	wTool = new waypointTool(ground, m_parent);
-	glView->setWaypointList(wTool->getList());					// set the waypoint list to be drawn
+	m_view->setWaypointList(wTool->getList());					// set the waypoint list to be drawn
 	
 	connect(ground,SIGNAL(newTerrain()),blocks,SLOT(eliminate()));
 	connect(ground,SIGNAL(newTerrain()),this,SLOT(removeRover()));
@@ -74,11 +74,11 @@ void simControl::pauseSim()
 {
 	if(arena->isIdle()){
 		arena->startSimTimer();
-		glView->printText("Resumed Simulation");
+		m_parent->printText("Resumed Simulation");
 	}
 	else{
 		arena->stopSimTimer();
-		glView->printText("Simulation Paused");
+		m_parent->printText("Simulation Paused");
 	}
 		
 }
@@ -93,26 +93,48 @@ void simControl::setGravity(btVector3 g)
 void simControl::runConfigFile()
 {
 	QSettings configFile(QDir::currentPath() + "/mission/config",QSettings::IniFormat);		// pullup the config file
+	
+	long seed = configFile.value("Seed").toLongLong();
+	
+	QString trialname(configFile.value("Trial_Name").toString());			// Create a directory of the tiral including the random seed
+	QString trialDir(trialname + "_" + QString::number(seed));
+	
+	if(m_trialLocation.exists(QDir::currentPath() + "/mission/" + trialDir)){
+		seed = QTime::currentTime().msec();									// set the seed to the current time in milliseconds
+		trialDir = QString(trialname + "_%1").arg(seed);
+	}
+	m_trialLocation.mkdir(QDir::currentPath() + "/mission/" + trialDir);	// create a folder of the trial name in the mission dir
+	m_trialLocation.cd(QDir::currentPath() + "/mission/" + trialDir);		// move to the new location
+	
+	PutSeed(seed);															// set the random number seed
+	
+	QStringList densityList = configFile.value("Obstacle_Count").toString().split(",");
+	for(int i=0;i<densityList.size();i++)
+		m_densityFields << densityList[i].toFloat();
+	
+	if(!m_densityFields.isEmpty())
+		runConfigWorld();
+}
 
-	int count;
+void simControl::runConfigWorld()
+{
+	QSettings configFile(QDir::currentPath() + "/mission/config",QSettings::IniFormat);		// pullup the config file
+	
+	float coverage;
 	btVector3 minSize, maxSize, worldsize;
 	QVector2D yawrange;
 	float step,cssize,efflimit,sprogress;
 	int draw;
+	int count = m_densityFields.takeFirst();
+	long seed;
+	GetSeed(&seed);
 	
-	long seed = configFile.value("Seed").toLongLong();						
+	QString trialname(configFile.value("Trial_Name").toString());			// Create a directory of the tiral including the density count
+	QString trialDir(trialname + "_" + QString::number(count));
+	m_trialLocation.mkdir(trialDir);
 	
-	QString trialname(configFile.value("Trial_Name").toString());			// Create a directory of the tiral including the random seed
-	QString trialDir(trialname + "_" + QString::number(seed));
-	QDir triallocation(QDir::currentPath() + "/mission/" + trialDir);
-	if(triallocation.exists()){
-		seed = QTime::currentTime().msec();									// set the seed to the current time in milliseconds
-		trialDir = QString(trialname + "_%1").arg(seed);
-	}
-	triallocation.mkdir(QDir::currentPath() + "/mission/" + trialDir);		// create a folder of the trial name in the mission dir
-	triallocation.cd(QDir::currentPath() + "/mission/" + trialDir);
-	
-	PutSeed(seed);															// set the random number seed
+	removeRover();
+	blocks->eliminate();
 	
 	QString tfile = configFile.value("Terrain").toString();
 	ground->openTerrain(tfile);												// load the terrain
@@ -122,7 +144,7 @@ void simControl::runConfigFile()
 	worldsize.setZ(configFile.value("World_Size_Z").toFloat());
 	ground->setTerrainSize(worldsize);										// set the size of the world, scale
 	
-	count = configFile.value("Obstacle_Count").toInt();
+	//count = configFile.value("Obstacle_Count").toInt();
 	minSize.setX(configFile.value("Obstacle_Min_X").toFloat());
 	minSize.setY(configFile.value("Obstacle_Min_Y").toFloat());
 	minSize.setZ(configFile.value("Obstacle_Min_Z").toFloat());
@@ -133,19 +155,24 @@ void simControl::runConfigFile()
 	yawrange.setY(configFile.value("Obstacle_Yaw_Max").toFloat());
 	blocks->setParameters(count, minSize, maxSize, yawrange);				// set obstacle parameters
 	blocks->generate();														// generate obstacles
+
+	coverage = blocks->getMeanCoverage()/(worldsize.x()*worldsize.y());
+	
+	step = configFile.value("Sensor_Step").toFloat();
+	cssize = configFile.value("Sensor_Cspace").toFloat();
+	efflimit = configFile.value("Path_Eff_Limit").toFloat()/100;
+	sprogress = configFile.value("Path_Spin_Progress").toFloat();
+	draw = configFile.value("Path_Drawing").toInt();
+	m_iterations = configFile.value("Iterations").toInt();						// set the number of iterations to perform
+	m_pathSizeMin = configFile.value("Path_Size_Min").toFloat();
+	m_pathSizeMax = configFile.value("Path_Size_Max").toFloat();
+	
+	if(!draw) m_view->stopDrawing(); 
 	
 	btVector3 roverstart(1,1,1);
 	wTool->removeWaypoints();												// remove all old waypoints so user doesn't get confused
 	addWaypoint(1,50,50);													// add a waypoint for viewing
 	newRover(roverstart);													// create a new rover
-	
-	step = configFile.value("Sensor_Step").toFloat();
-	cssize = configFile.value("Sensor_Cspace").toFloat();
-	efflimit = configFile.value("Path_Eff_Limit").toFloat();
-	sprogress = configFile.value("Path_Spin_Progress").toFloat();
-	draw = configFile.value("Path_Drawing").toInt();
-	
-	if(!draw) glView->stopDrawing(); 
 	
 	QStringList rangeList = configFile.value("Sensor_Ranges").toString().split(",");
 	for(int i=0; i<rangeList.size(); i++)
@@ -154,20 +181,18 @@ void simControl::runConfigFile()
 		pTool->addPath(range,step,cssize,efflimit,sprogress,draw);				// create the paths with the parameters
 	}
 	
-	m_iterations = configFile.value("Iterations").toInt();					// set the number of iterations to perform
-	m_pathSizeMin = configFile.value("Path_Size_Min").toFloat();
-	m_pathSizeMax = configFile.value("Path_Size_Max").toFloat();
+
 
 /////////////////////////////////////////
 // Statistic CSV file header
 /////////////
-	m_statsFile = new QFile(triallocation.absolutePath() + "/stats.csv");
+	m_statsFile = new QFile(m_trialLocation.absolutePath() + "/" + trialDir + "/stats.csv");
 	if (m_statsFile->open(QIODevice::WriteOnly | QIODevice::Text)){				// if a statistics file can be opened
 		QTextStream statsStream(m_statsFile);									// create a stream
 		statsStream << "Obsts #," << count << ",";
 		statsStream << "Rand Seed," << seed << ",";
 		statsStream << "Iterations," << m_iterations << ",";
-		statsStream << "Trial Name," << trialname << "\n";
+		statsStream << "Area Covered," << coverage << "\n";
 		statsStream << "Step," << step << ",";
 		statsStream << "CSpace," << cssize << ",";
 		statsStream << "EffLimit," << efflimit << ",";
@@ -177,7 +202,7 @@ void simControl::runConfigFile()
 	}
 ///////////////////////////////
 
-	pTool->setTrialname(triallocation.absolutePath() + "/" + trialname);	// set the base name of the XML save file
+	pTool->setTrialname(m_trialLocation.absolutePath() + "/" + trialDir + "/" + trialname);	// set the base name of the XML save file
 	
 	connect(pTool, SIGNAL(pathsFinished()), this, SLOT(runIteration()));
 	
@@ -187,11 +212,21 @@ void simControl::runConfigFile()
 void simControl::runIteration()
 {
 	if(m_iterations <= 0){
+		m_statsFile->close();												// close the stats file
 		disconnect(pTool, SIGNAL(pathFinished()), this, SLOT(runIteration()));
-		m_statsFile->close();
-		m_parent->close();
-		return;
+		
+		if(m_densityFields.isEmpty())										
+		{																	// if there are no more densities exit the program
+			m_parent->close();
+			return;
+		}
+		else
+		{
+			runConfigWorld();												// else configure the new world
+			return;
+		}
 	}
+	
 	if(blocks->areObstaclesActive()){										// wait until obstacles are at rest
 		QTimer::singleShot(1000, this, SLOT(runIteration()));				// wait a second and call this method again
 		return;
@@ -205,8 +240,6 @@ void simControl::runIteration()
 		tempStart.setZ(ground->terrainHeightAt(tempStart));
 	}while(space->isPointInsideCSpace(tempStart));							// make sure the robot starts outside of obstacles
 	
-	delete space;
-	
 	sr2->placeRobotAt(tempStart);
 	arena->simulateStep();
 	pTool->setStartPoint(tempStart + btVector3(0,0,0.01));
@@ -217,14 +250,16 @@ void simControl::runIteration()
 		tempGoal.setX(Randomn()*ground->terrainSize().x());					// calculate a random goal position
 		tempGoal.setY(Randomn()*ground->terrainSize().y());
 		d = tempStart.distance(tempGoal);
-	}while(d < m_pathSizeMin || d > m_pathSizeMax);							// the straight line distance is within range
+	}while(d < m_pathSizeMin || d > m_pathSizeMax ||						// the straight line distance is within range
+			space->isPointInsideCSpace(tempGoal));							// and the goal is outside the C-Space
+	
+	delete space;
 	
 	tempGoal.setZ(ground->terrainHeightAt(tempGoal));						// set the Z height of the goal point
 	pTool->setGoalPoint(tempGoal + btVector3(0,0,0.01));
 	wTool->moveWaypoint(0, tempGoal);
-	//glView->updateGL();
 	
-	glView->printText(QString("iterations %1").arg(m_iterations));
+	m_parent->printText(QString("iterations %1").arg(m_iterations));
 	m_iterations -= 1;
 	
 	pTool->generateAndSave();
@@ -235,7 +270,7 @@ void simControl::runIteration()
 /////////////
 void simControl::newRover(btVector3 start)
 {
-	if(!sr2) sr2 = new SR2rover(glView);
+	if(!sr2) sr2 = new SR2rover(m_view);
 	
 	wTool->resetStates();
 	
@@ -243,13 +278,13 @@ void simControl::newRover(btVector3 start)
 	sr2->placeRobotAt(start);
 	
 	autoNav = new autoCode(sr2, wTool->getList(), m_parent);
-	pTool = new pathTool(sr2, blocks, glView);
+	pTool = new pathTool(sr2, blocks, m_parent,m_view);
 	pTool->setStartPoint(start + btVector3(0,0,0.01));
 	pTool->setGoalPoint(autoNav->getCurrentWaypoint().position + btVector3(0,0,0.01));
 	connect(wTool, SIGNAL(currentWaypoint(int)), autoNav, SLOT(setCurrentWaypointIndex(int)));
 	connect(blocks, SIGNAL(obstaclesRemoved()), pTool, SLOT(resetPaths()));
 	connect(this, SIGNAL(pathView(int)), pTool, SLOT(stepOnPath(int)));
-	glView->setFocus(Qt::OtherFocusReason);
+	m_view->setFocus(Qt::OtherFocusReason);
 	emit roverState(true);
 }
 bool simControl::removeRover()

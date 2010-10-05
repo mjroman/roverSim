@@ -276,11 +276,12 @@ void pathEditDialog::acceptData()
 /////////////////////////////////////////
 // Path creation main tool
 /////////////
-pathTool::pathTool(robot *bot, obstacles *obs, simGLView* glView)
+pathTool::pathTool(robot *bot, obstacles *obs, MainGUI* parent, simGLView* glView)
 :
-QWidget(glView->parentWidget()),
+QWidget(parent),
 rover(bot),
 blocks(obs),
+m_parent(parent),
 m_view(glView),
 m_selectedPath(0),
 m_foundSound("QtRoverSimulator.app/Contents/Resources/sounds/singleBeep2.wav"),
@@ -637,7 +638,7 @@ void pathTool::updateCompEfficiency(float gLength)
 		
 		/////////////////////////////
 		// Write data to Statistics file
-		if(m_statsStream.device()){		
+		if(m_statsStream.device()){
 			m_statsStream << p->getRange() << ",";													// range
 			m_statsStream << p->getShortestLength() << ",";											// path distance
 			m_statsStream << straightLine << ",";													// straight line distance
@@ -647,8 +648,10 @@ void pathTool::updateCompEfficiency(float gLength)
 			m_statsStream << p->getState() << ",";													// path state of completion
 			QString name(m_filename + "_" + QString::number(m_runCount));
 			m_statsStream << name.section('/',-1) << "\n";											// the path filename
+			m_statsStream.flush();																	// sync the data to the file
 		}
 	}
+	
 	if(m_xmlStream.device()){
 		m_xmlStream.seek(0);																			// start writing data to the begining of the file
 		m_xmlDoc.save(m_xmlStream,5);																	// sync the data to the file, incase the simulation crashes
@@ -710,7 +713,7 @@ bool pathTool::initSaveFile()
 	if(!checkBoxSave->isChecked()) return true;
 
 	if(m_filename == NULL){
-		m_filename = QFileDialog::getSaveFileName(m_view->parentWidget(),"Save Path Data", QDir::homePath());	// open a Save File dialog and select location and filename
+		m_filename = QFileDialog::getSaveFileName(m_parent,"Save Path Data", QDir::homePath());	// open a Save File dialog and select location and filename
 		if(m_filename == NULL){
 			checkBoxSave->setChecked(false);														// if cancel is pressed turn off saving
 			return true;
@@ -731,7 +734,7 @@ bool pathTool::initSaveFile()
 	
 	m_file = new QFile(m_filename + "_" + QString::number(m_runCount) + ".xml");
 	if (!m_file->open(QIODevice::WriteOnly)){														// open XML file
-		m_view->printText("Save File Error - " + m_filename);
+		m_parent->printText("Save File Error - " + m_filename);
 		return false;
 	}
 	m_xmlStream.setDevice(m_file);																	// set the stream device
@@ -774,7 +777,7 @@ void pathTool::loadPath(QString filename)
 	QDomElement root = xmlDoc.documentElement();
 	if(root.tagName() != "PathData")
 	{
-		m_view->printText("File does not contain path data: " + pathInfo.baseName());
+		m_parent->printText("File does not contain path data: " + pathInfo.baseName());
 		return;
 	}
 	

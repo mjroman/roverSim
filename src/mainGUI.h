@@ -5,7 +5,6 @@
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QDataStream>
-#include "simcontrol.h"
 #include "ui_mainGUI.h"
 
 class simControl;
@@ -27,6 +26,7 @@ enum serverCommand {
 			MainGUI(QWidget *parent = 0);
 			~MainGUI();
 
+			void printText(QString s);
 			void keyPressEvent(QKeyEvent *event);
 			void keyReleaseEvent(QKeyEvent *event);
 

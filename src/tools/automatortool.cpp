@@ -23,7 +23,7 @@ configFile(QDir::currentPath() + "/mission/config",QSettings::IniFormat)
 	}
 	buttonTerrainFile->setText(tfile);
 	
-	spinBoxObstacleCount->setValue(configFile.value("Obstacle_Count",100).toInt());
+	lineEditObstacleCount->setText(configFile.value("Obstacle_Count","25,50,100").toString());
 	
 	lineEditObstMinX->setText(QString::number(configFile.value("Obstacle_Min_X",0.1).toFloat()));
 	lineEditObstMinY->setText(QString::number(configFile.value("Obstacle_Min_Y",0.1).toFloat()));
@@ -39,7 +39,7 @@ configFile(QDir::currentPath() + "/mission/config",QSettings::IniFormat)
 	
 	lineEditPathMin->setText(QString::number(configFile.value("Path_Size_Min",25).toFloat()));
 	lineEditPathMax->setText(QString::number(configFile.value("Path_Size_Max",100).toFloat()));
-	lineEditPathEff->setText(QString::number(configFile.value("Path_Eff_Limit",0.5).toFloat()));
+	lineEditPathEff->setText(QString::number(configFile.value("Path_Eff_Limit",10).toFloat()));
 	lineEditPathSpin->setText(QString::number(configFile.value("Path_Spin_Progress",6).toFloat()));
 	
 	lineEditSensorRanges->setText(configFile.value("Sensor_Ranges","0,1,2,3,4").toString());
@@ -64,7 +64,7 @@ void automatorTool::acceptData()
 	else
 		configFile.setValue("Terrain","NULL");
 	
-	configFile.setValue("Obstacle_Count",spinBoxObstacleCount->value());
+	configFile.setValue("Obstacle_Count",lineEditObstacleCount->text());
 	
 	configFile.setValue("Obstacle_Min_X",lineEditObstMinX->text());
 	configFile.setValue("Obstacle_Min_Y",lineEditObstMinY->text());

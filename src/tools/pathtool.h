@@ -5,6 +5,7 @@
 #include <QComboBox>
 #include <QDomNode>
 #include <QTextStream>
+#include "mainGUI.h"
 #include "ui_pathtool.h"
 #include "../utility/structures.h"
 
@@ -76,7 +77,7 @@ class pathTool : public QWidget, private Ui::pathtool
 {
 	Q_OBJECT
 	public:
-		pathTool(robot *bot, obstacles *obs, simGLView* glView = NULL);
+		pathTool(robot *bot, obstacles *obs, MainGUI* parent, simGLView* glView = NULL);
 		~pathTool();
 		
 		void setStartPoint(btVector3 start) { startPoint = start; }
@@ -112,6 +113,7 @@ class pathTool : public QWidget, private Ui::pathtool
 	private:
 		robot				*rover;
 		obstacles			*blocks;
+		MainGUI				*m_parent;
 		simGLView			*m_view;
 		QList<pathPlan*>	pathList;
 		btVector3			startPoint;

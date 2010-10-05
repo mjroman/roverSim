@@ -2,6 +2,8 @@
 #define	SIMCONTROL_H
 
 #include <QTimer>
+#include <QDir>
+#include "mainGUI.h"
 #include "physicsWorld.h"
 #include "utility/structures.h"
 
@@ -22,7 +24,7 @@ class simControl : public QObject
 	Q_OBJECT
 
 	public:
-		simControl(QWidget* parent, simGLView* vw=0);
+		simControl(MainGUI* parent, simGLView* vw=0);
 		~simControl();
 
 		// simulation control functions	
@@ -47,6 +49,7 @@ class simControl : public QObject
 
 	public slots:
 		void runConfigFile();
+		void runConfigWorld();
 		void runIteration();
 		void newRover(btVector3 start = btVector3(1,1,0));
 		bool removeRover();
@@ -61,7 +64,7 @@ class simControl : public QObject
 		void roverState(bool);
 
 	private:
-		QWidget			*m_parent;
+		MainGUI			*m_parent;
 		physicsWorld    *arena;
 		terrain         *ground;
 		obstacles		*blocks;
@@ -71,10 +74,12 @@ class simControl : public QObject
 		waypointTool	*wTool;
 		pathTool		*pTool;
 		double          delTime;
-		simGLView		*glView;
+		simGLView		*m_view;
 		
+		QList<float>	m_densityFields;
 		int 			m_iterations;
 		float			m_pathSizeMin,m_pathSizeMax;
 		QFile			*m_statsFile;
+		QDir			m_trialLocation;
 	};
 #endif  //SIMCONTROL_H

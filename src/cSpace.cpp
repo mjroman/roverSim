@@ -71,7 +71,7 @@ void cSpace::deleteGhostGroup()
 
 void cSpace::deleteGhostObject(btCollisionObject* obj)
 {
-	m_view->stopDrawing(); 					// do not draw
+	if(m_view) m_view->stopDrawing(); 					// do not draw
  	arena->stopSimTimer();					// pause simulation
 	
 	arena->getDynamicsWorld()->removeCollisionObject(obj);
@@ -82,7 +82,7 @@ void cSpace::deleteGhostObject(btCollisionObject* obj)
 	m_ghostObjects.removeAll(obj);
 	// should probably remove the pointer in the group list but this function is not used right now
 	arena->resetWorld(); 					// reset and unpause simulation
-	m_view->startDrawing(); 				// draw obstacles
+	if(m_view) m_view->startDrawing(); 				// draw obstacles
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

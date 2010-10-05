@@ -91,6 +91,8 @@ void obstacles::generate()
 	
     if(oTool->obstacleCount() == 0) return;
 	
+	m_meanArea = 0;
+	
     for(i=0;i<oTool->obstacleCount();i++)
     {
 		tempPlace.setX(Randomn()*ground->terrainSize().x());				// calculate a random position for the obstacle
@@ -110,7 +112,9 @@ void obstacles::generate()
         tempSize.setX(oTool->minOLength() + Randomn()*(oTool->maxOLength() - oTool->minOLength()));
         tempSize.setY(oTool->minOWidth() + Randomn()*(oTool->maxOWidth() - oTool->minOWidth()));
         tempSize.setZ(oTool->minOHeight() + Randomn()*(oTool->maxOHeight() - oTool->minOHeight()));
-        
+
+		m_meanArea += 2*(tempSize.x()*tempSize.y() + tempSize.x()*tempSize.z() + tempSize.y()*tempSize.z())/3;       
+
 		oShape = createObstacleShape(oTool->obstacleType(),tempSize,volume);
         
         mass = oTool->density() * (volume);

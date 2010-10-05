@@ -1,4 +1,5 @@
 #include "mainGUI.h"
+#include "simcontrol.h"
 #include "camera.h"
 #include "terrain.h"
 #include "obstacles.h"
@@ -145,6 +146,11 @@ void MainGUI::helpText()
 	textConsole->append("B :\t\t Resets the Rover");
 	textConsole->append("L :\t\t Toggles Sensor Graphics");
 }
+void MainGUI::printText(QString s)
+{
+	textConsole->append(s);
+}
+
 /////////////////////////////////////////
 // GUI tool views
 /////////////

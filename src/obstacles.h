@@ -26,6 +26,7 @@ class obstacles : public simGLObject
 		void setParameters(int count, btVector3 min, btVector3 max, QVector2D yaw);
 		QList<btCollisionObject*>* getObstacles() { return &m_obstacleObjects; }
 		bool areObstaclesActive();
+		float getMeanCoverage() { return m_meanArea; }
 		bool isSaved() { return m_saved; }
 		QString getLayoutName() { return m_layoutName; }
 		void showTool() { oTool->show(); }
@@ -58,6 +59,7 @@ class obstacles : public simGLObject
 		terrain         					*ground;
 		obstacleTool						*oTool;
 		bool								m_saved;
+		float								m_meanArea;
 		
 		pickValue							m_pickingObject;
 		QString								m_layoutName;
