@@ -95,8 +95,14 @@ pathEditDialog::pathEditDialog(pathPlan *ph, QWidget *parent)
 	efficiencyLineEdit->setEnabled(path->getRange() != 0);
 	inputLayout->addWidget(efficiencyLineEdit,4,1);
 
+	visibilityCheckBox = new QCheckBox("Search Visible");				// search visibility
+	visibilityCheckBox->setChecked(ph->getVisibilityType());
+	visibilityCheckBox->setEnabled(path->getRange() != 0);
+	visibilityCheckBox->setToolTip("Path search with only visible nodes from rover POV when enabled");
+	inputLayout->addWidget(visibilityCheckBox,5,1);
+
 	spinLabel = new QLabel("Spin Progress Limit");						// spin progress
-	inputLayout->addWidget(spinLabel,5,0);
+	inputLayout->addWidget(spinLabel,6,0);
 	QHBoxLayout *spinLayout = new QHBoxLayout;
 	spinLineEdit = new QLineEdit(this);
 	spinLineEdit->setText(QString::number(path->getSpinLimit()));
@@ -113,21 +119,21 @@ pathEditDialog::pathEditDialog(pathPlan *ph, QWidget *parent)
 	spinBaseBox->setMaximumWidth(65);
 	spinBaseBox->setEnabled(path->getRange() != 0);
 	spinLayout->addWidget(spinBaseBox);
-	inputLayout->addLayout(spinLayout,5,1);
+	inputLayout->addLayout(spinLayout,6,1);
 	
 	breadthLabel = new QLabel("Search Breadth");						// path search breadth
-	inputLayout->addWidget(breadthLabel,6,0);
+	inputLayout->addWidget(breadthLabel,7,0);
 	breadthLineEdit = new QLineEdit(this);
 	breadthLineEdit->setText(QString::number(path->getBreadth()));
 	breadthLineEdit->setToolTip("The maximum number of paths to search at each path node.\nSet to 0 for complete search");
 	breadthLineEdit->setAlignment(Qt::AlignHCenter);
 	breadthLineEdit->setMaximumWidth(100);
-	inputLayout->addWidget(breadthLineEdit,6,1);
+	inputLayout->addWidget(breadthLineEdit,7,1);
 	
 	saveAllCheckBox = new QCheckBox("Save All Paths");					// save paths 
 	saveAllCheckBox->setChecked(ph->getSaveOn());
 	saveAllCheckBox->setToolTip("Saves all potential paths to the goal while searching for shortest.\nFor viewing only");
-	inputLayout->addWidget(saveAllCheckBox,7,1);
+	inputLayout->addWidget(saveAllCheckBox,8,1);
 	
 	// Display group box setup
 	QVBoxLayout *displayLayout = new QVBoxLayout;
@@ -201,12 +207,14 @@ void pathEditDialog::enableLines()
 	if(rangeLineEdit->text().toFloat() == 0){
 		stepLineEdit->setEnabled(false);
 		efficiencyLineEdit->setEnabled(false);
+		visibilityCheckBox->setEnabled(false);
 		spinLineEdit->setEnabled(false);
 		spinBaseBox->setEnabled(false);
 	}
 	else{
 		stepLineEdit->setEnabled(true);
 		efficiencyLineEdit->setEnabled(true);
+		visibilityCheckBox->setEnabled(true);
 		spinLineEdit->setEnabled(true);
 		spinBaseBox->setEnabled(true);
 	}
@@ -269,6 +277,7 @@ void pathEditDialog::acceptData()
 	temp = fabs(breadthLineEdit->text().toInt());
 	path->setBreadth(temp);
 	
+	path->setVisibilityType(visibilityCheckBox->isChecked());
 	path->setSaveOn(saveAllCheckBox->isChecked());
 	this->accept();
 }
@@ -466,7 +475,7 @@ void pathTool::on_buttonAdd_clicked()
 	addToTable(path);
 }
 
-void pathTool::addPath(float range, float step, float csSize, float effLimit, float spinProgress, int drawgl)
+void pathTool::addPath(float range, float step, float csSize, float effLimit, float spinProgress, int drawgl, bool visible)
 {
 	QStringList colorNames = QColor::colorNames();
 	int r = Randomn()*colorNames.size();					// find a random color
@@ -476,6 +485,7 @@ void pathTool::addPath(float range, float step, float csSize, float effLimit, fl
 	path->setRange(range);
 	path->setStep(step);
 	path->setMargin(csSize);
+	path->setVisibilityType(visible);
 	path->setEffLimit(effLimit);
 	path->setSpinLimit(spinProgress);
 	path->setColor(color);

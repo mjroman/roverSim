@@ -37,6 +37,7 @@ configFile(QDir::currentPath() + "/mission/config",QSettings::IniFormat)
 	lineEditObstYawMin->setText(QString::number(configFile.value("Obstacle_Yaw_Min",0).toFloat()));
 	lineEditObstYawMax->setText(QString::number(configFile.value("Obstacle_Yaw_Max",180).toFloat()));
 	
+	checkBoxPathVisible->setChecked(configFile.value("Path_Visibility",0).toBool());
 	lineEditPathMin->setText(QString::number(configFile.value("Path_Size_Min",25).toFloat()));
 	lineEditPathMax->setText(QString::number(configFile.value("Path_Size_Max",100).toFloat()));
 	lineEditPathEff->setText(QString::number(configFile.value("Path_Eff_Limit",10).toFloat()));
@@ -50,7 +51,7 @@ configFile(QDir::currentPath() + "/mission/config",QSettings::IniFormat)
 	lineEditSeed->setText(QString::number(configFile.value("Seed",333).toLongLong()));
 	lineEditTrialName->setText(configFile.value("Trial_Name","trial").toString());
 	
-	checkBoxPathDrawing->setChecked(configFile.value("Path_Drawing",0).toInt());
+	checkBoxPathDrawing->setChecked(configFile.value("Path_Drawing",0).toBool());
 }
 
 void automatorTool::acceptData()
@@ -77,6 +78,7 @@ void automatorTool::acceptData()
 	configFile.setValue("Obstacle_Yaw_Min",lineEditObstYawMin->text());
 	configFile.setValue("Obstacle_Yaw_Max",lineEditObstYawMax->text());
 	
+	configFile.setValue("Path_Visibility",checkBoxPathVisible->isChecked());
 	configFile.setValue("Path_Size_Min",lineEditPathMin->text());
 	configFile.setValue("Path_Size_Max",lineEditPathMax->text());
 	configFile.setValue("Path_Eff_Limit",lineEditPathEff->text());

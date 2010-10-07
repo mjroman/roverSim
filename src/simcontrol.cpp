@@ -125,6 +125,7 @@ void simControl::runConfigWorld()
 	QVector2D yawrange;
 	float step,cssize,efflimit,sprogress;
 	int draw;
+	bool visibility;
 	int count = m_densityFields.takeFirst();
 	long seed;
 	GetSeed(&seed);
@@ -160,9 +161,10 @@ void simControl::runConfigWorld()
 	
 	step = configFile.value("Sensor_Step").toFloat();
 	cssize = configFile.value("Sensor_Cspace").toFloat();
+	visibility = configFile.value("Path_Visibility").toBool();
 	efflimit = configFile.value("Path_Eff_Limit").toFloat()/100;
 	sprogress = configFile.value("Path_Spin_Progress").toFloat();
-	draw = configFile.value("Path_Drawing").toInt();
+	draw = configFile.value("Path_Drawing").toBool();
 	m_iterations = configFile.value("Iterations").toInt();						// set the number of iterations to perform
 	m_pathSizeMin = configFile.value("Path_Size_Min").toFloat();
 	m_pathSizeMax = configFile.value("Path_Size_Max").toFloat();
@@ -178,7 +180,7 @@ void simControl::runConfigWorld()
 	for(int i=0; i<rangeList.size(); i++)
 	{
 		float range = rangeList[i].toFloat();
-		pTool->addPath(range,step,cssize,efflimit,sprogress,draw);				// create the paths with the parameters
+		pTool->addPath(range,step,cssize,efflimit,sprogress,draw,visibility);// create the paths with the parameters
 	}
 	
 
@@ -189,14 +191,16 @@ void simControl::runConfigWorld()
 	m_statsFile = new QFile(m_trialLocation.absolutePath() + "/" + trialDir + "/stats.csv");
 	if (m_statsFile->open(QIODevice::WriteOnly | QIODevice::Text)){				// if a statistics file can be opened
 		QTextStream statsStream(m_statsFile);									// create a stream
-		statsStream << "Obsts #," << count << ",";
-		statsStream << "Rand Seed," << seed << ",";
+		statsStream << "Obstacle #," << count << ",";
 		statsStream << "Iterations," << m_iterations << ",";
+		statsStream << "Search Visible," << visibility << ",";
 		statsStream << "Area Covered," << coverage << "\n";
+		
 		statsStream << "Step," << step << ",";
 		statsStream << "CSpace," << cssize << ",";
 		statsStream << "EffLimit," << efflimit << ",";
 		statsStream << "SpinProgress," << sprogress << "\n";
+		
 		statsStream << "Range,Path Len,Strait Len,Comp Eff,Pure Eff,Time ms,State,Path File\n";
 		pTool->setStatisticsDevice(m_statsFile);
 	}

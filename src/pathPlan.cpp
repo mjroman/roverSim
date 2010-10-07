@@ -16,6 +16,7 @@ m_range(0),
 m_margin(SPACEMARGIN),
 m_step(0.25),
 m_breadth(0),
+m_visibilityType(false),
 m_saveOn(false),
 m_goalOccluded(NULL),
 m_efficiencyLimit(0.3),
@@ -296,16 +297,19 @@ void pathPlan::constructRoadMap()
 /////////////
 bool pathPlan::searchForPath(float length)
 {
-	if(m_GP.length == 0 && m_time.elapsed() > 300000) return false; // 5 minute limit and no path to the goal found exit
+	if(m_GP.length == 0 && m_time.elapsed() > 300000) return false; 			// 5 minute limit and no path to the goal found exit
 	
-	float goalDist = m_midPoint.point.distance(m_goalPoint.point);	// find the distance from the current midpoint to the Goal
+	float goalDist = m_midPoint.point.distance(m_goalPoint.point);				// find the distance from the current midpoint to the Goal
 	
- 	if(m_GP.length != 0 && length + goalDist > m_GP.length) 		// incase the new search path is farther than the shortest path
+ 	if(m_GP.length != 0 && length + goalDist > m_GP.length) 					// incase the new search path is farther than the shortest path
 		return false;
 	
 	btCollisionObject *objBlock = this->isRayBlocked(m_midPoint,m_goalPoint);	// is the ray blocked?
 	
-	if(objBlock == NULL || objBlock == m_goalOccluded){							// check that the goal point is not occluded by the blocking object
+	if( objBlock == NULL ||														// compute the path to the goal if there are no obstacles in the way
+		(length != 0 && m_visibilityType && m_range != 0) ||					// if a limited sensor range is selected and path search is only on visible points and this is the second pass
+	 	objBlock == m_goalOccluded){											// check that the goal point is not occluded by the blocking object
+		
 		m_pointPath << m_goalPoint;												// add the goal point to the path
 		length += goalDist;						
 
@@ -330,6 +334,7 @@ bool pathPlan::searchForPath(float length)
 	}
 	
 	QList<rankPoint> prospectPoints = getVisablePointsFrom(m_midPoint,length); 	// get all the visable points from the current location
+
 	if(m_range == 0) prospectPoints = this->progressAngleBasedRank(prospectPoints, m_midPoint);	// compute the ranks based on progress angle from start-goal vector
 	else prospectPoints = this->angleBasedRank(prospectPoints, m_midPoint); 	// compute the ranks based on angle to goal from midPoint
 	prospectPoints = this->prunePointsFrom(prospectPoints);						// remove points that are already in the point path
@@ -340,17 +345,18 @@ bool pathPlan::searchForPath(float length)
 		m_midPoint = prospectPoints[i];											// change the midPoint to the lowest rank point
 		m_pointPath << m_midPoint;												// add the potential point to the global path list
 
-		 if(m_drawSwitch && m_view) m_view->updateGL();
-		
+		if(m_drawSwitch && m_view) m_view->updateGL();
+
 		if(this->searchForPath(prospectPoints[i].length)){						// recursive check for a path to the goal
 			m_pointPath.removeLast();											// remove the goal point from the global list
 			m_pointPath.removeLast();
 			break;																// don't need to do anymore looping since the goal is visible
 		}
 		else m_pointPath.removeLast();											// else remove the last midPoint and try the next
-			
+
 		i++;
 	}
+
 	prospectPoints.clear();														// clear all the prospecive points
 	return false;
 }

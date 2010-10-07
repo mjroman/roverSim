@@ -80,6 +80,7 @@ private:
 	float										m_margin;			// the size of obstacle growth for C-Space creation 
 	float										m_step;				// the distance traveled on the path inbetween limited range path readings
 	int											m_breadth;			// holds the number of times the path forks at each midpoint
+	bool										m_visibilityType;	// bool holding state of path planning based on visible nodes only
 	bool										m_saveOn;			// save all paths or just the shortest ones to the goal until complete
 	bool										m_firstPath;		// true if a path to the goal has not been found yet, still working on first path
 	
@@ -154,6 +155,7 @@ public:
 	const float getRange() const { return m_range; }
 	const float getMargin() const { return m_margin; }
 	const float getStep() const { return m_step; }
+	const bool getVisibilityType() { return m_visibilityType; }
 	const float getEffLimit() const { return m_efficiencyLimit; }
 	const float getSpinLimit() const { return m_spinProgress; }
 	int	getSpinBase() { return m_spinProgressBase; }
@@ -165,6 +167,7 @@ public:
 	void setRange(float r) { m_range = fabs(r); }
 	void setMargin(float m) { m_margin = fabs(m); }
 	void setStep(float s) { m_step = s; }
+	void setVisibilityType(bool v) { m_visibilityType = v; }
 	void setEffLimit(float e) { m_efficiencyLimit = e; }
 	void setSpinLimit(float s) { m_spinProgress = s; }
 	void setSpinBase(int b) { m_spinProgressBase = b; }

@@ -42,6 +42,7 @@ class pathEditDialog : public QDialog
 		QLineEdit		*growLineEdit;
 		QLineEdit 		*stepLineEdit;
 		QLineEdit		*efficiencyLineEdit;
+		QCheckBox		*visibilityCheckBox;
 		QLineEdit		*spinLineEdit;
 		QComboBox		*spinBaseBox;
 		QLineEdit 		*breadthLineEdit;
@@ -82,7 +83,7 @@ class pathTool : public QWidget, private Ui::pathtool
 		
 		void setStartPoint(btVector3 start) { startPoint = start; }
 		void setGoalPoint(btVector3 goal) { goalPoint = goal; }
-		void addPath(float range, float step, float csSize, float effLimit, float spinProgress, int drawgl = 1);
+		void addPath(float range, float step, float csSize, float effLimit, float spinProgress, int drawgl = 1, bool visible=false);
 		void setStatisticsDevice(QIODevice *f) { m_statsStream.setDevice(f); }
 		void setTrialname(QString f);
 		QString getTrialname() { return m_filename; }
