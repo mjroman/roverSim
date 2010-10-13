@@ -113,7 +113,9 @@ private:
 	void generateCspace();
 	bool isGoalInRange();
 	PathState cycleToGoal();
+	bool AStarSearch();
 	bool searchForPath(float length=0);
+	goalPath reconstructPath(rankPoint here, QList<rankPoint> list);
 	
 	void smoothPath();
 	void localMinimaCheck(QList<rankPoint> list, int index);
@@ -123,7 +125,8 @@ private:
 	QList<rankPoint> progressAngleBasedRank(QList<rankPoint> list, rankPoint pivotPoint);
 	QList<rankPoint> rangeBasedRank(QList<rankPoint> list, rankPoint pivotPoint);
 	QList<rankPoint> quickSortRankLessthan(QList<rankPoint> list);
-	QList<rankPoint> getVisablePointsFrom(rankPoint here, float dist);
+	QList<rankPoint> quickSortFScoreLessthan(QList<rankPoint> list);
+	QList<rankPoint> getVisablePointsFrom(rankPoint here, float dist=-1);
 	QList<rankPoint> getAllVisablePointsFrom(rankPoint here, float dist);
 	QList<rankPoint> prunePointsFrom(QList<rankPoint> list);
 	//bool isNewPoint(rankPoint pt);

@@ -99,8 +99,8 @@ void pathPlan::goForGoal(btVector3 start, btVector3 end)
 	m_time.start();											// start time of path calculation
 	
 	if(m_range == 0) {
-		this->searchForPath();								// if infinite range find the shortest path
-		
+		//this->searchForPath();								// if infinite range find the shortest path
+		this->AStarSearch();
 		if(m_GP.length == 0) m_state = PS_PATHNOTFOUND;
 		else m_state = PS_COMPLETE;
 	}
@@ -184,7 +184,8 @@ PathState pathPlan::cycleToGoal()
 	
 	while( progress <= m_progressLimit )										// looping condition based on path efficiency
 	{	
-		this->searchForPath();													// calculate the path to the goal
+		//this->searchForPath();													// calculate the path to the goal
+		this->AStarSearch();
 		
 		if(m_GP.points.size() <= 1){ 											// if only 1 point is in the path list or it is empty then no path is found
 			if(m_spinDirection == 1)
@@ -291,6 +292,108 @@ void pathPlan::constructRoadMap()
 	}
 }*/
 
+
+bool pathPlan::AStarSearch()
+{
+	int i,j;
+	bool newNode,oldNode;
+	float g_score;
+	goalPath v_GP;
+	rankPoint tPoint;
+	QList<rankPoint> prospectPoints;									// visible nodes from current location
+	QList<rankPoint> openSet;											// contains all possible nodes to go to
+	QList<rankPoint> closedSet;											// contains all nodes already visited
+	
+	m_midPoint = m_startPoint;
+	m_midPoint.parentIndex = -1;
+	m_midPoint.gScore = 0;
+	m_midPoint.hScore = m_midPoint.point.distance(m_goalPoint.point);
+	m_midPoint.fScore = m_midPoint.gScore + m_midPoint.hScore;
+	openSet << m_midPoint;
+	
+	while(!openSet.isEmpty())
+	{
+		m_midPoint = openSet.takeFirst(); 						// remove node in openSet with the lowest fScore
+		
+		if(m_drawSwitch && m_view)								// draw the path while searching
+		{
+			v_GP = reconstructPath(m_midPoint,closedSet);
+			m_pointPath.clear();
+			m_pointPath = v_GP.points;
+			m_pointPath.pop_back();
+			m_view->updateGL();
+		}
+		
+		btCollisionObject *objBlock = this->isRayBlocked(m_midPoint,m_goalPoint);	// is the ray blocked?
+		
+		if(objBlock == NULL || 						// if the goal is clear
+		objBlock == m_goalOccluded) 				// or the blocking object is the occluded goal object
+		{
+			m_GP = reconstructPath(m_midPoint,closedSet);
+			return true;
+		}
+		
+		closedSet << m_midPoint;							// add current node to already visited set
+		prospectPoints.clear();
+		prospectPoints = getVisablePointsFrom(m_midPoint);	// get all visible nodes
+		
+		for(i=0; i<prospectPoints.size(); i++)				// loop through all visible prospect nodes
+		{	
+			oldNode = false;
+			for( j = 0; j < closedSet.size(); j++){
+				if(prospectPoints[i].object == closedSet[j].object && prospectPoints[i].corner == closedSet[j].corner){
+					oldNode = true;
+					break;
+				}
+			}
+			if(oldNode) continue;						// skip points that have already been visited
+			
+			g_score = m_midPoint.gScore + m_midPoint.point.distance(prospectPoints[i].point);
+			
+			newNode = true;
+			for( j = 0; j < openSet.size(); j++){		// check if the prospective node is new or has a lower g score
+				if(prospectPoints[i].object == openSet[j].object && prospectPoints[i].corner == openSet[j].corner){
+					newNode = false;
+					if(g_score < openSet[j].gScore){
+						openSet[j].parentIndex = closedSet.size()-1;
+						openSet[j].gScore = g_score;
+						openSet[j].fScore = openSet[j].gScore + openSet[j].hScore;
+					}
+					break;
+				}
+			}
+			
+			if(newNode){								// add new nodes to the open set
+				prospectPoints[i].parentIndex = closedSet.size()-1;
+				prospectPoints[i].gScore = g_score;
+				prospectPoints[i].hScore = m_goalPoint.point.distance(prospectPoints[i].point);
+				prospectPoints[i].fScore = prospectPoints[i].gScore + prospectPoints[i].hScore;
+				openSet << prospectPoints[i];
+			}
+		}
+		
+		openSet = quickSortFScoreLessthan(openSet);
+		if(m_visibilityType && m_range != 0){
+			m_GP = reconstructPath(openSet.first(),closedSet);	// build the path
+			return true;
+		}
+	}
+	return false;
+}
+
+goalPath pathPlan::reconstructPath(rankPoint here, QList<rankPoint> list)
+{
+	goalPath gp;
+	gp.length = here.gScore + here.point.distance(m_goalPoint.point);
+
+	gp.points.prepend(m_goalPoint);
+	while(here.parentIndex != -1){
+		gp.points.prepend(here);
+		here = list[here.parentIndex];
+	}
+	gp.points.prepend(m_startPoint);
+	return gp;
+}
 
 /////////////////////////////////////////
 // first path planner algorithm DFSearch, this is where it all happens
@@ -614,12 +717,13 @@ QList<rankPoint> pathPlan::getVisablePointsFrom(rankPoint here, float dist)
 		if(this->isRayBlocked(here,list[i])) 							// remove all remaining points that are blocked
 			list.removeAt(i);
 		else
-			i++;	
+			i++;
 	}
 	
-	for(i=0; i<list.size(); i++)
-		list[i].length = here.point.distance(list[i].point) + dist;		// calculate the distance to each point from the midpoint
-
+	if(dist > 0){
+		for(i=0; i<list.size(); i++)
+			list[i].length = here.point.distance(list[i].point) + dist;		// calculate the distance to each point from the midpoint
+	}
 	return list;
 }
 
@@ -787,6 +891,22 @@ QList<rankPoint> pathPlan::quickSortRankLessthan(QList<rankPoint> list)
 		else greater << list[i];
 	}
 	return (quickSortRankLessthan(less) << pivot << quickSortRankLessthan(greater));
+}
+
+// does a quick sort on the list, orders from lowest to highest fScore
+QList<rankPoint> pathPlan::quickSortFScoreLessthan(QList<rankPoint> list)
+{
+	QList<rankPoint> less;
+	QList<rankPoint> greater;
+	
+	if(list.size() <= 1) return list;
+	rankPoint pivot = list.takeLast();
+	for(int i = 0; i < list.size(); ++i)
+	{
+		if(list[i].fScore < pivot.fScore) less << list[i];
+		else greater << list[i];
+	}
+	return (quickSortFScoreLessthan(less) << pivot << quickSortFScoreLessthan(greater));
 }
 
 // returns true if the link is NEW and not in the global link list yet

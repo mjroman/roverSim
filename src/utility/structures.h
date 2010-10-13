@@ -32,9 +32,14 @@ typedef struct _rankPoint
 {
 	btCollisionObject* 	object;
 	btVector3			point;
+	int					corner;
+	float				gScore;
+	float				hScore;
+	float				fScore;
+	int					parentIndex;
 	float				length;
 	float				rank;
-	int					corner;
+	
 }rankPoint;
 
 typedef struct _goalPath
