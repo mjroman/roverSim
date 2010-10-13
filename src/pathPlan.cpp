@@ -15,9 +15,7 @@ m_CS(NULL),
 m_range(0),
 m_margin(SPACEMARGIN),
 m_step(0.25),
-m_breadth(0),
 m_visibilityType(false),
-m_saveOn(false),
 m_goalOccluded(NULL),
 m_efficiencyLimit(0.3),
 m_spinProgress(6),
@@ -30,7 +28,6 @@ m_linkViewIndex(0)
 	// make sure these remain in order to match with the enumeration
 	ACallback<pathPlan> drawCB(this, &pathPlan::drawDebugPath);	m_drawingList << drawCB;
 	drawCB.SetCallback(this,&pathPlan::drawCrowFlyLine); 		m_drawingList << drawCB;
-	drawCB.SetCallback(this,&pathPlan::drawSavedPaths);			m_drawingList << drawCB;
 	drawCB.SetCallback(this,&pathPlan::drawCurrentSearchPath);	m_drawingList << drawCB;
 	drawCB.SetCallback(this,&pathPlan::drawRangeFan);			m_drawingList << drawCB;
 	drawCB.SetCallback(this,&pathPlan::drawPathBaseLine);		m_drawingList << drawCB;
@@ -45,7 +42,6 @@ m_linkViewIndex(0)
 	displayPath(false);
 	displayLightTrail(false);
 	displayCrowFly(false);
-	displaySavedPaths(false);
 	displayDebug(false);
 	displayCspace(false);
 }
@@ -55,11 +51,6 @@ pathPlan::~pathPlan()
 	m_pointPath.clear();
 	contactPoints.clear();
 	hitPoints.clear();
-	for(int i = 0; i < m_pathList.size(); ++i)
-	{
-		m_pathList[i].points.clear();
-	}
-	m_pathList.clear();
 	m_GP.points.clear();
 	if(m_CS) delete m_CS;
 	m_CS = 0;
@@ -68,7 +59,6 @@ pathPlan::~pathPlan()
 void pathPlan::reset()
 {
 	togglePathReset();
-	m_pathList.clear();
 	m_GP.points.clear();
 	m_GP.length = 0;
 	m_GP.time = 0;
@@ -94,13 +84,11 @@ void pathPlan::goForGoal(btVector3 start, btVector3 end)
 	this->generateCspace();									// create the C-Space to compute the path in
 	
 	if(m_view) m_view->overlayString(QString("Searching Range %1").arg(m_range));
-	m_firstPath = true;
 	
 	m_time.start();											// start time of path calculation
 	
 	if(m_range == 0) {
-		//this->searchForPath();								// if infinite range find the shortest path
-		this->AStarSearch();
+		this->AStarSearch();								// if infinite range find the shortest path
 		if(m_GP.length == 0) m_state = PS_PATHNOTFOUND;
 		else m_state = PS_COMPLETE;
 	}
@@ -123,13 +111,10 @@ void pathPlan::goForGoal(btVector3 start, btVector3 end)
 	if(m_CS) delete m_CS;									// delete the C Space to free up memory since it is not needed
 	m_CS = 0;
 	m_pointPath.clear();									// clear out the construction point path
-	m_nodeList.clear();										// clear out the node construction list
 	
 	displayCurrentSearch(false);							// turn off search path drawing
 	displayBuildPath(false);
 	displayPath(true);
-	
-	if(m_saveOn && m_view) m_view->printText(QString("%1 paths found").arg(m_pathList.size()));
 			
 	if(m_GP.length != 0) m_GP.efficiency = m_straightDistance/m_GP.length;
 }
@@ -159,7 +144,6 @@ void pathPlan::generateCspace()
 	m_midPoint = m_startPoint;												// reset all parameters due to new Cspace
 	m_pointPath.clear();
 	m_pointPath << m_startPoint;
-	m_nodeList.clear();
 }
 
 // returns true if the goal is within sensor range of the robot
@@ -184,8 +168,7 @@ PathState pathPlan::cycleToGoal()
 	
 	while( progress <= m_progressLimit )										// looping condition based on path efficiency
 	{	
-		//this->searchForPath();													// calculate the path to the goal
-		this->AStarSearch();
+		this->AStarSearch();													// calculate the path to the goal
 		
 		if(m_GP.points.size() <= 1){ 											// if only 1 point is in the path list or it is empty then no path is found
 			if(m_spinDirection == 1)
@@ -236,63 +219,9 @@ PathState pathPlan::cycleToGoal()
 }
 
 
-// what is the difference in finding all the open paths and choosing the one with the lowest angle = miller way
-// and building a path from the initial intersected object an back calculating from the extremes? = my way
-/*
-void pathPlan::constructRoadMap()
-{
-	int i;
-	if(this->isRayBlocked(m_midPoint,m_goalPoint) == NULL){
-		rankLink l;
-		l.first = m_midPoint;
-		l.second = m_goalPoint;
-		l.length = m_midPoint.point.distance(m_goalPoint.point);
-		m_linkList << l;
-		return;
-	}
-
-	QList<rankPoint> prospectPoints = getVisablePointsFrom(m_midPoint);
-
-	i=0;
-	// if(m_linkList.size()){
-	// 	while(i < prospectPoints.size()){
-	// 	// remove the point if it has already been visited
-	// 		if(!isNewPoint(prospectPoints[i]))
-	// 			prospectPoints.removeAt(i);
-	// 		else i++;	
-	// 	}
-	// }
-	
-	
-// compute the ranks for the remaining points
-	prospectPoints = angleBasedRank(prospectPoints,m_midPoint);
-// sort all the points with the smallest rank first, 	
-	prospectPoints = quickSortRankLessthan(prospectPoints);
-
-	for(i = 0; i < prospectPoints.size(); ++i)
-	{
-		rankLink l;
-		l.first = m_midPoint;
-		l.second = prospectPoints[i];
-		if(isNewLink(l)){
-			l.length = m_midPoint.point.distance(prospectPoints[i].point);
-			m_linkList << l;
-		}
-		else{
-			prospectPoints.removeAt(i);
-			i--;
-		}
-	}
-	
-	for(i = 0; i < prospectPoints.size() && i < 5; ++i)
-	{
-		m_midPoint = prospectPoints[i];
-		m_view->updateGL();
-		constructRoadMap();
-	}
-}*/
-
-
+/////////////////////////////////////////
+// A* search, This is where it all happens
+/////////////
 bool pathPlan::AStarSearch()
 {
 	int i,j;
@@ -313,6 +242,8 @@ bool pathPlan::AStarSearch()
 	
 	while(!openSet.isEmpty())
 	{
+		//if(m_GP.length == 0 && m_time.elapsed() > 300000) return false; 			// 5 minute limit and no path to the goal found exit
+		
 		m_midPoint = openSet.takeFirst(); 						// remove node in openSet with the lowest fScore
 		
 		if(m_drawSwitch && m_view)								// draw the path while searching
@@ -381,89 +312,6 @@ bool pathPlan::AStarSearch()
 	return false;
 }
 
-goalPath pathPlan::reconstructPath(rankPoint here, QList<rankPoint> list)
-{
-	goalPath gp;
-	gp.length = here.gScore + here.point.distance(m_goalPoint.point);
-
-	gp.points.prepend(m_goalPoint);
-	while(here.parentIndex != -1){
-		gp.points.prepend(here);
-		here = list[here.parentIndex];
-	}
-	gp.points.prepend(m_startPoint);
-	return gp;
-}
-
-/////////////////////////////////////////
-// first path planner algorithm DFSearch, this is where it all happens
-/////////////
-bool pathPlan::searchForPath(float length)
-{
-	if(m_GP.length == 0 && m_time.elapsed() > 300000) return false; 			// 5 minute limit and no path to the goal found exit
-	
-	float goalDist = m_midPoint.point.distance(m_goalPoint.point);				// find the distance from the current midpoint to the Goal
-	
- 	if(m_GP.length != 0 && length + goalDist > m_GP.length) 					// incase the new search path is farther than the shortest path
-		return false;
-	
-	btCollisionObject *objBlock = this->isRayBlocked(m_midPoint,m_goalPoint);	// is the ray blocked?
-	
-	if( objBlock == NULL ||														// compute the path to the goal if there are no obstacles in the way
-		(length != 0 && m_visibilityType && m_range != 0) ||					// if a limited sensor range is selected and path search is only on visible points and this is the second pass
-	 	objBlock == m_goalOccluded){											// check that the goal point is not occluded by the blocking object
-		
-		m_pointPath << m_goalPoint;												// add the goal point to the path
-		length += goalDist;						
-
-		if(length < m_GP.length || m_GP.length == 0)							// check if a new shortest path has been found
-		{
-			if(m_firstPath && m_range == 0) {
-				if(m_view) m_view->overlayString("First Path Found");
-				m_firstPath = false;
-			}
-			m_GP.length = length;
-			m_GP.points = m_pointPath;											// save the new short path
-			if(m_saveOn) m_pathList.push_front(m_GP);
-		}
-		else if(m_saveOn)
-		{
-			goalPath newPath;
-			newPath.length = length;
-			newPath.points = m_pointPath;
-			m_pathList.push_back(newPath);
-		}
-		return true;															// no intersection all done
-	}
-	
-	QList<rankPoint> prospectPoints = getVisablePointsFrom(m_midPoint,length); 	// get all the visable points from the current location
-
-	if(m_range == 0) prospectPoints = this->progressAngleBasedRank(prospectPoints, m_midPoint);	// compute the ranks based on progress angle from start-goal vector
-	else prospectPoints = this->angleBasedRank(prospectPoints, m_midPoint); 	// compute the ranks based on angle to goal from midPoint
-	prospectPoints = this->prunePointsFrom(prospectPoints);						// remove points that are already in the point path
-	
-	int i=0;
-	while(i < prospectPoints.size() && (m_breadth == 0 || i < m_breadth))
-	{
-		m_midPoint = prospectPoints[i];											// change the midPoint to the lowest rank point
-		m_pointPath << m_midPoint;												// add the potential point to the global path list
-
-		if(m_drawSwitch && m_view) m_view->updateGL();
-
-		if(this->searchForPath(prospectPoints[i].length)){						// recursive check for a path to the goal
-			m_pointPath.removeLast();											// remove the goal point from the global list
-			m_pointPath.removeLast();
-			break;																// don't need to do anymore looping since the goal is visible
-		}
-		else m_pointPath.removeLast();											// else remove the last midPoint and try the next
-
-		i++;
-	}
-
-	prospectPoints.clear();														// clear all the prospecive points
-	return false;
-}
-
 /////////////////////////////////////////
 // Path Debugging
 /////////////
@@ -502,9 +350,7 @@ void pathPlan::togglePathPoint(int dir)
 	m_CS = new cSpace(here.point,m_range,m_margin,m_blocks,m_view);			// create a new Configuration Space based on the start point
 	if(m_view) m_CS->drawCspace(true);
 	
-	contactPoints = getVisablePointsFrom(here,0);							// gather all objects extreme vertices
-	if(m_range == 0) contactPoints = progressAngleBasedRank(contactPoints, m_GP.points[m_linkViewIndex]);
-	else contactPoints = angleBasedRank(contactPoints, m_GP.points[m_linkViewIndex]);
+	contactPoints = getVisablePointsFrom(here);								// gather all objects extreme vertices
 	
 	if(!contactPoints.isEmpty()) hitPoints << contactPoints[0].point;		// show the most likely path choice
 	contactPoints.prepend(m_GP.points[m_linkViewIndex]);					// push the point the current view is from for drawing
@@ -514,36 +360,18 @@ void pathPlan::togglePathPoint(int dir)
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Path generation utility functions
 /////////////
-void pathPlan::smoothPath()
+goalPath pathPlan::reconstructPath(rankPoint here, QList<rankPoint> list)
 {
-	int i = 0;
-	int j = m_GP.points.size()-1;
+	goalPath gp;
+	gp.length = here.gScore + here.point.distance(m_goalPoint.point);
 
-	while(j > i+1){
-		m_view->overlayString(QString("end %1").arg(j));
-		while(i < j-1){
-			m_view->overlayString(QString("begin %1").arg(i));
-			if(isRayBlocked(m_GP.points[j],m_GP.points[i]) == NULL)
-			{
-				m_view->overlayString("Smooth remove");
-				i++;								// get the first point to be erased
-				for(int k=0;k<j-i;k++){				
-					m_GP.points.removeAt(i);		// do not increment i because the list gets smaller each removal
-				}
-				j = m_GP.points.size()-1;
-				break;
-			}
-			else
-				i++;
-		}
-		i = 0;
-		j--;
+	gp.points.prepend(m_goalPoint);
+	while(here.parentIndex != -1){
+		gp.points.prepend(here);
+		here = list[here.parentIndex];
 	}
-	
-	m_GP.length = 0;
-	for(int k=0; k<m_GP.points.size()-1; k++) 
-		m_GP.length += m_GP.points[k].point.distance(m_GP.points[k+1].point);	// calculate the total length
-		
+	gp.points.prepend(m_startPoint);
+	return gp;
 }
 
 // checks local minima under limited range sensor paths for switch back condition
@@ -601,7 +429,7 @@ btCollisionObject* pathPlan::isRayBlocked(rankPoint from,rankPoint to, btVector3
 			if(j == shapePoints.size()-1) k=0;
 			else k=j+1;
 			if(m_CS->segmentIntersection(from.point,to.point,shapePoints[j],shapePoints[k],&rp.point) > 0.){
-				rp.rank = from.point.distance2(rp.point);
+				rp.fScore = from.point.distance2(rp.point);
 				hitList << rp;
 			}
 		}
@@ -609,10 +437,10 @@ btCollisionObject* pathPlan::isRayBlocked(rankPoint from,rankPoint to, btVector3
 	
 	if(hitList.isEmpty()) return NULL; // no hits all clear
 	
-	hitList = this->quickSortRankLessthan(hitList); // sort all hit points from closest to farthest
+	hitList = this->quickSortFScoreLessthan(hitList); // sort all hit points from closest to farthest
 	
 	for(int i=0;i<hitList.size();i++){
-		if(hitList[i].rank > 0.0){
+		if(hitList[i].fScore > 0.0){
 			if(point) *point = hitList[i].point;
 			return hitList[i].object;
 		}
@@ -679,7 +507,7 @@ void pathPlan::getExtremes(btCollisionObject* obj, rankPoint pivotPoint, rankPoi
 }
 
 // returns a list of all the visable extremes of C Space obstacles
-QList<rankPoint> pathPlan::getVisablePointsFrom(rankPoint here, float dist)
+QList<rankPoint> pathPlan::getVisablePointsFrom(rankPoint here)
 {
 	int i;
 	rankPoint leftMost;
@@ -719,178 +547,7 @@ QList<rankPoint> pathPlan::getVisablePointsFrom(rankPoint here, float dist)
 		else
 			i++;
 	}
-	
-	if(dist > 0){
-		for(i=0; i<list.size(); i++)
-			list[i].length = here.point.distance(list[i].point) + dist;		// calculate the distance to each point from the midpoint
-	}
 	return list;
-}
-
-// returns a list of all the visable vertices of C Space obstacles
-QList<rankPoint> pathPlan::getAllVisablePointsFrom(rankPoint here, float dist)
-{
-	int i,j;
-	QList<rankPoint> list;
-	QList<btCollisionObject*>* ghostList = m_CS->getGhostList();
-
-// gather all objects vertices
-	for(i = 0; i < ghostList->size(); ++i)										// get all points from individual objects
-	{
-		QList<btVector3> objPts = m_CS->getTopShapePoints(ghostList->at(i));	// get all the top points that make up the obstacle
-		QList<rankPoint> tempList;
-		
-		for(j = 0; j < objPts.size(); j++){										// convert points into rank points 
-			rankPoint rp;
-			rp.object = ghostList->at(i);
-			rp.point = objPts[j];
-			rp.point.setZ(m_startPoint.point.z());
-			rp.corner = j;
-			tempList << rp;
-		}
-		
-		list += tempList;														// add all remaining rank points from obstacle to the visible list
-		objPts.clear();
-		tempList.clear();
-	}
-
-	i=0;
-	while(i < list.size()){
-		if(this->isRayBlocked(here,list[i])) 									// remove all remaining points that are blocked
-			list.removeAt(i);
-		else
-			i++;	
-	}
-	
-	if(here.object){															// remove all points between edges of object
-		QList<btVector3> objPts = m_CS->getTopShapePoints(here.object);
-		if(here.corner < objPts.size()) {
-			i = here.corner;													// get the corner
-			int nexti,prei;												
-			if(i == 0) prei = objPts.size()-1;									// get the adjacent corners
-			else prei = i-1;
-			if(i == objPts.size()-1) nexti = 0;
-			else nexti = i+1;
-
-			btVector3 right = objPts[nexti] - objPts[i];						// get the vectors to the left and right points
-			btVector3 left = objPts[prei] - objPts[i];
-			j=0;
-			while(j < list.size()){
-				btVector3 tv = list[j].point - objPts[i];						// test if the cross products are different between the list point
-				btVector3 xr = right.cross(tv);
-				btVector3 xl = left.cross(tv);
-				if(xr.z() > 0 && xl.z() < 0)
-					list.removeAt(j);
-				else
-					j++;
-			}
-		}
-	}
-	
-	for(i=0; i<list.size(); i++)
-		list[i].length = here.point.distance(list[i].point) + dist;				// calculate the distance to each point from the midpoint
-
-	return list;
-}
-
-// removes visible points not wanted
-QList<rankPoint> pathPlan::prunePointsFrom(QList<rankPoint> list)
-{
-	int i=0,j;
-
-// check each visible point if it is already in the node list, remove it if it is longer, replace the node if it is shorter, add it if it doesn't exist
-	while(i < list.size())
-	{
-		bool newNode = true;
-		for( j = 0; j < m_nodeList.size(); j++)
-		{
-			if(list[i].object == m_nodeList[j].object && list[i].corner == m_nodeList[j].corner)
-			{
-				if(list[i].length >= m_nodeList[j].length){			// new visible point is farther so remove it
-					list.removeAt(i);
-					newNode = false;
-					break;
-				}
-				else{
-					m_nodeList.replace(j,list[i]);					// new visible point is shorter so replace it
-					newNode = false;
-					i++;
-					break;
-				}
-			}
-		}
-		if(newNode){ 												// new visible point is not in the node list add it
-			m_nodeList << list[i];
-			i++;
-		}
-	}
-	
-	return list;
-}
-
-// computes the rank of each point based on the angle between the goal and the pivot point
-QList<rankPoint> pathPlan::angleBasedRank(QList<rankPoint> list, rankPoint pivotPoint)
-{
-	// ranking can not use just the cross product or length of cross product, not enough info
-	// have to use the angle between the goal vector and the extreme point
-	for(int i = 0; i < list.size(); ++i)
-	{
-		list[i].rank = (m_goalPoint.point - pivotPoint.point).angle(list[i].point - pivotPoint.point);
-	}
-	list = this->quickSortRankLessthan(list);	// sort the list with the smallest rank first to the goal
-	return list;
-}
-
-// computes the rank of each point based on the angle between the goal and the start point
-QList<rankPoint> pathPlan::progressAngleBasedRank(QList<rankPoint> list, rankPoint pivotPoint)
-{
-	int i;
-	// ranking can not use just the cross product or length of cross product, not enough info
-	// have to use the angle between the goal vector and the extreme point
-	for(i = 0; i < list.size(); ++i)
-	{
-		list[i].rank = (m_goalPoint.point - m_startPoint.point).angle(list[i].point - pivotPoint.point);
-		// remove any points where the angle from the midpoint is greater than 90deg to the start-goal vector
-	}
-	list = this->quickSortRankLessthan(list);	// sort the list with the smallest rank first to the goal
-	
-	QList<rankPoint> keepers;
-	for(i = 0; i < list.size(); ++i)			// to reduce unnecessary searching
-	{											// check for paths that search backwards or angles greater than 90 deg
-		if(list[i].rank > HALFPI) break;
-		else keepers << list[i];				// add all positive progress points
-	}
-	if(i == 0) keepers << list[0];				// if all paths are behind then only search the one behind
-	
-	list.clear();
-	return keepers;
-}
-
-// computes the rank of each point based on the distance from the pivot point
-QList<rankPoint> pathPlan::rangeBasedRank(QList<rankPoint> list, rankPoint pivotPoint)
-{
-	for(int i = 0; i < list.size(); ++i)
-	{
-		list[i].rank = list[i].point.distance(pivotPoint.point);
-	}
-	list = this->quickSortRankLessthan(list); 	// sort the list with the smallest rank first to the goal
-	return list;
-}
-
-// does a quick sort on the list, orders from lowest to highest rank
-QList<rankPoint> pathPlan::quickSortRankLessthan(QList<rankPoint> list)
-{
-	QList<rankPoint> less;
-	QList<rankPoint> greater;
-	
-	if(list.size() <= 1) return list;
-	rankPoint pivot = list.takeLast();
-	for(int i = 0; i < list.size(); ++i)
-	{
-		if(list[i].rank < pivot.rank) less << list[i];
-		else greater << list[i];
-	}
-	return (quickSortRankLessthan(less) << pivot << quickSortRankLessthan(greater));
 }
 
 // does a quick sort on the list, orders from lowest to highest fScore
@@ -909,37 +566,6 @@ QList<rankPoint> pathPlan::quickSortFScoreLessthan(QList<rankPoint> list)
 	return (quickSortFScoreLessthan(less) << pivot << quickSortFScoreLessthan(greater));
 }
 
-// returns true if the link is NEW and not in the global link list yet
-/*
-bool pathPlan::isNewPoint(rankPoint pt)
-{
-	rankPoint a,b;
-	for(int i = 0; i < m_linkList.size(); ++i)
-	{
-		a = m_linkList[i].first;
-		b = m_linkList[i].second;
-		if(a.object == pt.object || b.object == pt.object){
-			if(a.corner == pt.corner || b.corner == pt.corner) return false;
-		}
-	}
-	return true;
-}
-
-bool pathPlan::isNewLink(rankLink link)
-{
-	rankPoint a,b;
-	for(int i = 0; i < m_linkList.size(); ++i)
-	{
-		a = m_linkList[i].first;
-		b = m_linkList[i].second;
-		if(a.object == link.first.object && a.corner == link.first.corner && 
-			b.object == link.second.object && b.corner == link.second.corner) return false;
-		if(a.object == link.second.object && a.corner == link.second.corner && 
-			b.object == link.first.object && b.corner == link.first.corner) return false;
-	}
-	return true;
-}*/
-
 
 /////////////////////////////////////////
 // path display access functions
@@ -956,12 +582,6 @@ void pathPlan::displayCrowFly(bool x)
 	m_displayCrowFly = x;
 	if(x) m_displayList.push_front(&m_drawingList[PP_CROWFLY] );	// insert after the baseline of the path has been drawn
 	else m_displayList.removeAll(&m_drawingList[PP_CROWFLY]);
-}
-void pathPlan::displaySavedPaths(bool x)
-{
-	m_displaySavedPaths = x;
-	if(x) m_displayList.push_front(&m_drawingList[PP_SAVEDPATHS] );	// insert after the baseline of the path has been drawn
-	else m_displayList.removeAll(&m_drawingList[PP_SAVEDPATHS]);
 }
 void pathPlan::displayCurrentSearch(bool x)
 {
@@ -1030,20 +650,6 @@ void pathPlan::drawCrowFlyLine()			// draws a dark blue line from the start of t
 	glVertex3fv(m_startPoint.point.m_floats);
 	glVertex3fv(m_goalPoint.point.m_floats);
 	glEnd();
-}
-
-void pathPlan::drawSavedPaths()				// if all the paths are being saved draw them in purple
-{
-	for(int j=1; j < m_pathList.size(); j++){
-		glColor3f(0,1,1);
-		QList<rankPoint> pp = m_pathList[j].points;
-		glBegin(GL_LINE_STRIP);
-		for(int i = 0; i < pp.size(); ++i)
-		{
-			glVertex3fv(pp[i].point.m_floats);
-		}
-		glEnd();
-	}
 }
 
 void pathPlan::drawCurrentSearchPath()		// draws a yellow line indicating the current search path while looping

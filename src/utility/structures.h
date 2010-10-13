@@ -36,10 +36,7 @@ typedef struct _rankPoint
 	float				gScore;
 	float				hScore;
 	float				fScore;
-	int					parentIndex;
-	float				length;
-	float				rank;
-	
+	int					parentIndex;	
 }rankPoint;
 
 typedef struct _goalPath

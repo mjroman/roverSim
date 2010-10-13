@@ -45,14 +45,11 @@ class pathEditDialog : public QDialog
 		QCheckBox		*visibilityCheckBox;
 		QLineEdit		*spinLineEdit;
 		QComboBox		*spinBaseBox;
-		QLineEdit 		*breadthLineEdit;
-		QCheckBox 		*saveAllCheckBox;
 		
 		QGroupBox		*displayGroupBox;
 		QCheckBox 		*baselineCheckBox;
 		QCheckBox 		*lightTrailCheckBox;
 		QCheckBox 		*crowFlyCheckBox;
-		QCheckBox 		*saveDisplayCheckBox;
 		QCheckBox		*cspaceDisplayCheckBox;
 		
 		QPushButton		*doneButton;
@@ -66,7 +63,6 @@ class pathEditDialog : public QDialog
 		QLabel 			*stepLabel;
 		QLabel			*efficiencyLabel;
 		QLabel			*spinLabel;
-		QLabel 			*breadthLabel;
 	
 	public slots:
 		void enableLines();

@@ -12,21 +12,13 @@ class obstacles;
 typedef enum _PathDisplay
 {
 	PP_DEBUG = 0,
-	PP_CROWFLY = 1,
-	PP_SAVEDPATHS = 2,
-	PP_CURRENTSEARCH = 3,
-	PP_RANGEFAN = 4,
-	PP_BASELINE = 5,
-	PP_LIGHTTRAIL = 6,
-	PP_BUILDPATH = 7
+	PP_CROWFLY,
+	PP_CURRENTSEARCH,
+	PP_RANGEFAN,
+	PP_BASELINE,
+	PP_LIGHTTRAIL,
+	PP_BUILDPATH
 } PathDisplay;
-
-// typedef struct _rankLink
-// {
-// 	rankPoint	first;
-// 	rankPoint	second;
-// 	float		length;
-// }rankLink;
 
 class cCallback
 {
@@ -69,8 +61,6 @@ private:
 	cSpace*										m_CS;				// the Configuration Space the path is calculated in
 	
 	QList<rankPoint>							m_pointPath;		// global point containter, used while searching for a path
-	QList<rankPoint>							m_nodeList;			// intermediate node list for path search speedup
-	QList<goalPath>								m_pathList;			// contains all the paths if they have been saved
 	goalPath									m_GP;				// the shortest Goal Path
 	QList<rankPoint>							m_trailPath;		// holds the step path for limited range sensor paths
 	
@@ -79,10 +69,7 @@ private:
 	float										m_range;			// holds the sensor range or distance, if 0 then infinite range
 	float										m_margin;			// the size of obstacle growth for C-Space creation 
 	float										m_step;				// the distance traveled on the path inbetween limited range path readings
-	int											m_breadth;			// holds the number of times the path forks at each midpoint
 	bool										m_visibilityType;	// bool holding state of path planning based on visible nodes only
-	bool										m_saveOn;			// save all paths or just the shortest ones to the goal until complete
-	bool										m_firstPath;		// true if a path to the goal has not been found yet, still working on first path
 	
 	rankPoint									m_startPoint;		// start point of the path
 	rankPoint									m_midPoint;
@@ -114,27 +101,16 @@ private:
 	bool isGoalInRange();
 	PathState cycleToGoal();
 	bool AStarSearch();
-	bool searchForPath(float length=0);
-	goalPath reconstructPath(rankPoint here, QList<rankPoint> list);
 	
-	void smoothPath();
+	goalPath reconstructPath(rankPoint here, QList<rankPoint> list);
 	void localMinimaCheck(QList<rankPoint> list, int index);
 	btCollisionObject* isRayBlocked(rankPoint from,rankPoint to, btVector3* point = NULL);
 	void getExtremes(btCollisionObject* obj, rankPoint pivotPoint, rankPoint* left, rankPoint* right);
-	QList<rankPoint> angleBasedRank(QList<rankPoint> list, rankPoint pivotPoint);
-	QList<rankPoint> progressAngleBasedRank(QList<rankPoint> list, rankPoint pivotPoint);
-	QList<rankPoint> rangeBasedRank(QList<rankPoint> list, rankPoint pivotPoint);
-	QList<rankPoint> quickSortRankLessthan(QList<rankPoint> list);
 	QList<rankPoint> quickSortFScoreLessthan(QList<rankPoint> list);
-	QList<rankPoint> getVisablePointsFrom(rankPoint here, float dist=-1);
-	QList<rankPoint> getAllVisablePointsFrom(rankPoint here, float dist);
-	QList<rankPoint> prunePointsFrom(QList<rankPoint> list);
-	//bool isNewPoint(rankPoint pt);
-	//bool isNewLink(rankLink link);
-	
+	QList<rankPoint> getVisablePointsFrom(rankPoint here);
+
 	void drawDebugPath();
 	void drawCrowFlyLine();
-	void drawSavedPaths();
 	void drawCurrentSearchPath();
 	void drawRangeFan();
 	void drawPathBuildLine();
@@ -162,8 +138,6 @@ public:
 	const float getEffLimit() const { return m_efficiencyLimit; }
 	const float getSpinLimit() const { return m_spinProgress; }
 	int	getSpinBase() { return m_spinProgressBase; }
-	int getBreadth() { return m_breadth; }
-	bool getSaveOn() { return m_saveOn; }
 	const int getState() const { return m_state; }
 	
 	void setColor(QColor color) { m_color = color; m_color.setAlphaF(0.45); }
@@ -174,13 +148,10 @@ public:
 	void setEffLimit(float e) { m_efficiencyLimit = e; }
 	void setSpinLimit(float s) { m_spinProgress = s; }
 	void setSpinBase(int b) { m_spinProgressBase = b; }
-	void setBreadth(int b) { m_breadth = b; }
-	void setSaveOn(bool x) { m_saveOn = x; }
 	void setDrawSwitch(bool x) { m_drawSwitch = x; }
 	
 	bool  m_displayDebug;
 	bool  m_displayCrowFly;
-	bool  m_displaySavedPaths;
 	bool  m_displayPath;
 	bool  m_displayLightTrail;
 	bool  m_displayCS;
@@ -188,7 +159,6 @@ public:
 public slots:	
 	void displayDebug(bool x);
 	void displayCrowFly(bool x);
-	void displaySavedPaths(bool x);
 	void displayCurrentSearch(bool x);
 	void displayRangeFan(bool x);
 	void displayPath(bool x);

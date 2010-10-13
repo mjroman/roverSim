@@ -121,20 +121,6 @@ pathEditDialog::pathEditDialog(pathPlan *ph, QWidget *parent)
 	spinLayout->addWidget(spinBaseBox);
 	inputLayout->addLayout(spinLayout,6,1);
 	
-	breadthLabel = new QLabel("Search Breadth");						// path search breadth
-	inputLayout->addWidget(breadthLabel,7,0);
-	breadthLineEdit = new QLineEdit(this);
-	breadthLineEdit->setText(QString::number(path->getBreadth()));
-	breadthLineEdit->setToolTip("The maximum number of paths to search at each path node.\nSet to 0 for complete search");
-	breadthLineEdit->setAlignment(Qt::AlignHCenter);
-	breadthLineEdit->setMaximumWidth(100);
-	inputLayout->addWidget(breadthLineEdit,7,1);
-	
-	saveAllCheckBox = new QCheckBox("Save All Paths");					// save paths 
-	saveAllCheckBox->setChecked(ph->getSaveOn());
-	saveAllCheckBox->setToolTip("Saves all potential paths to the goal while searching for shortest.\nFor viewing only");
-	inputLayout->addWidget(saveAllCheckBox,8,1);
-	
 	// Display group box setup
 	QVBoxLayout *displayLayout = new QVBoxLayout;
 	displayGroupBox = new QGroupBox("Path display items");
@@ -149,10 +135,6 @@ pathEditDialog::pathEditDialog(pathPlan *ph, QWidget *parent)
 	crowFlyCheckBox = new QCheckBox("Crow Fly Line");
 	crowFlyCheckBox->setToolTip("Displays a vector line from the start to goal.\nFor debugging");
 	displayLayout->addWidget(crowFlyCheckBox);
-	
-	saveDisplayCheckBox = new QCheckBox("Saved Paths");
-	saveDisplayCheckBox->setToolTip("Display all potential paths if they have been saved");
-	displayLayout->addWidget(saveDisplayCheckBox);
 	
 	cspaceDisplayCheckBox = new QCheckBox("Config Space");
 	cspaceDisplayCheckBox->setToolTip("Display Configuration Space while searching for paths");
@@ -179,7 +161,6 @@ pathEditDialog::pathEditDialog(pathPlan *ph, QWidget *parent)
 	connect(baselineCheckBox,SIGNAL(clicked(bool)),path,SLOT(displayPath(bool)));
 	connect(lightTrailCheckBox,SIGNAL(clicked(bool)),path,SLOT(displayLightTrail(bool)));
 	connect(crowFlyCheckBox,SIGNAL(clicked(bool)),path,SLOT(displayCrowFly(bool)));
-	connect(saveDisplayCheckBox,SIGNAL(clicked(bool)),path,SLOT(displaySavedPaths(bool)));
 	connect(cspaceDisplayCheckBox,SIGNAL(clicked(bool)),path,SLOT(displayCspace(bool)));
 	
 	connect(rangeLineEdit,SIGNAL(editingFinished()),this,SLOT(enableLines()));
@@ -190,7 +171,6 @@ pathEditDialog::pathEditDialog(pathPlan *ph, QWidget *parent)
 	baselineCheckBox->setChecked(path->m_displayPath);
 	lightTrailCheckBox->setChecked(path->m_displayLightTrail);
 	crowFlyCheckBox->setChecked(path->m_displayCrowFly);
-	saveDisplayCheckBox->setChecked(path->m_displaySavedPaths);
 	cspaceDisplayCheckBox->setChecked(path->m_displayCS);
 	
 	// Main window layout
@@ -201,7 +181,6 @@ pathEditDialog::pathEditDialog(pathPlan *ph, QWidget *parent)
 	
 	this->setLayout(mainLayout);
 }
-
 void pathEditDialog::enableLines()
 {
 	if(rangeLineEdit->text().toFloat() == 0){
@@ -253,7 +232,6 @@ void pathEditDialog::stepWarning()
 		rangeLineEdit->setText(QString::number(grow + step + 0.01));
 	}
 }
-
 void pathEditDialog::acceptData()
 {
 	float temp;
@@ -274,11 +252,7 @@ void pathEditDialog::acceptData()
 	
 	path->setSpinBase(spinBaseBox->currentIndex());
 	
-	temp = fabs(breadthLineEdit->text().toInt());
-	path->setBreadth(temp);
-	
 	path->setVisibilityType(visibilityCheckBox->isChecked());
-	path->setSaveOn(saveAllCheckBox->isChecked());
 	this->accept();
 }
 
