@@ -196,18 +196,18 @@ PathState pathPlan::cycleToGoal()
 		m_startPoint.point = step * strideVect.normalized() + m_trailPath.last().point;	// compute the new point from the end of the trail
 		
 		// make sure the rover doesn't step into an object's C-Space
-		///////////////////////////////////////////////////////////////////////////
+		///////////////////////////////////////////////////////////////////////////			
 		btCollisionObject* object = 0;
 		if(m_trailPath.last().object) object = m_trailPath.last().object; 		// check if the end of the trail is near a C-Space object
 		else if(m_GP.points[i].object) object = m_GP.points[i].object;			// or the next point on the path in the direction headed
-		
+
 		if(object){
 			btVector3 offset = m_startPoint.point - object->getWorldTransform().getOrigin();
 			offset = (0.01 * offset.normalized()) * btVector3(1,1,0);			// move over the start point 1cm from the edge of the C-Space
 			m_startPoint.point += offset;
 		}
-		// check if the new start point is inside the C-Space
-		
+
+		m_CS->movePointOutsideCSpace(m_startPoint.point);						// check if the new start point is inside the C-Space
 		///////////////////////////////////////////////////////////////////////////
 		
 		m_trailPath << m_startPoint;
@@ -355,6 +355,9 @@ void pathPlan::togglePathPoint(int dir)
 	m_CS = new cSpace(here.point,m_range,m_margin,m_blocks,m_view);			// create a new Configuration Space based on the start point
 	if(m_view) m_CS->drawCspace(true);
 	
+	if(m_CS->isPointInsideCSpace(here.point))	
+		m_view->overlayString("inside");
+	
 	contactPoints = getVisablePointsFrom(here);								// gather all objects extreme vertices
 	
 	if(!contactPoints.isEmpty()) hitPoints << contactPoints[0].point;		// show the most likely path choice
@@ -392,7 +395,7 @@ void pathPlan::localMinimaCheck(QList<rankPoint> list, int index)
 		btVector3 preVect = list[index-1].point - list[index-2].point;	// use the previous position to compare
 		btVector3 newVect = list[index].point - list[index-1].point;	// to the new position
 
-		if(preVect.dot(newVect) < 0){									// A switchback is detected, dot is negative if the angle is greater than 90
+		if(preVect.dot(newVect) < -0.15){									// A switchback is detected, dot is negative if the angle is greater than 90+
 			minimaPoint mp;
 			mp.point = list[index-1].point;
 			mp.threshold = 2*m_step;

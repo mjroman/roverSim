@@ -249,7 +249,8 @@ bool cSpace::isPointInsideObject(btVector3 pt, btCollisionObject* obj)
 bool cSpace::isPointInsideCSpace(btVector3 pt)
 {
 	for(int i=0; i<m_ghostObjects.size(); i++){
-		if(isPointInsideObject(pt,m_ghostObjects[i])) return true;
+		if(isPointInsideObject(pt,m_ghostObjects[i]))
+			return true;
 	}
 	return false;
 }
@@ -293,9 +294,27 @@ void cSpace::movePointOutsideObject(btVector3& pt, btCollisionObject* obj)
 
 void cSpace::movePointOutsideCSpace(btVector3& pt)
 {
-	for(int i=0;i<m_ghostObjects.size();i++)
-		movePointOutsideObject(pt,m_ghostObjects[i]);
+	float angle;
+	float zHeight = pt.z();
+	pt.setZ(0);
+	btVector3 nudge(0.01,0,0);
+	btVector3 npt = pt;
+	
+	while(isPointInsideCSpace(npt))							// check if the point is inside of the object
+	{
+		npt = pt + nudge.rotate(btVector3(0,0,1),angle);	// calculate a new point a radius of vector nudge away at angle
+		angle += 0.2;										// in radians
+		
+		if(angle > PI) {									// if the search has gone a full rotation
+			nudge.setX(nudge.x() + 0.01);					// add another centemeter to the search vector radius
+			angle = 0;
+		}
+	}
+	
+	pt = npt;
+	pt.setZ(zHeight);
 }
+
 
 // determins if there is an intersection between two lines represented by point pairs (p1,p2) and (p3,p4)
 // returns 0 = no intersection 1 = intersection -1 = intersection is an endpoint of (p3,p4)
