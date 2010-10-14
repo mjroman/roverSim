@@ -195,6 +195,8 @@ PathState pathPlan::cycleToGoal()
 		memset(&m_startPoint,0,sizeof(rankPoint));								// create a new start point
 		m_startPoint.point = step * strideVect.normalized() + m_trailPath.last().point;	// compute the new point from the end of the trail
 		
+		// make sure the rover doesn't step into an object's C-Space
+		///////////////////////////////////////////////////////////////////////////
 		btCollisionObject* object = 0;
 		if(m_trailPath.last().object) object = m_trailPath.last().object; 		// check if the end of the trail is near a C-Space object
 		else if(m_GP.points[i].object) object = m_GP.points[i].object;			// or the next point on the path in the direction headed
@@ -204,6 +206,9 @@ PathState pathPlan::cycleToGoal()
 			offset = (0.01 * offset.normalized()) * btVector3(1,1,0);			// move over the start point 1cm from the edge of the C-Space
 			m_startPoint.point += offset;
 		}
+		// check if the new start point is inside the C-Space
+		
+		///////////////////////////////////////////////////////////////////////////
 		
 		m_trailPath << m_startPoint;
 		

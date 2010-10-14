@@ -108,11 +108,34 @@ void simControl::runConfigFile()
 	
 	PutSeed(seed);															// set the random number seed
 	
-	QStringList densityList = configFile.value("Obstacle_Count").toString().split(",");
-	for(int i=0;i<densityList.size();i++)
-		m_densityFields << densityList[i].toFloat();
+	QString tfile = configFile.value("Terrain").toString();
+	ground->openTerrain(tfile);											// load the terrain
 	
-	if(!m_densityFields.isEmpty())
+	btVector3 worldsize;
+	worldsize.setX(configFile.value("World_Size_X").toFloat());
+	worldsize.setY(configFile.value("World_Size_Y").toFloat());
+	worldsize.setZ(configFile.value("World_Size_Z").toFloat());
+	ground->setTerrainSize(worldsize);										// set the size of the world, scale
+	
+	QString countString = configFile.value("Obstacle_Count").toString();
+ 	if(countString.contains(":",Qt::CaseInsensitive)){
+		QStringList densityRange = countString.split(":");
+		if(densityRange.size() < 2){
+			m_parent->printText("Config file - Incorrect Density Format\n");
+			return;
+		}
+		for(int i=densityRange[0].toInt(); i <= densityRange[2].toInt(); i += densityRange[1].toInt())
+			m_densityFields << i;
+	}
+	else{
+		QStringList densityList = countString.split(",");
+		for(int i=0;i<densityList.size();i++)
+			m_densityFields << densityList[i].toFloat();
+	}
+	
+	if(m_densityFields.isEmpty())
+		m_parent->printText("Config file - Incorrect Density Format\n");
+	else
 		runConfigWorld();
 }
 
@@ -121,7 +144,7 @@ void simControl::runConfigWorld()
 	QSettings configFile(QDir::currentPath() + "/mission/config",QSettings::IniFormat);		// pullup the config file
 	
 	float coverage;
-	btVector3 minSize, maxSize, worldsize;
+	btVector3 minSize, maxSize;
 	QVector2D yawrange;
 	float step,cssize,efflimit,sprogress;
 	int draw;
@@ -133,19 +156,7 @@ void simControl::runConfigWorld()
 	QString trialname(configFile.value("Trial_Name").toString());			// Create a directory of the tiral including the density count
 	QString trialDir(trialname + "_" + QString::number(count));
 	m_trialLocation.mkdir(trialDir);
-	
-	removeRover();
-	blocks->eliminate();
-	
-	QString tfile = configFile.value("Terrain").toString();
-	ground->openTerrain(tfile);												// load the terrain
-	
-	worldsize.setX(configFile.value("World_Size_X").toFloat());
-	worldsize.setY(configFile.value("World_Size_Y").toFloat());
-	worldsize.setZ(configFile.value("World_Size_Z").toFloat());
-	ground->setTerrainSize(worldsize);										// set the size of the world, scale
-	
-	//count = configFile.value("Obstacle_Count").toInt();
+		
 	minSize.setX(configFile.value("Obstacle_Min_X").toFloat());
 	minSize.setY(configFile.value("Obstacle_Min_Y").toFloat());
 	minSize.setZ(configFile.value("Obstacle_Min_Z").toFloat());
@@ -155,9 +166,9 @@ void simControl::runConfigWorld()
 	yawrange.setX(configFile.value("Obstacle_Yaw_Min").toFloat());
 	yawrange.setY(configFile.value("Obstacle_Yaw_Max").toFloat());
 	blocks->setParameters(count, minSize, maxSize, yawrange);				// set obstacle parameters
-	blocks->generate();														// generate obstacles
+	blocks->generate(count);												// generate obstacles
 
-	coverage = blocks->getMeanCoverage()/(worldsize.x()*worldsize.y());
+	coverage = blocks->getMeanCoverage()/(ground->terrainSize().x()*ground->terrainSize().y());
 	
 	step = configFile.value("Sensor_Step").toFloat();
 	cssize = configFile.value("Sensor_Cspace").toFloat();

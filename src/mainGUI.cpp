@@ -66,7 +66,7 @@ QMainWindow(parent)
 	menuRoverView->setEnabled(false);
 
 // obstacles menu
-    connect(actionRandomize_Obstacles, SIGNAL(triggered()), SController->getBlocks(), SLOT(generate()));
+    connect(actionRandomize_Obstacles, SIGNAL(triggered()), SController->getBlocks(), SLOT(randomize()));
 	connect(actionRemove_Obstacles, SIGNAL(triggered()), SController->getBlocks(), SLOT(eliminate()));
 	connect(actionSave_ObstacleLayout, SIGNAL(triggered()), SController->getBlocks(), SLOT(saveLayout()));
 	connect(actionLoad_ObstacleLayout, SIGNAL(triggered()), SController->getBlocks(), SLOT(loadLayout()));
@@ -93,7 +93,7 @@ QMainWindow(parent)
 		QTimer::singleShot(1000, SController, SLOT(runConfigFile())); 	// wait for system to startup then signal the sim controller
 	}
 	else{
-		SController->getBlocks()->generate();							// toss out a few obstacles
+		SController->getBlocks()->randomize();							// toss out a few obstacles
 		SController->addWaypoint(657,50.0,50.0);						// add a few test waypoints
 		SController->addWaypoint(658,1.0,14.0);
 	}

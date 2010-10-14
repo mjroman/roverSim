@@ -41,7 +41,7 @@ m_pickObject(NULL)
     this->setMinimumSize(80,50);
 
     m_viewAngle = 1.0;
-    m_eye = new camera(btVector3(-5,-5,5),btVector3(0,0,0));
+    m_eye = new camera(btVector3(-5,48,5),btVector3(35,48,0));
 
     m_timer = new QTimer(this);
     connect(m_timer, SIGNAL(timeout()), this, SLOT(updateGL()));

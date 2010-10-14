@@ -23,6 +23,7 @@ class obstacles : public simGLObject
 		obstacles(terrain* gnd,simGLView* glView=0);
 		~obstacles();
 		
+		void singleRandomObstacle();
 		void setParameters(int count, btVector3 min, btVector3 max, QVector2D yaw);
 		QList<btCollisionObject*>* getObstacles() { return &m_obstacleObjects; }
 		bool areObstaclesActive();
@@ -34,8 +35,9 @@ class obstacles : public simGLObject
 		void renderGLObject();
 		
 	public slots:
-		void eliminate();
-		void generate();
+		void eliminate(int num=0);
+		void generate(int num);
+		void randomize();
 		void saveLayout(QString filename = NULL);
 		void loadLayout(QString filename = NULL);
 		
@@ -60,6 +62,7 @@ class obstacles : public simGLObject
 		obstacleTool						*oTool;
 		bool								m_saved;
 		float								m_meanArea;
+		float								m_dropHeight;
 		
 		pickValue							m_pickingObject;
 		QString								m_layoutName;

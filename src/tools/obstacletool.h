@@ -43,7 +43,7 @@ class obstacleTool : public QWidget, private Ui::obstacleTool
 		void updateLabels(int index);
 
 	signals:
-		void regenerateObstacles();
+		void regenerateObstacles(int);
 		
 	protected:
 		settingParam	obstShape;

@@ -168,7 +168,7 @@ void obstacleTool::on_ButtonGenerate_clicked(bool)
     }
 
 	this->setSettings();
-    emit regenerateObstacles();
+    emit regenerateObstacles(obstCount.stuff.toInt());
     hide();
 }
 

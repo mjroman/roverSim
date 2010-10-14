@@ -27,7 +27,7 @@ m_saved(false)
 	arena = physicsWorld::instance(); // get the physics world object
 	oTool = new obstacleTool(m_view->parentWidget());
 	
-	connect(oTool, SIGNAL(regenerateObstacles()), this, SLOT(generate()));
+	connect(oTool, SIGNAL(regenerateObstacles(int)), this, SLOT(generate(int)));
 	connect(m_view, SIGNAL(pickingVector(btVector3,btVector3)), this, SLOT(pickObstacle(btVector3,btVector3)));
 	connect(m_view, SIGNAL(movingVector(btVector3,btVector3)), this, SLOT(moveObstacle(btVector3,btVector3)));
 	connect(m_view, SIGNAL(dropPicked()), this, SLOT(dropObstacle()));
@@ -55,75 +55,100 @@ void obstacles::setParameters(int count, btVector3 min, btVector3 max, QVector2D
 /////////////////////////////////////////
 // Obstacle generation functions
 /////////////
-void obstacles::eliminate()
+void obstacles::eliminate(int num)
 {
 	m_view->stopDrawing();
 	arena->stopSimTimer();
 	
-	for(int i=0; i<m_obstacleObjects.size(); i++)
-		arena->getDynamicsWorld()->removeCollisionObject(m_obstacleObjects[i]);
+	if(num <= 0 || num >= m_obstacleObjects.size())
+		num = m_obstacleObjects.size();
 		
-	for(int i=0; i<m_obstacleShapes.size(); i++)
+	for(int i=num-1; i>=0; i--){
+		arena->getDynamicsWorld()->removeCollisionObject(m_obstacleObjects[i]);
+		m_obstacleObjects.removeAt(i);
 		delete m_obstacleShapes[i];
-	
-	m_obstacleObjects.clear();
-	m_obstacleShapes.clear();
+		m_obstacleShapes.removeAt(i);
+	}
 	
 	arena->resetWorld();
 	m_view->startDrawing();
 	emit obstaclesRemoved();
 }
 
-void obstacles::generate()
+void obstacles::generate(int num)
 {
 	int i;
-    btVector3   		tempPlace,tempSize;
-    float   			alphaYaw,mass,volume;
-	btTransform 		startTrans;
-	btCollisionShape*	oShape = NULL;
-	float dpht = oTool->dropHeight();
+	int numObstDiff;
 	
-	this->eliminate();
 	if(!ground) {
 		m_view->printText("Open new Terrain to generate obstacles");
 		return;
 	}
 	
-    if(oTool->obstacleCount() == 0) return;
-	
 	m_meanArea = 0;
+	m_dropHeight = oTool->dropHeight();
 	
-    for(i=0;i<oTool->obstacleCount();i++)
-    {
-		tempPlace.setX(Randomn()*ground->terrainSize().x());				// calculate a random position for the obstacle
-		tempPlace.setY(Randomn()*ground->terrainSize().y());
-		tempPlace.setZ(0);
-		// keep all obstacles away from rover start position
-        if(tempPlace.x() < 5 && tempPlace.y() < 5){ tempPlace.setX(5);} 
+    if(num == 0) return;
 
-		tempPlace.setZ(ground->terrainHeightAt(tempPlace) + dpht);
-		
-		alphaYaw = (oTool->minOYaw() + Randomn()*(oTool->maxOYaw() - oTool->minOYaw()));
-		
-		startTrans.setIdentity();
-		startTrans.setOrigin(tempPlace);
-		startTrans.setRotation(btQuaternion(0,0,DEGTORAD(alphaYaw)));					// set the starting position of the obstacle
+	numObstDiff = num - m_obstacleObjects.size();
 
-        tempSize.setX(oTool->minOLength() + Randomn()*(oTool->maxOLength() - oTool->minOLength()));
-        tempSize.setY(oTool->minOWidth() + Randomn()*(oTool->maxOWidth() - oTool->minOWidth()));
-        tempSize.setZ(oTool->minOHeight() + Randomn()*(oTool->maxOHeight() - oTool->minOHeight()));
+	if(numObstDiff == 0){												// create a completely new set of random obstacles
+		this->eliminate();
+		for(i=0;i<num;i++)
+	   		singleRandomObstacle();
+	}
+	else if(numObstDiff > 0)											// add more random obstacles
+	{	
+		for(i=0;i<numObstDiff;i++)
+	   		singleRandomObstacle();
+	}
+ 	else																// remove some random obstacles
+	{	
+		eliminate(fabs(numObstDiff));
+	}
 
-		m_meanArea += 2*(tempSize.x()*tempSize.y() + tempSize.x()*tempSize.z() + tempSize.y()*tempSize.z())/3;       
-
-		oShape = createObstacleShape(oTool->obstacleType(),tempSize,volume);
-        
-        mass = oTool->density() * (volume);
-		dpht += tempSize.z();										// add the height of the obstacle to the drop height
-		
-		createObstacleObject(mass,oShape,startTrans);				// create the new obstacle and add it to the world	
-    }
 	m_saved = false;
 	emit obstaclesRegenerated();
+}
+
+void obstacles::randomize()
+{
+	generate(oTool->obstacleCount());
+}
+
+void obstacles::singleRandomObstacle()
+{
+	btVector3   		tempPlace,tempSize;
+    float   			alphaYaw,mass,volume;
+	btTransform 		startTrans;
+	btCollisionShape*	oShape = NULL;
+	
+	tempPlace.setX(Randomn()*ground->terrainSize().x());				// calculate a random position for the obstacle
+	tempPlace.setY(Randomn()*ground->terrainSize().y());
+	tempPlace.setZ(0);
+		// keep all obstacles away from rover start position
+	if(tempPlace.x() < 5 && tempPlace.y() < 5){ tempPlace.setX(5);} 
+
+	tempPlace.setZ(ground->terrainHeightAt(tempPlace) + m_dropHeight);
+
+	alphaYaw = (oTool->minOYaw() + Randomn()*(oTool->maxOYaw() - oTool->minOYaw()));
+
+	startTrans.setIdentity();
+	startTrans.setOrigin(tempPlace);
+	startTrans.setRotation(btQuaternion(0,0,DEGTORAD(alphaYaw)));					// set the starting position of the obstacle
+
+	tempSize.setX(oTool->minOLength() + Randomn()*(oTool->maxOLength() - oTool->minOLength()));
+	tempSize.setY(oTool->minOWidth() + Randomn()*(oTool->maxOWidth() - oTool->minOWidth()));
+	tempSize.setZ(oTool->minOHeight() + Randomn()*(oTool->maxOHeight() - oTool->minOHeight()));
+
+	m_meanArea += 2*(tempSize.x()*tempSize.y() + tempSize.x()*tempSize.z() + tempSize.y()*tempSize.z())/3;       
+
+	oShape = createObstacleShape(oTool->obstacleType(),tempSize,volume);
+
+	mass = oTool->density() * (volume);
+	m_dropHeight += tempSize.z();								// add the height of the obstacle to the drop height, keeps things from exploding
+
+	createObstacleObject(mass,oShape,startTrans);				// create the new obstacle and add it to the world
 }
 
 btCollisionShape* obstacles::createObstacleShape(int shapeType, btVector3& lwh,float& vol)
