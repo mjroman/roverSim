@@ -171,10 +171,8 @@ PathState pathPlan::cycleToGoal()
 		this->AStarSearch();													// calculate the path to the goal
 		
 		if(m_GP.points.size() <= 1){ 											// if only 1 point is in the path list or it is empty then no path is found
-			if(m_spinDirection == 1)
-				return PS_SWITCHBACKRIGHT;
-			else if(m_spinDirection == -1)
-				return PS_SWITCHBACKLEFT;
+			if(m_time.elapsed() > 300000)
+				return PS_TIMEOUT;
 			else
 				return PS_PATHNOTFOUND;
 		}
@@ -205,6 +203,7 @@ PathState pathPlan::cycleToGoal()
 			btVector3 offset = m_startPoint.point - object->getWorldTransform().getOrigin();
 			offset = (0.01 * offset.normalized()) * btVector3(1,1,0);			// move over the start point 1cm from the edge of the C-Space
 			m_startPoint.point += offset;
+			m_startPoint.object = object;
 		}
 
 		m_CS->movePointOutsideCSpace(m_startPoint.point);						// check if the new start point is inside the C-Space
@@ -216,9 +215,16 @@ PathState pathPlan::cycleToGoal()
 		m_GP.length = 0;
 		m_GP.points.clear();
 		
-		this->generateCspace();													// create new C-Space and calculate new goal distance
+		if( !clearLocalMinima(m_trailPath) ){								// if the rover gets stuck in a local minima set the state
+			if(m_spinDirection == 1)
+				return PS_SWITCHBACKRIGHT;
+			else if(m_spinDirection == -1)
+				return PS_SWITCHBACKLEFT;
+			else
+				return PS_LOCALMINIMA;
+		}
 		
-		this->localMinimaCheck(m_trailPath, m_trailPath.size()-1);				// local minima work around
+		this->generateCspace();													// create new C-Space and calculate new goal distance
 	}
 	return PS_NOPROGRESS;														// current path length is not making progress
 }
@@ -247,7 +253,7 @@ bool pathPlan::AStarSearch()
 	
 	while(!openSet.isEmpty())
 	{
-		//if(m_GP.length == 0 && m_time.elapsed() > 300000) return false; 			// 5 minute limit and no path to the goal found exit
+		if(m_time.elapsed() > 300000) return false; 			// 5 minute limit and no path to the goal found exit
 		
 		m_midPoint = openSet.takeFirst(); 						// remove node in openSet with the lowest fScore
 		
@@ -309,6 +315,9 @@ bool pathPlan::AStarSearch()
 		}
 		
 		openSet = quickSortFScoreLessthan(openSet);
+		
+		////////////////////////////////////////////
+		// rover POV sensor visibility switch
 		if(m_visibilityType && m_range != 0){
 			m_GP = reconstructPath(openSet.first(),closedSet);	// build the path
 			return true;
@@ -384,39 +393,59 @@ goalPath pathPlan::reconstructPath(rankPoint here, QList<rankPoint> list)
 
 // checks local minima under limited range sensor paths for switch back condition
 // sets the global spin direction and keeps track of spin progress distance
-void pathPlan::localMinimaCheck(QList<rankPoint> list, int index)
+bool pathPlan::clearLocalMinima(QList<rankPoint>& list)
 {
+	int index = list.size()-1;
 	static float spinDist = 0;
-	
-	if(list.size() < 3 || index >= list.size() || index < 2) return;	// make sure everything is inbounds
-	
-	if(m_spinDirection == 0){
-		if(spinDist > 0){ spinDist = 0; return; }						// skip the next local minima check after spin progress to avoid switchback condition
-		btVector3 preVect = list[index-1].point - list[index-2].point;	// use the previous position to compare
-		btVector3 newVect = list[index].point - list[index-1].point;	// to the new position
 
-		if(preVect.dot(newVect) < -0.15){									// A switchback is detected, dot is negative if the angle is greater than 90+
-			minimaPoint mp;
-			mp.point = list[index-1].point;
-			mp.threshold = 2*m_step;
-			if(!m_minimaList.isEmpty() && mp.point.distance2(m_minimaList.last().point) < SQ(m_minimaList.last().threshold)){ 
-				mp.progress = m_minimaList.last().progress * 2;				// increase the progress limit by twice the previous
-				mp.spin = m_minimaList.last().spin * -1;					// flip the direction of spin if near the last local minima
-			}
-			else {
-				if(m_spinProgressBase == 0) mp.progress = m_spinProgress;				// distance based progress
-				else if(m_spinProgressBase == 1) mp.progress = m_spinProgress * m_step;	// step based progress
-				mp.spin = (newVect.cross(preVect).z() > 0)? -1 : 1;						// 1 = right side -1 = left side
-			}
-			m_minimaList << mp;
-			m_spinDirection = m_minimaList.last().spin;
-			spinDist = 0;
+	if(m_startPoint.object == 0 || list.size() < 3) return true;	// make sure there is an object near by and the list is big enough
+	
+	if(spinDist > 0){ spinDist = 0; return true; }					// skip the next local minima check after spin progress to avoid switchback condition
+
+	btVector3 preVect = list[index-1].point - list[index-2].point;	// use the previous position to compare
+	btVector3 newVect = list[index].point - list[index-1].point;	// to the new position
+
+	if(preVect.dot(newVect) < 0){									// A switchback is detected, dot is negative if the angle is greater than 90+
+		minimaPoint mp;													// save the spot where it is detected
+		mp.point = list[index-1].point;
+		mp.threshold = 2*m_step;
+
+		if(!m_minimaList.isEmpty() && mp.point.distance2(m_minimaList.last().point) < SQ(m_minimaList.last().threshold)){ 
+			mp.progress = m_minimaList.last().progress * 2;				// increase the progress limit by twice the previous
+			mp.spin = m_minimaList.last().spin * -1;					// flip the direction of spin if near the last local minima
+		}
+		else {
+			if(m_spinProgressBase == 0) mp.progress = m_spinProgress;				// distance based progress
+			else if(m_spinProgressBase == 1) mp.progress = m_spinProgress * m_step;	// step based progress
+			
+			// set initial spin direction around objects here
+			//////////////////////////////////////////////////////////////////////////////////////////////////
+			mp.spin = (newVect.cross(preVect).z() > 0)? -1 : 1;						// 1 = CW spin -1 = CCW	
+			//////////////////////////////////////////////////////////////////////////////////////////////////
+		}
+		m_minimaList << mp;
+		m_spinDirection = m_minimaList.last().spin;
+		spinDist = 0;
+
+		btVector3 obstCenter = m_startPoint.object->getWorldTransform().getOrigin();
+		btVector3 obstDirection;
+		while(spinDist < mp.progress)	// circumnavigate the obstacle until it has traveled past the progress distance
+		{								// or until the dot product between the (current rover location and obstacle) and (goal and obstacle) is positive in the direction of spin
+			obstDirection = obstCenter - m_startPoint.point;
+			
+			this->generateCspace();
+			
+			if( !m_CS->movePointAroundCSpace(m_startPoint.point,obstDirection,m_step,m_spinDirection) )
+				return false;
+
+			list << m_startPoint;
+			spinDist += m_step;
+			
+			if(m_drawSwitch && m_view)
+				m_view->updateGL();
 		}
 	}
-	else{
-		if(spinDist > m_minimaList.last().progress) m_spinDirection = 0;				// once progress past the local minima has been made reset spin direction
-		else spinDist += m_step;
-	}
+	return true;
 }
 
 // checks the ray between from and to, if it is clear NULL is returned else returns the object blocking
@@ -544,8 +573,8 @@ QList<rankPoint> pathPlan::getVisablePointsFrom(rankPoint here)
 		}
 		
 		// check for spin condition past obstacles and eliminate paths to the left or right depending on spin	
-		if(lState && m_spinDirection >= 0) list << leftMost;					// if spin direction is to the right (1) keep all left extremes
-		if(rState && m_spinDirection <= 0) list << rightMost;					// if spin is to the left (-1) keep all the right extremes
+		if(lState) list << leftMost;					// keep all left extremes
+		if(rState) list << rightMost;					// keep all right extremes
 	}
 
 	i=0;

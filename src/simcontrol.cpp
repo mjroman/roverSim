@@ -191,11 +191,11 @@ void simControl::runConfigWorld()
 	for(int i=0; i<rangeList.size(); i++)
 	{
 		float range = rangeList[i].toFloat();
-		pTool->addPath(range,step,cssize,efflimit,sprogress,draw,visibility);// create the paths with the parameters
+		pTool->addPath(range,step,cssize,efflimit,sprogress,draw,0);		// create the paths with the parameters
+		if(visibility && range != 0)
+			pTool->addPath(range,step,cssize,efflimit,sprogress,draw,1);	// create a path with the same range but limit the visibility
 	}
 	
-
-
 /////////////////////////////////////////
 // Statistic CSV file header
 /////////////
@@ -204,7 +204,7 @@ void simControl::runConfigWorld()
 		QTextStream statsStream(m_statsFile);									// create a stream
 		statsStream << "Obstacle #," << count << ",";
 		statsStream << "Iterations," << m_iterations << ",";
-		statsStream << "Search Visible," << visibility << ",";
+		statsStream << "Seed," << seed << ",";
 		statsStream << "Area Covered," << coverage << "\n";
 		
 		statsStream << "Step," << step << ",";
@@ -212,7 +212,7 @@ void simControl::runConfigWorld()
 		statsStream << "EffLimit," << efflimit << ",";
 		statsStream << "SpinProgress," << sprogress << "\n";
 		
-		statsStream << "Range,Path Len,Strait Len,Comp Eff,Pure Eff,Time ms,State,Path File\n";
+		statsStream << "Range,Path Len,Strait Len,Comp Eff,Pure Eff,Time ms,State,Path File,Visibility\n";
 		pTool->setStatisticsDevice(m_statsFile);
 	}
 ///////////////////////////////

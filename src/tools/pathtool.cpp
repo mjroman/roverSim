@@ -631,7 +631,8 @@ void pathTool::updateCompEfficiency(float gLength)
 			m_statsStream << p->getShortestPath()->time << ",";										// time of calculation in ms
 			m_statsStream << p->getState() << ",";													// path state of completion
 			QString name(m_filename + "_" + QString::number(m_runCount));
-			m_statsStream << name.section('/',-1) << "\n";											// the path filename
+			m_statsStream << name.section('/',-1) << ",";											// the path filename
+			m_statsStream << ((p->getVisibilityType())?"limited":"full") << "\n";						// the visibility type of the path
 			m_statsStream.flush();																	// sync the data to the file
 		}
 	}

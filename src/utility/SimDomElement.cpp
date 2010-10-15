@@ -90,6 +90,7 @@ QDomElement SimDomElement::pathToNode(QDomDocument &doc, const pathPlan* p)
 	params.setAttribute( "step", p->getStep());
 	params.setAttribute( "eff", p->getEffLimit());
 	params.setAttribute( "spin", p->getSpinLimit());
+	params.setAttribute( "visible only", p->getVisibilityType());
 	path.appendChild(params);
 	
 	path.appendChild(colorToNode(doc, p->getColor()));

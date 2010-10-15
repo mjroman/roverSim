@@ -103,7 +103,7 @@ private:
 	bool AStarSearch();
 	
 	goalPath reconstructPath(rankPoint here, QList<rankPoint> list);
-	void localMinimaCheck(QList<rankPoint> list, int index);
+	bool clearLocalMinima(QList<rankPoint>& list);
 	btCollisionObject* isRayBlocked(rankPoint from,rankPoint to, btVector3* point = NULL);
 	void getExtremes(btCollisionObject* obj, rankPoint pivotPoint, rankPoint* left, rankPoint* right);
 	QList<rankPoint> quickSortFScoreLessthan(QList<rankPoint> list);
@@ -134,7 +134,7 @@ public:
 	const float getRange() const { return m_range; }
 	const float getMargin() const { return m_margin; }
 	const float getStep() const { return m_step; }
-	const bool getVisibilityType() { return m_visibilityType; }
+	const bool getVisibilityType() const { return m_visibilityType; }
 	const float getEffLimit() const { return m_efficiencyLimit; }
 	const float getSpinLimit() const { return m_spinProgress; }
 	int	getSpinBase() { return m_spinProgressBase; }

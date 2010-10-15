@@ -17,7 +17,9 @@ typedef enum _PathState
 	PS_PATHNOTFOUND,
 	PS_SWITCHBACKLEFT,
 	PS_SWITCHBACKRIGHT,
-	PS_NOPROGRESS
+	PS_NOPROGRESS,
+	PS_LOCALMINIMA,
+	PS_TIMEOUT
 } PathState;
 
 typedef struct _minimaPoint
