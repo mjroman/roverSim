@@ -215,7 +215,7 @@ PathState pathPlan::cycleToGoal()
 		m_GP.length = 0;
 		m_GP.points.clear();
 		
-		if( !clearLocalMinima(m_trailPath) ){								// if the rover gets stuck in a local minima set the state
+		if( !clearLocalMinima(m_trailPath,progress) ){							// if the rover gets stuck in a local minima set the state
 			if(m_spinDirection == 1)
 				return PS_SWITCHBACKRIGHT;
 			else if(m_spinDirection == -1)
@@ -393,7 +393,7 @@ goalPath pathPlan::reconstructPath(rankPoint here, QList<rankPoint> list)
 
 // checks local minima under limited range sensor paths for switch back condition
 // sets the global spin direction and keeps track of spin progress distance
-bool pathPlan::clearLocalMinima(QList<rankPoint>& list)
+bool pathPlan::clearLocalMinima(QList<rankPoint>& list, float& dist)
 {
 	int index = list.size()-1;
 	static float spinDist = 0;
@@ -411,8 +411,8 @@ bool pathPlan::clearLocalMinima(QList<rankPoint>& list)
 		mp.threshold = 2*m_step;
 
 		if(!m_minimaList.isEmpty() && mp.point.distance2(m_minimaList.last().point) < SQ(m_minimaList.last().threshold)){ 
-			mp.progress = m_minimaList.last().progress * 2;				// increase the progress limit by twice the previous
-			mp.spin = m_minimaList.last().spin * -1;					// flip the direction of spin if near the last local minima
+			mp.progress = m_minimaList.last().progress * 2;							// increase the progress limit by twice the previous
+			mp.spin = m_minimaList.last().spin * -1;								// flip the direction of spin if near the last local minima
 		}
 		else {
 			if(m_spinProgressBase == 0) mp.progress = m_spinProgress;				// distance based progress
@@ -425,14 +425,12 @@ bool pathPlan::clearLocalMinima(QList<rankPoint>& list)
 		}
 		m_minimaList << mp;
 		m_spinDirection = m_minimaList.last().spin;
-		spinDist = 0;
 
-		btVector3 obstCenter = m_startPoint.object->getWorldTransform().getOrigin();
-		btVector3 obstDirection;
-		while(spinDist < mp.progress)	// circumnavigate the obstacle until it has traveled past the progress distance
+		btVector3 obstDirection = m_goalPoint.point - m_startPoint.point;
+
+		
+		while( spinDist < mp.progress && dist <= m_progressLimit )	// circumnavigate the obstacle until it has traveled past the progress distance
 		{								// or until the dot product between the (current rover location and obstacle) and (goal and obstacle) is positive in the direction of spin
-			obstDirection = obstCenter - m_startPoint.point;
-			
 			this->generateCspace();
 			
 			if( !m_CS->movePointAroundCSpace(m_startPoint.point,obstDirection,m_step,m_spinDirection) )
@@ -440,10 +438,14 @@ bool pathPlan::clearLocalMinima(QList<rankPoint>& list)
 
 			list << m_startPoint;
 			spinDist += m_step;
+			dist += m_step;
 			
 			if(m_drawSwitch && m_view)
 				m_view->updateGL();
+				
+			//m_view->overlayString(QString("Progress distance %1 < %2").arg(spinDist).arg(mp.progress));
 		}
+		m_spinDirection = 0;
 	}
 	return true;
 }

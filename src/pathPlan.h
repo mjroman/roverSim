@@ -103,7 +103,7 @@ private:
 	bool AStarSearch();
 	
 	goalPath reconstructPath(rankPoint here, QList<rankPoint> list);
-	bool clearLocalMinima(QList<rankPoint>& list);
+	bool clearLocalMinima(QList<rankPoint>& list,float& dist);
 	btCollisionObject* isRayBlocked(rankPoint from,rankPoint to, btVector3* point = NULL);
 	void getExtremes(btCollisionObject* obj, rankPoint pivotPoint, rankPoint* left, rankPoint* right);
 	QList<rankPoint> quickSortFScoreLessthan(QList<rankPoint> list);

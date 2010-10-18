@@ -328,12 +328,10 @@ bool cSpace::movePointAroundCSpace(btVector3& pt, btVector3 startVect, float stp
 	while(isPointInsideCSpace(npt))							// check if the point is inside of the object
 	{
 		npt = pt + nudge.rotate(btVector3(0,0,1),angle);	// calculate a new point a radius of vector nudge away at angle
-		angle += (dir * 0.2);								// in radians
+		angle += (dir * 0.1);								// in radians
 		
-		if(dir == 1 && angle > PI)							// if the search has gone a full rotation
+		if(fabs(angle) > TWOPI)								// if the search has gone a full rotation
 			return false;									// and there is no path outside a C-Space return false, stuck
-		if(dir == -1 && angle < -PI)
-			return false;
 	}
 	
 	pt = npt;
