@@ -18,6 +18,80 @@
 
 #define OBSTSHAPEGROUP	"ObstacleShape" // settings group key value
 
+userObstacleDialog::userObstacleDialog(QWidget *parent)
+: QDialog(parent)
+{
+	setWindowTitle("User Obstacle Creation");
+	
+	// main input layout
+	QVBoxLayout *inputLayout = new QVBoxLayout;
+	sizeLabel = new QLabel("Obstacle Size");								// size label
+	inputLayout->addWidget(sizeLabel);
+	
+	QGridLayout *sizeGridLayout = new QGridLayout;							// size grid
+	QLabel* xlabel = new QLabel("X");
+	sizeGridLayout->addWidget(xlabel,0,0);
+	xSizeLineEdit = new QLineEdit(this);
+	xSizeLineEdit->setText(QString::number(1));
+	xSizeLineEdit->setAlignment(Qt::AlignHCenter);
+	xSizeLineEdit->setMaximumWidth(100);
+	sizeGridLayout->addWidget(xSizeLineEdit,0,1);
+	
+	QLabel* ylabel = new QLabel("Y");
+	sizeGridLayout->addWidget(ylabel,1,0);
+	ySizeLineEdit = new QLineEdit(this);
+	ySizeLineEdit->setText(QString::number(1));
+	ySizeLineEdit->setAlignment(Qt::AlignHCenter);
+	ySizeLineEdit->setMaximumWidth(100);
+	sizeGridLayout->addWidget(ySizeLineEdit,1,1);
+	
+	QLabel* zlabel = new QLabel("Z");
+	sizeGridLayout->addWidget(zlabel,2,0);
+	zSizeLineEdit = new QLineEdit(this);
+	zSizeLineEdit->setText(QString::number(1));
+	zSizeLineEdit->setAlignment(Qt::AlignHCenter);
+	zSizeLineEdit->setMaximumWidth(100);
+	sizeGridLayout->addWidget(zSizeLineEdit,2,1);
+	inputLayout->addLayout(sizeGridLayout);
+	
+	QHBoxLayout *yawLayout = new QHBoxLayout;
+	yawLabel = new QLabel("Yaw");
+	yawLayout->addWidget(yawLabel);
+	yawLineEdit = new QLineEdit(this);
+	yawLineEdit->setText(QString::number(0));
+	yawLineEdit->setAlignment(Qt::AlignHCenter);
+	yawLineEdit->setMaximumWidth(100);
+	yawLayout->addWidget(yawLineEdit);
+	inputLayout->addLayout(yawLayout);
+	
+	QHBoxLayout *buttonLayout = new QHBoxLayout;
+	doneButton = new QPushButton("Accept");
+	doneButton->setMinimumWidth(80);
+	doneButton->setStyleSheet("QPushButton:default{background: green; border: 2px solid darkgreen; border-radius:10; color: white;} QPushButton:pressed{background: red; border: 2px solid darkred; border-radius:10;}");
+	doneButton->setDefault(true);
+	buttonLayout->addWidget(doneButton);
+	
+	cancelButton = new QPushButton("Cancel");
+	cancelButton->setMinimumWidth(80);
+	cancelButton->setStyleSheet("QPushButton:enabled{background: yellow; border: 2px solid white; border-radius:10; color: black;} QPushButton:pressed{background: white; border-color: yellow;}");
+	buttonLayout->addWidget(cancelButton);
+	inputLayout->addLayout(buttonLayout);
+	
+	connect(doneButton,SIGNAL(clicked()),this,SLOT(acceptData()));
+	connect(cancelButton,SIGNAL(clicked()),this,SLOT(reject()));
+	
+	this->setLayout(inputLayout);
+}
+
+void userObstacleDialog::acceptData()
+{
+	userObstSize.setX(fabs(xSizeLineEdit->text().toFloat()));
+	userObstSize.setY(fabs(ySizeLineEdit->text().toFloat()));
+	userObstSize.setZ(fabs(zSizeLineEdit->text().toFloat()));
+	userObstYaw = yawLineEdit->text().toFloat();
+	this->accept();
+}
+
 obstacles::obstacles(terrain* gnd, simGLView* glView)
 :
 simGLObject(glView),
@@ -116,12 +190,25 @@ void obstacles::randomize()
 	generate(oTool->obstacleCount());
 }
 
+void obstacles::userObstacle()
+{
+	userObstacleDialog uoDialog(m_view->parentWidget());
+	if(uoDialog.exec() == QDialog::Rejected)
+		return;
+	
+	btTransform trans;
+	trans.setIdentity();
+	trans.setOrigin(btVector3(50,50,oTool->dropHeight()));
+	trans.setRotation(btQuaternion(0,0,DEGTORAD(uoDialog.userObstYaw)));
+	
+	singleObstacle(uoDialog.userObstSize,trans);
+}
+
 void obstacles::singleRandomObstacle()
 {
 	btVector3   		tempPlace,tempSize;
-    float   			alphaYaw,mass,volume;
+    float   			alphaYaw;
 	btTransform 		startTrans;
-	btCollisionShape*	oShape = NULL;
 	
 	tempPlace.setX(Randomn()*ground->terrainSize().x());				// calculate a random position for the obstacle
 	tempPlace.setY(Randomn()*ground->terrainSize().y());
@@ -141,13 +228,21 @@ void obstacles::singleRandomObstacle()
 	tempSize.setY(oTool->minOWidth() + Randomn()*(oTool->maxOWidth() - oTool->minOWidth()));
 	tempSize.setZ(oTool->minOHeight() + Randomn()*(oTool->maxOHeight() - oTool->minOHeight()));
 
-	m_meanArea += 2*(tempSize.x()*tempSize.y() + tempSize.x()*tempSize.z() + tempSize.y()*tempSize.z())/3;       
+	singleObstacle(tempSize,startTrans);
+}
 
-	oShape = createObstacleShape(oTool->obstacleType(),tempSize,volume);
-
+void obstacles::singleObstacle(btVector3 size, btTransform startTrans)
+{
+	btCollisionShape* oShape = NULL;
+	float mass, volume;
+	
+	m_meanArea += 2*(size.x()*size.y() + size.x()*size.z() + size.y()*size.z())/3;       
+	
+	oShape = createObstacleShape(oTool->obstacleType(),size,volume);
+	
 	mass = oTool->density() * (volume);
-	m_dropHeight += tempSize.z();								// add the height of the obstacle to the drop height, keeps things from exploding
-
+	m_dropHeight += size.z();									// add the height of the obstacle to the drop height, keeps things from exploding
+	
 	createObstacleObject(mass,oShape,startTrans);				// create the new obstacle and add it to the world
 }
 

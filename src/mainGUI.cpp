@@ -70,6 +70,7 @@ QMainWindow(parent)
 	connect(actionSave_ObstacleLayout, SIGNAL(triggered()), SController->getBlocks(), SLOT(saveLayout()));
 	connect(actionLoad_ObstacleLayout, SIGNAL(triggered()), SController->getBlocks(), SLOT(loadLayout()));
     connect(actionObstacle_Parameters, SIGNAL(triggered()), this, SLOT(showObstacleTool()));
+	connect(actionUser_Obstacle, SIGNAL(triggered()), SController->getBlocks(), SLOT(userObstacle()));
 
 // terrain menu
     connect(actionOpen_Terrain, SIGNAL(triggered()), SController->getGround(), SLOT(openTerrain()));

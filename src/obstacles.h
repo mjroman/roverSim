@@ -16,6 +16,32 @@ class btRigidBody;
 class btCollisionShape;
 class btCollisionWorld;
 
+class userObstacleDialog : public QDialog
+{
+	Q_OBJECT
+	
+	public:
+		userObstacleDialog(QWidget *parent = 0);
+		
+		QLineEdit 		*xSizeLineEdit;
+		QLineEdit 		*ySizeLineEdit;
+		QLineEdit 		*zSizeLineEdit;
+		QLineEdit 		*yawLineEdit;
+		
+		QPushButton		*doneButton;
+		QPushButton		*cancelButton;
+		
+		btVector3		userObstSize;
+		float			userObstYaw;
+	
+	private:
+		QLabel 			*sizeLabel;
+		QLabel			*yawLabel;
+		
+	public slots:
+		void acceptData();
+};
+
 class obstacles : public simGLObject
 {
 	Q_OBJECT
@@ -24,6 +50,7 @@ class obstacles : public simGLObject
 		~obstacles();
 		
 		void singleRandomObstacle();
+		void singleObstacle(btVector3 size, btTransform startTrans);
 		void setParameters(int count, btVector3 min, btVector3 max, QVector2D yaw);
 		QList<btCollisionObject*>* getObstacles() { return &m_obstacleObjects; }
 		bool areObstaclesActive();
@@ -38,6 +65,7 @@ class obstacles : public simGLObject
 		void eliminate(int num=0);
 		void generate(int num);
 		void randomize();
+		void userObstacle();
 		void saveLayout(QString filename = NULL);
 		void loadLayout(QString filename = NULL);
 		

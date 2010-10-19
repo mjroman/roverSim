@@ -774,7 +774,9 @@
     <addaction name="actionLoad_ObstacleLayout"/>
     <addaction name="actionSave_ObstacleLayout"/>
     <addaction name="actionRemove_Obstacles"/>
+    <addaction name="separator"/>
     <addaction name="actionObstacle_Parameters"/>
+    <addaction name="actionUser_Obstacle"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -940,6 +942,14 @@
   <action name="actionLoad_Path_File">
    <property name="text">
     <string>Load Path File</string>
+   </property>
+  </action>
+  <action name="actionUser_Obstacle">
+   <property name="text">
+    <string>User Obstacle</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+A</string>
    </property>
   </action>
  </widget>
