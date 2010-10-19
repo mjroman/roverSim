@@ -198,10 +198,10 @@ void obstacles::userObstacle()
 	
 	btTransform trans;
 	trans.setIdentity();
-	trans.setOrigin(btVector3(50,50,oTool->dropHeight()));
+	trans.setOrigin(btVector3(50,50,oTool->dropHeight() + (uoDialog.userObstSize.z()/2)));
 	trans.setRotation(btQuaternion(0,0,DEGTORAD(uoDialog.userObstYaw)));
 	
-	singleObstacle(uoDialog.userObstSize,trans);
+	singleObstacle(0.5*uoDialog.userObstSize,trans);
 }
 
 void obstacles::singleRandomObstacle()
