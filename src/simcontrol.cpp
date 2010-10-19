@@ -388,6 +388,7 @@ void simControl::loadPath()
 	QDomElement ph = root.firstChildElement("path");
 	while(!ph.isNull()){
 		pathPlan *path = new pathPlan(blocks,m_view);
+		path->setStartGoalPoints(vst,vgl);
 		SimDomElement::elementToPath(ph,path);
 		pTool->addToTable(path);
 		ph = ph.nextSiblingElement("path");

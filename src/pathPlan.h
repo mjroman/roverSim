@@ -141,6 +141,7 @@ public:
 	const int getState() const { return m_state; }
 	
 	void setColor(QColor color) { m_color = color; m_color.setAlphaF(0.45); }
+	void setStartGoalPoints(btVector3 start, btVector3 end) { m_startPoint.point = start; m_goalPoint.point = end; }
 	void setRange(float r) { m_range = fabs(r); }
 	void setMargin(float m) { m_margin = fabs(m); }
 	void setStep(float s) { m_step = s; }
