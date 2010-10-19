@@ -90,7 +90,7 @@ QDomElement SimDomElement::pathToNode(QDomDocument &doc, const pathPlan* p)
 	params.setAttribute( "step", p->getStep());
 	params.setAttribute( "eff", p->getEffLimit());
 	params.setAttribute( "spin", p->getSpinLimit());
-	params.setAttribute( "visible only", p->getVisibilityType());
+	params.setAttribute( "visibility", (p->getVisibilityType()?"Limited":"Full"));
 	path.appendChild(params);
 	
 	path.appendChild(colorToNode(doc, p->getColor()));
@@ -142,3 +142,45 @@ btTransform SimDomElement::elementToTransform(QDomElement element)
 	return trans;
 }
 
+QColor SimDomElement::elementToColor(QDomElement element)
+{
+	QColor color;
+	
+	color.setBlueF(element.attribute("Blue").toFloat());
+	color.setGreenF(element.attribute("Green").toFloat());
+	color.setRedF(element.attribute("Red").toFloat());
+	color.setAlphaF(element.attribute("Alpha").toFloat());
+	return color;
+}
+
+void SimDomElement::elementToPath(QDomElement element, pathPlan* path)
+{
+	goalPath gp;
+	
+	path->setRange(element.attribute( "range" ).toFloat());
+	path->setState(element.attribute( "state" ).toFloat());
+	gp.length = element.attribute( "length" ).toFloat();
+	gp.time = element.attribute( "time" ).toInt();
+	gp.efficiency = element.attribute( "efficiency" ).toFloat();
+	
+	QDomElement limits = element.firstChildElement( "limits" );
+	path->setStep(limits.attribute( "step" ).toFloat());
+	path->setMargin(limits.attribute( "cspace" ).toFloat());
+	path->setVisibilityType(( limits.attribute( "visibility" ) == "Full")?false:true);
+	path->setEffLimit(limits.attribute( "eff" ).toFloat());
+	path->setSpinLimit(limits.attribute( "spin" ).toFloat());
+	path->setColor(elementToColor(element.firstChildElement( "color" )));
+	path->setDrawSwitch(1);	
+	
+	QDomElement ev = element.firstChildElement( "pointPath" ).firstChildElement("vector");
+	while(!ev.isNull())
+	{
+		rankPoint rp;
+		memset(&rp,0,sizeof(rankPoint));
+		rp.point = elementToVector(ev);
+		gp.points << rp;
+		ev = ev.nextSiblingElement("vector");
+	}
+	
+	path->setShortestPath(gp);
+}

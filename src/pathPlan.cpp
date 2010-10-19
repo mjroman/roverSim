@@ -442,8 +442,6 @@ bool pathPlan::clearLocalMinima(QList<rankPoint>& list, float& dist)
 			
 			if(m_drawSwitch && m_view)
 				m_view->updateGL();
-				
-			//m_view->overlayString(QString("Progress distance %1 < %2").arg(spinDist).arg(mp.progress));
 		}
 		m_spinDirection = 0;
 	}

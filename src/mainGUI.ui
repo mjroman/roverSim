@@ -735,7 +735,6 @@
      <string>World</string>
     </property>
     <addaction name="actionSim_Timing"/>
-    <addaction name="actionAutomator_Setup"/>
    </widget>
    <widget class="QMenu" name="menuRover">
     <property name="title">
@@ -783,11 +782,19 @@
     </property>
     <addaction name="actionFullScreen"/>
    </widget>
+   <widget class="QMenu" name="menuPaths">
+    <property name="title">
+     <string>Paths</string>
+    </property>
+    <addaction name="actionAutomator_Setup"/>
+    <addaction name="actionLoad_Path_File"/>
+   </widget>
    <addaction name="menuView"/>
    <addaction name="menuWorld"/>
    <addaction name="menuRover"/>
    <addaction name="menuTerrain"/>
    <addaction name="menuObstacles"/>
+   <addaction name="menuPaths"/>
   </widget>
   <action name="actionRandomize_Obstacles">
    <property name="text">
@@ -928,6 +935,11 @@
   <action name="actionAutomator_Setup">
    <property name="text">
     <string>Automator Setup</string>
+   </property>
+  </action>
+  <action name="actionLoad_Path_File">
+   <property name="text">
+    <string>Load Path File</string>
    </property>
   </action>
  </widget>

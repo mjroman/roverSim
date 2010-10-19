@@ -9,6 +9,7 @@
 #include "utility/rngs.h"
 #include "tools/waypointtool.h"
 #include "tools/pathtool.h"
+#include "utility/SimDomElement.h"
 #include "simGLView.h"
 #include <QFile>
 
@@ -109,7 +110,7 @@ void simControl::runConfigFile()
 	PutSeed(seed);															// set the random number seed
 	
 	QString tfile = configFile.value("Terrain").toString();
-	ground->openTerrain(tfile);											// load the terrain
+	ground->openTerrain(tfile);												// load the terrain
 	
 	btVector3 worldsize;
 	worldsize.setX(configFile.value("World_Size_X").toFloat());
@@ -285,7 +286,8 @@ void simControl::runIteration()
 /////////////
 void simControl::newRover(btVector3 start)
 {
-	if(!sr2) sr2 = new SR2rover(m_view);
+	if(sr2) removeRover();
+	sr2 = new SR2rover(m_view);
 	
 	wTool->resetStates();
 	
@@ -329,6 +331,67 @@ void simControl::showPathTool()
 void simControl::showPathView(int dir)
 {
 	emit pathView(dir);
+}
+void simControl::loadPath()
+{
+	QString filename;
+	//if(filename == NULL){
+		filename = QFileDialog::getOpenFileName(m_parent,"Open Path", QDir::homePath());
+		if(filename == NULL) return;					// cancel is pressed on the file dialog
+	//}
+	
+	QDomDocument xmlDoc( "roverSimDoc" );
+	QFile pathFile(filename);
+	QFileInfo pathInfo(filename);
+	if(!pathFile.open(QIODevice::ReadOnly)){
+		m_parent->printText("Could not open: " + filename);
+		return;
+	}
+	
+	QString err;
+	int line;
+	int column;
+	if(!xmlDoc.setContent(&pathFile,true,&err,&line,&column)){			// set the content of the file to an XML document
+		m_parent->printText("xml Doc error: " + pathInfo.baseName());
+		m_parent->printText(err + QString("- Error at line %1 column %2").arg(line).arg(column));
+		pathFile.close();
+		return;
+	}
+	pathFile.close();
+	
+	QDomElement root = xmlDoc.documentElement();
+	if(root.tagName() != "PathData")
+	{
+		m_parent->printText("File does not contain path data: " + pathInfo.baseName());
+		return;
+	}
+	
+	//////////////////////////////////////////////////////////
+	// load the obstacle layout
+	QString	layoutName = root.attribute( "layoutFile","NULL");
+	blocks->loadLayout(layoutName);
+	
+	/////////////////////////////////////////////////////////
+	// get the start and goal points, place the rover at the start and a waypoint at the goal
+	btVector3 vst,vgl;
+	QDomElement sg = root.firstChildElement("startgoal");
+	QDomElement startgoal = sg.firstChildElement("vector");
+	vst = SimDomElement::elementToVector(startgoal);
+	startgoal = startgoal.nextSiblingElement("vector");
+	vgl = SimDomElement::elementToVector(startgoal);
+	wTool->removeWaypoints();												// remove all old waypoints so user doesn't get confused
+	addWaypoint(1,vgl.x(),vgl.y());											// add a waypoint for viewing
+	newRover(vst);															// create a new rover
+	
+	////////////////////////////////////////////////////////
+	// add the paths listed in the file
+	QDomElement ph = root.firstChildElement("path");
+	while(!ph.isNull()){
+		pathPlan *path = new pathPlan(blocks,m_view);
+		SimDomElement::elementToPath(ph,path);
+		pTool->addToTable(path);
+		ph = ph.nextSiblingElement("path");
+	}
 }
 
 /////////////////////////////////////////

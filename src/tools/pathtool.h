@@ -79,11 +79,11 @@ class pathTool : public QWidget, private Ui::pathtool
 		
 		void setStartPoint(btVector3 start) { startPoint = start; }
 		void setGoalPoint(btVector3 goal) { goalPoint = goal; }
+		void addToTable(pathPlan *path);
 		void addPath(float range, float step, float csSize, float effLimit, float spinProgress, int drawgl = 1, bool visible=false);
 		void setStatisticsDevice(QIODevice *f) { m_statsStream.setDevice(f); }
 		void setTrialname(QString f);
 		QString getTrialname() { return m_filename; }
-		void loadPath(QString filename = NULL);
 		
 	public slots:
 		void show();
@@ -126,7 +126,6 @@ class pathTool : public QWidget, private Ui::pathtool
 		QTextStream			m_statsStream;
 		
 		void tableSetup();
-		void addToTable(pathPlan *path);
 		bool initSaveFile();
 };
 #endif //PATHTOOL_H

@@ -27,5 +27,8 @@ public:
 	static btVector3 elementToVector(QDomElement element);
 	static btMatrix3x3 elementToMatrix(QDomElement element);
 	static btTransform elementToTransform(QDomElement element);
+	
+	static QColor elementToColor(QDomElement element);
+	static void elementToPath(QDomElement element, pathPlan* path);
 };
 #endif //SIMDOMELEMENT_H

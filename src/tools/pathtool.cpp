@@ -405,6 +405,8 @@ void pathTool::addToTable(pathPlan *path)
 	state->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
 	state->setToolTip("Path computation exit state");
 	pathTableWidget->setItem(selected,6,state);
+	
+	if(path->getShortestLength() > 0) updateTool();
 }
 
 void pathTool::show()
@@ -454,7 +456,7 @@ void pathTool::addPath(float range, float step, float csSize, float effLimit, fl
 	QStringList colorNames = QColor::colorNames();
 	int r = Randomn()*colorNames.size();					// find a random color
 	QColor color(colorNames[r]);
-	
+
 	pathPlan *path = new pathPlan(blocks,m_view);
 	path->setRange(range);
 	path->setStep(step);
@@ -464,7 +466,7 @@ void pathTool::addPath(float range, float step, float csSize, float effLimit, fl
 	path->setSpinLimit(spinProgress);
 	path->setColor(color);
 	path->setDrawSwitch(drawgl);
-	
+
 	addToTable(path);
 }
 
@@ -698,7 +700,7 @@ bool pathTool::initSaveFile()
 	if(!checkBoxSave->isChecked()) return true;
 
 	if(m_filename == NULL){
-		m_filename = QFileDialog::getSaveFileName(m_parent,"Save Path Data", QDir::homePath());	// open a Save File dialog and select location and filename
+		m_filename = QFileDialog::getSaveFileName(m_parent,"Save Path Data", QDir::homePath());		// open a Save File dialog and select location and filename
 		if(m_filename == NULL){
 			checkBoxSave->setChecked(false);														// if cancel is pressed turn off saving
 			return true;
@@ -738,33 +740,4 @@ bool pathTool::initSaveFile()
 	root.appendChild(goalLine);
 	
 	return true;
-}
-
-void pathTool::loadPath(QString filename)
-{
-	if(filename == NULL){
-		filename = QFileDialog::getOpenFileName(this,"Open Path", QDir::homePath());
-		if(filename == NULL) return;					// cancel is pressed on the file dialog
-	}
-	
-	QDomDocument xmlDoc( "roverSimDoc" );
-	QFile pathFile(filename);
-	QFileInfo pathInfo(filename);
-	if(!pathFile.open(QIODevice::ReadOnly))
-		return;
-	
-	if(!xmlDoc.setContent(&pathFile)){			// set the content of the file to an XML document
-		pathFile.close();
-		return;
-	}
-	pathFile.close();
-	
-	QDomElement root = xmlDoc.documentElement();
-	if(root.tagName() != "PathData")
-	{
-		m_parent->printText("File does not contain path data: " + pathInfo.baseName());
-		return;
-	}
-	
-	//blocks->loadLayout(layoutName);
 }

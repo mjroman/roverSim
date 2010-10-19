@@ -3,6 +3,7 @@
 
 #include <QTimer>
 #include <QDir>
+#include <QDomNode>
 #include "mainGUI.h"
 #include "physicsWorld.h"
 #include "utility/structures.h"
@@ -58,6 +59,7 @@ class simControl : public QObject
 		void showNavTool();
 		void showPathTool();
 		void showPathView(int dir);
+		void loadPath();
 
 	signals:
 		void pathView(int);

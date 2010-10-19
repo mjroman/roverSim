@@ -47,8 +47,7 @@ QMainWindow(parent)
 
 // world menu
     connect(actionSim_Timing, SIGNAL(triggered()), this, SLOT(showSimTiming()));
-	connect(actionAutomator_Setup, SIGNAL(triggered()), this, SLOT(showAutomatorTool()));
-
+	
 // rover menu
 	connect(actionNew_Rover, SIGNAL(triggered()), this, SLOT(newRover()));
 	connect(actionShow_Waypoint_Editor, SIGNAL(triggered()), SController, SLOT(showWaypointTool()));
@@ -79,6 +78,10 @@ QMainWindow(parent)
    	connect(actionTerrain_Parameters, SIGNAL(triggered()), this, SLOT(showTerrainTool()));
 	connect(SController->getGround(), SIGNAL(newTerrain()), this, SLOT(terrainChanged()));
 
+// Path menu
+	connect(actionAutomator_Setup, SIGNAL(triggered()), this, SLOT(showAutomatorTool()));
+	connect(actionLoad_Path_File, SIGNAL(triggered()), SController, SLOT(loadPath()));
+	
 // Text Console
 	connect(glView, SIGNAL(outputText(QString)), textConsole, SLOT(append(QString)));
     connect(glView, SIGNAL(refreshView()), this, SLOT(updateGUI()));

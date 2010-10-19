@@ -286,7 +286,7 @@ void obstacles::loadLayout(QString filename)
 		return;
 	}
 	
-	this->eliminate();							// remove all obstacles
+	this->eliminate();								// remove all obstacles
 	
 	QString	tName = root.attribute( "terrain", "NULL");
 	
@@ -306,7 +306,7 @@ void obstacles::loadLayout(QString filename)
 	}
 	
 	btVector3 size;														// set the terrain to the proper size
-	QStringList ss = root.attribute( "size","100,100,5").split(",");
+	QStringList ss = root.attribute( "size","100,100,5").split(",");	// returns the size of the world attribute or sets the default to "100,100,5"
 	size.setX(ss[0].toFloat());
 	size.setY(ss[1].toFloat());
 	size.setZ(ss[2].toFloat());

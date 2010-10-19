@@ -149,6 +149,8 @@ public:
 	void setSpinLimit(float s) { m_spinProgress = s; }
 	void setSpinBase(int b) { m_spinProgressBase = b; }
 	void setDrawSwitch(bool x) { m_drawSwitch = x; }
+	void setShortestPath(goalPath gp) { m_GP = gp; displayPath(true);}
+	void setState(int st) { m_state = (PathState)st; }
 	
 	bool  m_displayDebug;
 	bool  m_displayCrowFly;
