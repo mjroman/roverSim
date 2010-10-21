@@ -48,6 +48,7 @@ m_linkViewIndex(0)
 
 pathPlan::~pathPlan()
 {
+	m_minimaList.clear();
 	m_pointPath.clear();
 	contactPoints.clear();
 	hitPoints.clear();
@@ -59,6 +60,9 @@ pathPlan::~pathPlan()
 void pathPlan::reset()
 {
 	togglePathReset();
+	m_minimaList.clear();
+	m_pointPath.clear();
+	m_trailPath.clear();
 	m_GP.points.clear();
 	m_GP.length = 0;
 	m_GP.time = 0;
@@ -313,13 +317,18 @@ bool pathPlan::AStarSearch()
 				openSet << prospectPoints[i];
 			}
 		}
-		
+
 		openSet = quickSortFScoreLessthan(openSet);
 		
 		////////////////////////////////////////////
 		// rover POV sensor visibility switch
 		if(m_visibilityType && m_range != 0){
-			m_GP = reconstructPath(openSet.first(),closedSet);	// build the path
+			if(openSet.isEmpty() || closedSet.isEmpty()){
+				m_GP.length = m_startPoint.point.distance(m_goalPoint.point);
+				m_GP.points << m_startPoint << m_goalPoint;
+			}
+			else
+				m_GP = reconstructPath(openSet.first(),closedSet);	// build the path
 			return true;
 		}
 	}
@@ -360,18 +369,18 @@ void pathPlan::togglePathPoint(int dir)
 	rankPoint here = m_GP.points[m_linkViewIndex];							// get the point to view from using the index
 	here.object = 0;
 
-	m_view->getCamera()->cameraSetDirection(here.point); 					// set the camera view to the path point
+
 	m_CS = new cSpace(here.point,m_range,m_margin,m_blocks,m_view);			// create a new Configuration Space based on the start point
-	if(m_view) m_CS->drawCspace(true);
-	
-	if(m_CS->isPointInsideCSpace(here.point))	
-		m_view->overlayString("inside");
 	
 	contactPoints = getVisablePointsFrom(here);								// gather all objects extreme vertices
 	
 	if(!contactPoints.isEmpty()) hitPoints << contactPoints[0].point;		// show the most likely path choice
 	contactPoints.prepend(m_GP.points[m_linkViewIndex]);					// push the point the current view is from for drawing
-	m_view->updateGL();
+	if(m_view) {
+		m_CS->drawCspace(true);
+		m_view->getCamera()->cameraSetDirection(here.point); 					// set the camera view to the path point
+		m_view->updateGL();
+	}
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -385,6 +394,7 @@ goalPath pathPlan::reconstructPath(rankPoint here, QList<rankPoint> list)
 	gp.points.prepend(m_goalPoint);
 	while(here.parentIndex != -1){
 		gp.points.prepend(here);
+		if(list.isEmpty()) break;
 		here = list[here.parentIndex];
 	}
 	gp.points.prepend(m_startPoint);

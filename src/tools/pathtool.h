@@ -117,7 +117,7 @@ class pathTool : public QWidget, private Ui::pathtool
 		btVector3			goalPoint;
 		int					m_selectedPath;
 		bool				m_allPaths;
-		QSound				m_foundSound;
+		//QSound				m_foundSound;
 		int					m_runCount;
 		QString				m_filename;
 		QFile				*m_file;

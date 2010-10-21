@@ -73,7 +73,7 @@ robot::~robot()
 void robot::deleteRobotGroup()
 {
 	int i = m_robotObjects.size();
- 	m_view->stopDrawing(); 			// do not draw
+ 	if(m_view) m_view->stopDrawing(); 			// do not draw
  	arena->stopSimTimer();			// pause simulation
 	
 	while(i>0){
@@ -85,7 +85,7 @@ void robot::deleteRobotGroup()
 
 	m_robotShapes.clear();
 	arena->resetWorld();			// reset and unpause simulation
-	m_view->startDrawing(); 		// draw obstacles
+	if(m_view) m_view->startDrawing(); 		// draw obstacles
 }
 
 btTransform robot::getRobotTransform()

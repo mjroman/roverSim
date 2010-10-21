@@ -12,8 +12,8 @@ configFile(QDir::currentPath() + "/mission/config",QSettings::IniFormat)
 	connect(buttonRun, SIGNAL(clicked()), this, SLOT(runData()));
 	connect(buttonTerrainFile, SIGNAL(clicked()), this, SLOT(setTerrainFile()));
 	
-	lineEditWorldSizeX->setText(QString::number(configFile.value("World_Size_X",50).toFloat()));
-	lineEditWorldSizeY->setText(QString::number(configFile.value("World_Size_Y",50).toFloat()));
+	lineEditWorldSizeX->setText(QString::number(configFile.value("World_Size_X",100).toFloat()));
+	lineEditWorldSizeY->setText(QString::number(configFile.value("World_Size_Y",100).toFloat()));
 	lineEditWorldSizeZ->setText(QString::number(configFile.value("World_Size_Z",5).toFloat()));
 	
 	QString tfile = configFile.value("Terrain","NULL").toString();
@@ -47,7 +47,7 @@ configFile(QDir::currentPath() + "/mission/config",QSettings::IniFormat)
 	lineEditSensorStep->setText(QString::number(configFile.value("Sensor_Step",0.15).toFloat()));
 	lineEditSensorSpace->setText(QString::number(configFile.value("Sensor_Cspace",0.65).toFloat()));
 	
-	lineEditIterations->setText(QString::number(configFile.value("Iterations",10).toInt()));
+	lineEditIterations->setText(QString::number(configFile.value("Iterations",3).toInt()));
 	lineEditSeed->setText(QString::number(configFile.value("Seed",333).toLongLong()));
 	lineEditTrialName->setText(configFile.value("Trial_Name","trial").toString());
 	

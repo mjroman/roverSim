@@ -15,9 +15,10 @@ GLfloat GroundColor[4] = { 0.95f, 0.95f, 0.95f, 1.0f };
 // Adds the terrain mesh into the physics world for collision detection
 // A flat plane is also placed below the terrain to catch any objects
 // that might fall out of the broadphase limits, which could cause problems.
-terrain::terrain(QString filename,simGLView* glView)
+terrain::terrain(QString filename, MainGUI* parent, simGLView* glView)
 :
 simGLObject(glView),
+m_parent(parent),
 m_terrainVerts(0),
 m_terrainColors(0),
 m_terrainNormals(0),
@@ -28,7 +29,7 @@ m_pixelSize(100,100),
 m_terrainModified(false)
 {
     arena = physicsWorld::instance(); 					// get the physics world object
-	tTool = new terrainTool(m_view->parentWidget());
+	tTool = new terrainTool(m_parent);
 	
     connect(tTool, SIGNAL(sizeUpdate(btVector3)), this, SLOT(setTerrainSize(btVector3)));
 
@@ -46,7 +47,7 @@ terrain::~terrain()
 void terrain::terrainClear()
 {
     int i = m_terrainObjects.size();
-	m_view->stopDrawing();	// do not draw while items are deleted
+	if(m_view) m_view->stopDrawing();	// do not draw while items are deleted
  	arena->stopSimTimer();			// pause simulation
 	
 	while(i>0){
@@ -68,7 +69,7 @@ void terrain::terrainClear()
     m_terrainTriangles = 0;
 	
 	arena->resetWorld();	// reset the world and unpause simulation	
-	m_view->startDrawing();	// draw obstacles
+	if(m_view) m_view->startDrawing();	// draw obstacles
 }
 
 // loads a BMP file as the height map for the terrain. If the data
@@ -77,7 +78,7 @@ int terrain::terrainLoadFile()
 {
     QImage heightMap(m_terrainFilename);
     if(heightMap.isNull()){
-        m_view->printText("Terrain File could not open");
+        m_parent->printText("Terrain File could not open");
         return 0; // if the file does not open return
     }
 
@@ -94,7 +95,7 @@ int terrain::terrainLoadFile()
 
     unsigned int *imgData = new unsigned int[imgSize+1];									// create a new array to hold all the height data from the image
     if(imgData == NULL) {
-        m_view->printText("Memory error");
+        m_parent->printText("Memory error");
         return 0;
     }
 
@@ -403,7 +404,7 @@ void terrain::openTerrain(QString filename)
 {
 	if(filename == NULL){
 	// open an Open File dialog to look for a PNG image to represent a height map
-    	filename = QFileDialog::getOpenFileName(m_view->parentWidget(),tr("Open Terrain"), tr("/Users"),tr("Image File (*.png)"));
+    	filename = QFileDialog::getOpenFileName(m_parent,tr("Open Terrain"), tr("/Users"),tr("Image File (*.png)"));
 		if(filename == NULL) return; // if cancel is pressed dont do anything
 	}
 	
@@ -425,7 +426,7 @@ void terrain::openTerrain(QString filename)
         this->generateGround();
     }
 
-	m_view->printText("Terrain Loaded: " + terrainInfo.baseName());
+	m_parent->printText("Terrain Loaded: " + terrainInfo.baseName());
 	
 	m_terrainModified = false;
 	emit newTerrain();
@@ -434,7 +435,7 @@ void terrain::openTerrain(QString filename)
 void terrain::saveTerrain()
 {
 	// open a Save File dialog and select location and filename
-	QString filename = QFileDialog::getSaveFileName(m_view->parentWidget(),tr("Save Terrain PNG"), QDir::homePath(),tr("Image File (*.png)"));
+	QString filename = QFileDialog::getSaveFileName(m_parent,tr("Save Terrain PNG"), QDir::homePath(),tr("Image File (*.png)"));
 	if(filename == NULL) return; // if cancel is pressed dont do anything
 
     if(!filename.endsWith(".png")) filename.append(".png");
@@ -487,7 +488,7 @@ void terrain::setTerrainSize(btVector3 size)
 	m_terrainSize = size;
 	tTool->setSize(m_terrainSize);
 	
-	m_view->printText(QString("Terrain Resized %1,%2,%3").arg(m_terrainSize.x()).arg(m_terrainSize.y()).arg(m_terrainSize.z()));
+	m_parent->printText(QString("Terrain Resized %1,%2,%3").arg(m_terrainSize.x()).arg(m_terrainSize.y()).arg(m_terrainSize.z()));
 
     this->terrainRefresh();
 	emit newTerrain();

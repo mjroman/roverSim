@@ -36,6 +36,7 @@ GLfloat ghostColor[4] = { 0.9f, 0.9f, 0.9f, 0.1f};
 simGLView::simGLView(QWidget *parent) 
 :
 QGLWidget(parent),
+WPlist(NULL),
 m_pickObject(NULL)
 {
     this->setMinimumSize(80,50);
@@ -189,7 +190,7 @@ void simGLView::paintGL()
 	glLightfv(GL_LIGHT1, GL_DIFFUSE, lightOne);
 	glLightfv(GL_LIGHT1, GL_POSITION, lightOnePos);
 
-	drawWaypoints();
+	if(WPlist) drawWaypoints();
 
 	for(int i=0;i<renderList.size();i++)
 		renderList[i]->renderGLObject();

@@ -2,6 +2,7 @@
 #define OBSTACLES_H
 
 #include "physicsWorld.h"
+#include "mainGUI.h"
 #include "simglobject.h"
 #include "tools/obstacletool.h"
 #include "utility/definitions.h"
@@ -46,15 +47,16 @@ class obstacles : public simGLObject
 {
 	Q_OBJECT
 	public:		
-		obstacles(terrain* gnd,simGLView* glView=0);
+		obstacles(terrain* gnd,MainGUI* parent,simGLView* glView=NULL);
 		~obstacles();
 		
+		int count() { return m_obstacleObjects.size(); }
 		void singleRandomObstacle();
 		void singleObstacle(btVector3 size, btTransform startTrans);
 		void setParameters(int count, btVector3 min, btVector3 max, QVector2D yaw);
 		QList<btCollisionObject*>* getObstacles() { return &m_obstacleObjects; }
 		bool areObstaclesActive();
-		float getMeanCoverage() { return m_meanArea; }
+		float getMeanCoverage();
 		bool isSaved() { return m_saved; }
 		QString getLayoutName() { return m_layoutName; }
 		void showTool() { oTool->show(); }
@@ -86,10 +88,10 @@ class obstacles : public simGLObject
 		QList<btCollisionObject*>			m_obstacleObjects;
 		
 		physicsWorld    					*arena;
+		MainGUI								*m_parent;
 		terrain         					*ground;
 		obstacleTool						*oTool;
 		bool								m_saved;
-		float								m_meanArea;
 		float								m_dropHeight;
 		
 		pickValue							m_pickingObject;

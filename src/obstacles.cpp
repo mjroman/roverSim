@@ -92,21 +92,24 @@ void userObstacleDialog::acceptData()
 	this->accept();
 }
 
-obstacles::obstacles(terrain* gnd, simGLView* glView)
+obstacles::obstacles(terrain* gnd, MainGUI* parent, simGLView* glView)
 :
 simGLObject(glView),
+m_parent(parent),
 ground(gnd),
 m_saved(false)
 {
 	arena = physicsWorld::instance(); // get the physics world object
-	oTool = new obstacleTool(m_view->parentWidget());
+	oTool = new obstacleTool(m_parent);
 	
 	connect(oTool, SIGNAL(regenerateObstacles(int)), this, SLOT(generate(int)));
-	connect(m_view, SIGNAL(pickingVector(btVector3,btVector3)), this, SLOT(pickObstacle(btVector3,btVector3)));
-	connect(m_view, SIGNAL(movingVector(btVector3,btVector3)), this, SLOT(moveObstacle(btVector3,btVector3)));
-	connect(m_view, SIGNAL(dropPicked()), this, SLOT(dropObstacle()));
-	connect(m_view, SIGNAL(spinPicked(float)), this, SLOT(spinObstacle(float)));
-	connect(m_view, SIGNAL(loftPicked(float)), this, SLOT(loftObstacle(float)));
+	if(m_view){
+		connect(m_view, SIGNAL(pickingVector(btVector3,btVector3)), this, SLOT(pickObstacle(btVector3,btVector3)));
+		connect(m_view, SIGNAL(movingVector(btVector3,btVector3)), this, SLOT(moveObstacle(btVector3,btVector3)));
+		connect(m_view, SIGNAL(dropPicked()), this, SLOT(dropObstacle()));
+		connect(m_view, SIGNAL(spinPicked(float)), this, SLOT(spinObstacle(float)));
+		connect(m_view, SIGNAL(loftPicked(float)), this, SLOT(loftObstacle(float)));
+	}
 }
 
 obstacles::~obstacles()
@@ -131,7 +134,7 @@ void obstacles::setParameters(int count, btVector3 min, btVector3 max, QVector2D
 /////////////
 void obstacles::eliminate(int num)
 {
-	m_view->stopDrawing();
+	if(m_view) m_view->stopDrawing();
 	arena->stopSimTimer();
 	
 	if(num <= 0 || num >= m_obstacleObjects.size())
@@ -145,7 +148,7 @@ void obstacles::eliminate(int num)
 	}
 	
 	arena->resetWorld();
-	m_view->startDrawing();
+	if(m_view) m_view->startDrawing();
 	emit obstaclesRemoved();
 }
 
@@ -155,11 +158,10 @@ void obstacles::generate(int num)
 	int numObstDiff;
 	
 	if(!ground) {
-		m_view->printText("Open new Terrain to generate obstacles");
+		m_parent->printText("Open new Terrain to generate obstacles");
 		return;
 	}
 	
-	m_meanArea = 0;
 	m_dropHeight = oTool->dropHeight();
 	
     if(num == 0) return;
@@ -192,7 +194,7 @@ void obstacles::randomize()
 
 void obstacles::userObstacle()
 {
-	userObstacleDialog uoDialog(m_view->parentWidget());
+	userObstacleDialog uoDialog(m_parent);
 	if(uoDialog.exec() == QDialog::Rejected)
 		return;
 	
@@ -234,9 +236,7 @@ void obstacles::singleRandomObstacle()
 void obstacles::singleObstacle(btVector3 size, btTransform startTrans)
 {
 	btCollisionShape* oShape = NULL;
-	float mass, volume;
-	
-	m_meanArea += 2*(size.x()*size.y() + size.x()*size.z() + size.y()*size.z())/3;       
+	float mass, volume;       
 	
 	oShape = createObstacleShape(oTool->obstacleType(),size,volume);
 	
@@ -244,6 +244,21 @@ void obstacles::singleObstacle(btVector3 size, btTransform startTrans)
 	m_dropHeight += size.z();									// add the height of the obstacle to the drop height, keeps things from exploding
 	
 	createObstacleObject(mass,oShape,startTrans);				// create the new obstacle and add it to the world
+}
+
+float obstacles::getMeanCoverage()
+{
+	float meanArea = 0;
+	
+	for(int i=0; i<m_obstacleShapes.size();i++){
+		btVector3 size(1,1,1);
+		if(m_obstacleShapes[i]->getShapeType() == BOX_SHAPE_PROXYTYPE){
+			const btBoxShape* boxShape = static_cast<const btBoxShape*>(m_obstacleShapes[i]);
+			size = boxShape->getHalfExtentsWithMargin(); 
+		}
+		meanArea += 2*(size.x()*size.y() + size.x()*size.z() + size.y()*size.z())/3;
+	}
+	return meanArea;
 }
 
 btCollisionShape* obstacles::createObstacleShape(int shapeType, btVector3& lwh,float& vol)
@@ -314,7 +329,7 @@ bool obstacles::areObstaclesActive()
 void obstacles::saveLayout(QString filename)
 {
 	if(filename == NULL){
-		filename = QFileDialog::getSaveFileName(m_view->parentWidget(),"Save Obstacle Layout", QDir::homePath());	// open a Save File dialog and select location and filename
+		filename = QFileDialog::getSaveFileName(m_parent,"Save Obstacle Layout", QDir::homePath());	// open a Save File dialog and select location and filename
 		if(filename == NULL) return;															// if cancel is pressed dont do anything
 	}
 
@@ -349,14 +364,14 @@ void obstacles::saveLayout(QString filename)
 	m_saved = true;
 	
 	obstFile.close();																		// flush data and close file
-	m_view->printText("Obstacle layout saved: " + obstInfo.baseName());
+	m_parent->printText("Obstacle layout saved: " + obstInfo.baseName());
 	arena->startSimTimer();																	// resume the simulation
 }
 
 void obstacles::loadLayout(QString filename)
 {
 	if(filename == NULL){
-		filename = QFileDialog::getOpenFileName(m_view->parentWidget(),"Open Obstacle Layout", QDir::homePath());
+		filename = QFileDialog::getOpenFileName(m_parent,"Open Obstacle Layout", QDir::homePath());
 		if(filename == NULL) return;					// cancel is pressed on the file dialog
 	}
 	
@@ -377,7 +392,7 @@ void obstacles::loadLayout(QString filename)
 	QDomElement root = xmlDoc.documentElement();
 	if(root.tagName() != "obstacleLayout")
 	{
-		m_view->printText("File is not an obstacle layout: " + obstInfo.baseName());
+		m_parent->printText("File is not an obstacle layout: " + obstInfo.baseName());
 		return;
 	}
 	
@@ -386,7 +401,7 @@ void obstacles::loadLayout(QString filename)
 	QString	tName = root.attribute( "terrain", "NULL");
 	
 	if(tName != ground->terrainFilename()){			// if the terrain filename is different than what is loaded
-		int ret = QMessageBox::question(m_view,		// ask the user if it should be loaded
+		int ret = QMessageBox::question(m_parent,		// ask the user if it should be loaded
 					"Load New Terrain?",
 		 			"The obstacle layout was built on terrain file: " + tName + "\n\nThis is different from what is currently loaded.\n\n" + 
 					"Do you want to load the new terrain?",
@@ -416,8 +431,8 @@ void obstacles::loadLayout(QString filename)
 		obst = obst.nextSibling();
 	}
 	
-	m_view->printText("Obstacle layout loaded: " + obstInfo.baseName());
-	m_view->printText(QString("Count = %1").arg(m_obstacleObjects.size()));
+	m_parent->printText("Obstacle layout loaded: " + obstInfo.baseName());
+	m_parent->printText(QString("Count = %1").arg(m_obstacleObjects.size()));
 }
 
 void obstacles::elementToObstacle(QDomElement element)

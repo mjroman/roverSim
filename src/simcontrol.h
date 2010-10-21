@@ -78,6 +78,7 @@ class simControl : public QObject
 		double          delTime;
 		simGLView		*m_view;
 		
+		long			m_seed;
 		QList<float>	m_densityFields;
 		int 			m_iterations;
 		float			m_pathSizeMin,m_pathSizeMax;

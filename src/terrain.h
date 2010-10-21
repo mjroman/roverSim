@@ -2,6 +2,7 @@
 #define TERRAIN_H
 
 #include <OpenGL/gl.h>
+#include "mainGUI.h"
 #include "simglobject.h"
 #include "physicsWorld.h"
 #include "tools/terraintool.h"
@@ -15,7 +16,7 @@ class terrain : public simGLObject
 {
 	Q_OBJECT
 public:
-    terrain(QString filename, simGLView* glView = NULL);
+    terrain(QString filename, MainGUI* parent, simGLView* glView = NULL);
     ~terrain();
 
 	void showTool() { tTool->show(); }
@@ -48,6 +49,7 @@ protected:
 private:
 	terrainTool     		*tTool;
     physicsWorld            *arena;
+	MainGUI					*m_parent;
 
     Vertex          		*m_terrainVerts;
     Vertex          		*m_terrainColors;

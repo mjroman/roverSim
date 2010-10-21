@@ -267,7 +267,7 @@ blocks(obs),
 m_parent(parent),
 m_view(glView),
 m_selectedPath(0),
-m_foundSound("QtRoverSimulator.app/Contents/Resources/sounds/singleBeep2.wav"),
+//m_foundSound("QtRoverSimulator.app/Contents/Resources/sounds/singleBeep2.wav"),
 m_filename(NULL),
 m_file(NULL),
 m_xmlDoc( "roverSimDoc" )
@@ -423,8 +423,10 @@ void pathTool::show()
 void pathTool::removePaths()
 {
 	if(pathList.isEmpty()) return;
-	int i;
-	for(i=0; i<pathList.size(); i++) delete pathList[i];
+
+	for(int i=0; i<pathList.size(); i++) 
+		delete pathList[i];
+		
 	pathList.clear();
 	pathTableWidget->clearContents();
 }
@@ -520,14 +522,14 @@ void pathTool::processPath(int x)
 	qApp->processEvents();
 	if(x >= pathList.size()){																		// finished computing paths
 		m_allPaths = false;
-		QSound::play("QtRoverSimulator.app/Contents/Resources/sounds/singleBell.wav");
+		//QSound::play("QtRoverSimulator.app/Contents/Resources/sounds/singleBell.wav");
 		if(pathList.last()->getRange() == 0)
 			updateCompEfficiency(pathList.last()->getShortestLength());								// updates comparison efficiency and writes data to file
 		emit pathsFinished();
 		return;
 	}
 	
-	if(x != 0) m_foundSound.play();
+	//if(x != 0) m_foundSound.play();
 	pathList[x]->goForGoal(startPoint,goalPoint);													// find the shortest path from start to goal points
 	
 	if(checkBoxSave->isChecked()){
