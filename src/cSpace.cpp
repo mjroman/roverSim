@@ -52,17 +52,25 @@ void cSpace::deleteGhostGroup()
 	if(m_view) m_view->stopDrawing(); 		// do not draw
  	arena->stopSimTimer();					// pause simulation
 	
-	for(int i=0;i<m_ghostObjects.size();i++ )
+	int num = m_ghostObjects.size() - 1;
+	for(int i=num; i>=0; i-- ){
 		arena->getDynamicsWorld()->removeCollisionObject(m_ghostObjects[i]);
-		
-	for(int i=0;i<m_ghostShapes.size();i++)
+		//btGhostObject* go = btGhostObject::upcast(m_ghostObjects[i]);
+		//delete go;
+		delete m_ghostObjects[i];
+		m_ghostObjects.removeAt(i);
 		delete m_ghostShapes[i];
+		m_ghostShapes.removeAt(i);
+	}
+		
+	//for(int i=0;i<m_ghostShapes.size();i++)
+	//	delete m_ghostShapes[i];
 	
 	for(int i=0; i<m_ghostGroups.size(); i++)
 		m_ghostGroups[i].list.clear();
 		
-	m_ghostShapes.clear();
-	m_ghostObjects.clear();
+	//m_ghostShapes.clear();
+	//m_ghostObjects.clear();
 	m_ghostGroups.clear();
 	
 	arena->resetWorld();					// reset and unpause simulation

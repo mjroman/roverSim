@@ -196,20 +196,9 @@ PathState pathPlan::cycleToGoal()
 	
 		memset(&m_startPoint,0,sizeof(rankPoint));								// create a new start point
 		m_startPoint.point = step * strideVect.normalized() + m_trailPath.last().point;	// compute the new point from the end of the trail
-		
+
 		// make sure the rover doesn't step into an object's C-Space
-		///////////////////////////////////////////////////////////////////////////			
-		btCollisionObject* object = 0;
-		if(m_trailPath.last().object) object = m_trailPath.last().object; 		// check if the end of the trail is near a C-Space object
-		else if(m_GP.points[i].object) object = m_GP.points[i].object;			// or the next point on the path in the direction headed
-
-		if(object){
-			btVector3 offset = m_startPoint.point - object->getWorldTransform().getOrigin();
-			offset = (0.01 * offset.normalized()) * btVector3(1,1,0);			// move over the start point 1cm from the edge of the C-Space
-			m_startPoint.point += offset;
-			m_startPoint.object = object;
-		}
-
+		///////////////////////////////////////////////////////////////////////////		
 		m_CS->movePointOutsideCSpace(m_startPoint.point);						// check if the new start point is inside the C-Space
 		///////////////////////////////////////////////////////////////////////////
 		
@@ -408,7 +397,7 @@ bool pathPlan::clearLocalMinima(QList<rankPoint>& list, float& dist)
 	int index = list.size()-1;
 	static float spinDist = 0;
 
-	if(m_startPoint.object == 0 || list.size() < 3) return true;	// make sure there is an object near by and the list is big enough
+	if(list.size() < 3) return true;	// make sure there is an object near by and the list is big enough
 	
 	if(spinDist > 0){ spinDist = 0; return true; }					// skip the next local minima check after spin progress to avoid switchback condition
 

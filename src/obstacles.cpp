@@ -142,6 +142,9 @@ void obstacles::eliminate(int num)
 		
 	for(int i=num-1; i>=0; i--){
 		arena->getDynamicsWorld()->removeCollisionObject(m_obstacleObjects[i]);
+		btRigidBody* rb = btRigidBody::upcast(m_obstacleObjects[i]);
+		if(rb->getMotionState()) delete (btDefaultMotionState*)rb->getMotionState();
+		delete m_obstacleObjects[i];
 		m_obstacleObjects.removeAt(i);
 		delete m_obstacleShapes[i];
 		m_obstacleShapes.removeAt(i);

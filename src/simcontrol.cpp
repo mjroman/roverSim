@@ -47,7 +47,7 @@ m_view(glView)
 	
 	connect(ground,SIGNAL(newTerrain()),blocks,SLOT(eliminate()));
 	connect(ground,SIGNAL(newTerrain()),this,SLOT(removeRover()));
-	connect(ground,SIGNAL(newTerrain()),this,SLOT(setAllWaypointHeights()));
+	connect(ground,SIGNAL(newTerrain()),wTool,SLOT(setHeights()));
 
 	arena->startSimTimer();
 }
