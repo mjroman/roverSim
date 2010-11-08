@@ -36,7 +36,7 @@ public:
 	bool isPointInsidePoly(btVector3 pt,QList<btVector3> ls);
 	bool isPointInsideObject(btVector3 pt, btCollisionObject* obj);
 	bool isPointInsideCSpace(btVector3 pt);
-	void movePointOutsideObject(btVector3& pt, btCollisionObject* obj);
+//	void movePointOutsideObject(btVector3& pt, btCollisionObject* obj);
 	void movePointOutsideCSpace(btVector3& pt);
 	bool movePointAroundCSpace(btVector3& pt, btVector3 startVect, float stpMag, int dir);
 	int segmentIntersection(btVector3 p1,btVector3 p2,btVector3 p3,btVector3 p4,btVector3* intsec);
@@ -59,22 +59,24 @@ private:
 	float										m_detectRangeSq;
 	float										m_margin;
 	
-	QList<btCollisionShape*>					m_ghostShapes;
+	//QList<btCollisionShape*>					m_ghostShapes;
+	QList<btConvexHullShape*>					m_ghostShapes;
 	QList<btCollisionObject*>					m_ghostObjects;
 	QList<overlapGroup>							m_ghostGroups;
 	btVector3 									m_vertices[8];
 
 	void deleteGhostGroup();
-	void deleteGhostObject(btCollisionObject* obj);
+	
 	void generateCSpace();
 	void groupOverlapCSpace();
 	
-	btCollisionObject* createGhostObject(btCollisionShape* cshape,btTransform bodyTrans);
-	btCollisionObject* createGhostShape(btCollisionObject* bodyObj);
+	btCollisionObject* createGhostObject(btConvexHullShape* cshape,btTransform bodyTrans);
 	btCollisionObject* createGhostHull(btTransform bodyTrans, QList<btVector3> list);
 
-	void compoundCSpace();	// not used
-	void mergeCSpace();		// not used
-	QList<btVector3> clipAfromB(QList<btVector3> lista, QList<btVector3> listb, btTransform transab, int* mod=NULL);	// not used
+	//void deleteGhostObject(btCollisionObject* obj);	// not used
+	//btCollisionObject* createGhostShape(btCollisionObject* bodyObj); 		// not used
+	//void compoundCSpace();	// not used
+	//void mergeCSpace();		// not used
+	//QList<btVector3> clipAfromB(QList<btVector3> lista, QList<btVector3> listb, btTransform transab, int* mod=NULL);	// not used
 };
 #endif // CSPACE_H

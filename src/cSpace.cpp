@@ -55,28 +55,21 @@ void cSpace::deleteGhostGroup()
 	int num = m_ghostObjects.size() - 1;
 	for(int i=num; i>=0; i-- ){
 		arena->getDynamicsWorld()->removeCollisionObject(m_ghostObjects[i]);
-		//btGhostObject* go = btGhostObject::upcast(m_ghostObjects[i]);
-		//delete go;
 		delete m_ghostObjects[i];
 		m_ghostObjects.removeAt(i);
 		delete m_ghostShapes[i];
 		m_ghostShapes.removeAt(i);
 	}
-		
-	//for(int i=0;i<m_ghostShapes.size();i++)
-	//	delete m_ghostShapes[i];
 	
 	for(int i=0; i<m_ghostGroups.size(); i++)
 		m_ghostGroups[i].list.clear();
-		
-	//m_ghostShapes.clear();
-	//m_ghostObjects.clear();
 	m_ghostGroups.clear();
 	
 	arena->resetWorld();					// reset and unpause simulation
 	if(m_view) m_view->startDrawing(); 		// draw obstacles
 }
 
+/*
 void cSpace::deleteGhostObject(btCollisionObject* obj)
 {
 	if(m_view) m_view->stopDrawing(); 					// do not draw
@@ -91,7 +84,8 @@ void cSpace::deleteGhostObject(btCollisionObject* obj)
 	// should probably remove the pointer in the group list but this function is not used right now
 	arena->resetWorld(); 					// reset and unpause simulation
 	if(m_view) m_view->startDrawing(); 				// draw obstacles
-}
+}*/
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // C-Space ghost object creation
@@ -101,7 +95,7 @@ void cSpace::generateCSpace()
 	int i;
 	QList<btVector3> top;
 	
-	deleteGhostGroup();
+	//deleteGhostGroup();
 	
 	// create CSpace by using the obstacle shape and growing it by SPACEMARGIN or about the rover's radius
 	for(i=0;i<m_blocks->getObstacles()->size();i++){						// loop through all obstacle rigid bodies
@@ -123,11 +117,14 @@ void cSpace::generateCSpace()
 		
 		top = growShape(m_margin,top);										// grow the detected obstacle shape
 		
-		createGhostHull(trans,top);											// create the ghost object
+		if(createGhostHull(trans,top) == NULL) {							// create the ghost object
+			qCritical("No Ghost created");
+			QCoreApplication::exit(1);
+		}											
 	}
 }
 
-btCollisionObject* cSpace::createGhostObject(btCollisionShape* cshape,btTransform bodyTrans)
+btCollisionObject* cSpace::createGhostObject(btConvexHullShape* cshape,btTransform bodyTrans)
 {
 	btGhostObject* ghostObj = new btGhostObject();									// create a new C-Space object
 	ghostObj->setWorldTransform(bodyTrans);											// place it over the object
@@ -149,10 +146,27 @@ btCollisionObject* cSpace::createGhostHull(btTransform bodyTrans, QList<btVector
 	
 	if(list.isEmpty()) return NULL;
 	
+	
 	btConvexHullShape* cshape = new btConvexHullShape();
+	
 	for(i=0;i<list.size();i++) cshape->addPoint(list[i] + btVector3(0,0,2));	// the list only contains the outline of the hull
 	for(i=0;i<list.size();i++) cshape->addPoint(list[i] + btVector3(0,0,-2));	// it is duplicated in the negative z direction
-	return createGhostObject(cshape, bodyTrans);
+	
+	//return createGhostObject(cshape, bodyTrans);
+	
+	btGhostObject* ghostObj = new btGhostObject();									// create a new C-Space object
+	ghostObj->setWorldTransform(bodyTrans);											// place it over the object
+	ghostObj->setCollisionShape(cshape);											// link the shape to the c-space object
+	ghostObj->setCollisionFlags(btCollisionObject::CF_CUSTOM_MATERIAL_CALLBACK);
+	
+	if(cshape == 0 || ghostObj == 0) return NULL;
+	
+	m_ghostShapes << cshape;
+	m_ghostObjects << static_cast<btCollisionObject*>(ghostObj);
+	
+	// add the object to the world
+	arena->getDynamicsWorld()->addCollisionObject(ghostObj,btBroadphaseProxy::SensorTrigger,btBroadphaseProxy::SensorTrigger);
+	return static_cast<btCollisionObject*>(ghostObj);
 }
 
 // groups all overlapping CSpace shapes into a list, m_ghostGroups contains a list of all grouped objects
@@ -252,6 +266,12 @@ bool cSpace::isPointInsidePoly(btVector3 pt,QList<btVector3> ls)
 bool cSpace::isPointInsideObject(btVector3 pt, btCollisionObject* obj)
 {
 	QList<btVector3> list = this->getTopShapePoints(obj);
+	
+	if(list.size() <= 1) {
+		qCritical("Not enough Points from Ghost object");
+		QCoreApplication::exit(2);
+	}
+	
 	return isPointInsidePoly(pt,list);
 }
 bool cSpace::isPointInsideCSpace(btVector3 pt)
@@ -263,6 +283,7 @@ bool cSpace::isPointInsideCSpace(btVector3 pt)
 	return false;
 }
 
+/*
 void cSpace::movePointOutsideObject(btVector3& pt, btCollisionObject* obj)
 {
 	QList<btVector3> list = this->getTopShapePoints(obj);
@@ -298,7 +319,8 @@ void cSpace::movePointOutsideObject(btVector3& pt, btCollisionObject* obj)
 	
 	pt = (para * d) + (norm * 0.1) + list[corner];				// add the projection vector plus a 1cm offset with reference to the corner
 	pt.setZ(zHeight);											// reset the height of the point
-}
+}*/
+
 
 void cSpace::movePointOutsideCSpace(btVector3& pt)
 {
@@ -935,6 +957,7 @@ void cSpace::drawCspace(bool x)
 /////////////////////////////////////////
 // un-used functions 
 /////////////
+/*
 // creates a C-Space hull shape object based on the collision object
 btCollisionObject* cSpace::createGhostShape(btCollisionObject* bodyObj)
 {
@@ -1257,4 +1280,5 @@ QList<btVector3> cSpace::clipAfromB(QList<btVector3> lista, QList<btVector3> lis
 	
 	return lista;
 }
+*/
 

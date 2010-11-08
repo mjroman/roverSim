@@ -72,12 +72,11 @@ void pathPlan::reset()
 void pathPlan::goForGoal(btVector3 start, btVector3 end)
 {
 	memset(&m_startPoint,0,sizeof(rankPoint));
-	memset(&m_midPoint,0,sizeof(rankPoint));
+	m_startPoint.point = start;
 	memset(&m_goalPoint,0,sizeof(rankPoint));
+	m_goalPoint.point = end;
 	
 	m_state = PS_SEARCHING;
-	m_startPoint.point = start;
-	m_goalPoint.point = end;
 	m_straightDistance = start.distance(end);
 	m_progressLimit = m_straightDistance / m_efficiencyLimit;
 	m_spinDirection = 0;
@@ -85,20 +84,16 @@ void pathPlan::goForGoal(btVector3 start, btVector3 end)
 	displayCurrentSearch(true);								// turn on drawing the yellow search lines
 	displayBuildPath(true);
 	
-	this->generateCspace();									// create the C-Space to compute the path in
-	
 	if(m_view) m_view->overlayString(QString("Searching Range %1").arg(m_range));
 	
 	m_time.start();											// start time of path calculation
 	
 	if(m_range == 0) {
-		this->AStarSearch();								// if infinite range find the shortest path
-		if(m_GP.length == 0) m_state = PS_PATHNOTFOUND;
-		else m_state = PS_COMPLETE;
+		m_state = this->AStarSearch();						// if infinite range find the shortest path
 	}
 	else {
 		m_state = this->cycleToGoal();						// step forward on path until the goal is in range
-	
+
 		m_GP.points = m_trailPath + m_GP.points;			// prepend the step trail point list
 		m_trailPath.clear();
 		m_GP.length = 0;
@@ -144,10 +139,6 @@ void pathPlan::generateCspace()
 			}
 		}
 	}
-	
-	m_midPoint = m_startPoint;												// reset all parameters due to new Cspace
-	m_pointPath.clear();
-	m_pointPath << m_startPoint;
 }
 
 // returns true if the goal is within sensor range of the robot
@@ -170,18 +161,19 @@ PathState pathPlan::cycleToGoal()
 	m_trailPath << m_startPoint;
 	m_minimaList.clear();
 	
-	while( progress <= m_progressLimit )										// looping condition based on path efficiency
+	while( progress <= m_progressLimit )					// looping condition based on path efficiency
 	{	
-		this->AStarSearch();													// calculate the path to the goal
-		
-		if(m_GP.points.size() <= 1){ 											// if only 1 point is in the path list or it is empty then no path is found
-			if(m_time.elapsed() > 300000)
-				return PS_TIMEOUT;
-			else
-				return PS_PATHNOTFOUND;
+		switch((int)this->AStarSearch())					// calculate the path to the goal
+		{
+			case PS_PATHNOTFOUND: 	return PS_PATHNOTFOUND;
+			case PS_TIMEOUT:		return PS_TIMEOUT;
+			case PS_COMPLETE:
+			{
+				if( m_range > m_goalDistance ) 		
+					return PS_COMPLETE;						// a complete path has been found and the goal is in range
+				break;
+			}
 		}
-		else if( m_range > m_goalDistance ) 
-			return PS_COMPLETE;													// a complete path has been found and the goal is in range
 		
 		i = 1;
 		float step = m_step;
@@ -216,8 +208,6 @@ PathState pathPlan::cycleToGoal()
 			else
 				return PS_LOCALMINIMA;
 		}
-		
-		this->generateCspace();													// create new C-Space and calculate new goal distance
 	}
 	return PS_NOPROGRESS;														// current path length is not making progress
 }
@@ -225,52 +215,49 @@ PathState pathPlan::cycleToGoal()
 
 /////////////////////////////////////////
 // A* search, This is where it all happens
+// returns PS_COMPLETE and sets the m_GP to the complete path
+// returns PS_TIMEOUT if a search is taking longer than 5mins
+// returns PS_PATHNOTFOUND if there is no path to the goal available
 /////////////
-bool pathPlan::AStarSearch()
+PathState pathPlan::AStarSearch()
 {
 	int i,j;
 	bool newNode,oldNode;
 	float g_score;
 	goalPath v_GP;
 	rankPoint tPoint;
+	rankPoint midpoint;
 	QList<rankPoint> prospectPoints;									// visible nodes from current location
 	QList<rankPoint> openSet;											// contains all possible nodes to go to
 	QList<rankPoint> closedSet;											// contains all nodes already visited
 	
-	m_midPoint = m_startPoint;
-	m_midPoint.parentIndex = -1;
-	m_midPoint.gScore = 0;
-	m_midPoint.hScore = m_midPoint.point.distance(m_goalPoint.point);
-	m_midPoint.fScore = m_midPoint.gScore + m_midPoint.hScore;
-	openSet << m_midPoint;
+	memset(&midpoint,0,sizeof(rankPoint));
+	midpoint.point = m_startPoint.point;
+	midpoint.parentIndex = -1;
+	midpoint.gScore = 0;
+	midpoint.hScore = midpoint.point.distance(m_goalPoint.point);
+	midpoint.fScore = midpoint.gScore + midpoint.hScore;
+	openSet << midpoint;
+	
+	this->generateCspace();										// create the C-Space to compute the path in
 	
 	while(!openSet.isEmpty())
 	{
-		if(m_time.elapsed() > 300000) return false; 			// 5 minute limit and no path to the goal found exit
+		if(m_time.elapsed() > 300000) return PS_TIMEOUT; 		// 5 minute limit and no path to the goal found exit
 		
-		m_midPoint = openSet.takeFirst(); 						// remove node in openSet with the lowest fScore
+		midpoint = openSet.takeFirst(); 						// remove node in openSet with the lowest fScore
 		
-		if(m_drawSwitch && m_view)								// draw the path while searching
+		btCollisionObject *objBlock = this->isRayBlocked(midpoint,m_goalPoint);	// is the ray blocked?
+		
+		if(objBlock == NULL || objBlock == m_goalOccluded) 		// if the goal is clear or the blocking object is the occluded goal object
 		{
-			v_GP = reconstructPath(m_midPoint,closedSet);
-			m_pointPath.clear();
-			m_pointPath = v_GP.points;
-			m_pointPath.pop_back();
-			m_view->updateGL();
+			m_GP = reconstructPath(midpoint,closedSet);
+			return PS_COMPLETE;
 		}
 		
-		btCollisionObject *objBlock = this->isRayBlocked(m_midPoint,m_goalPoint);	// is the ray blocked?
-		
-		if(objBlock == NULL || 						// if the goal is clear
-		objBlock == m_goalOccluded) 				// or the blocking object is the occluded goal object
-		{
-			m_GP = reconstructPath(m_midPoint,closedSet);
-			return true;
-		}
-		
-		closedSet << m_midPoint;							// add current node to already visited set
+		closedSet << midpoint;								// add current node to already visited set
 		prospectPoints.clear();
-		prospectPoints = getVisablePointsFrom(m_midPoint);	// get all visible nodes
+		prospectPoints = getVisablePointsFrom(midpoint);	// get all visible nodes
 		
 		for(i=0; i<prospectPoints.size(); i++)				// loop through all visible prospect nodes
 		{	
@@ -281,9 +268,9 @@ bool pathPlan::AStarSearch()
 					break;
 				}
 			}
-			if(oldNode) continue;						// skip points that have already been visited
+			if(oldNode) continue;							// skip points that have already been visited
 			
-			g_score = m_midPoint.gScore + m_midPoint.point.distance(prospectPoints[i].point);
+			g_score = midpoint.gScore + midpoint.point.distance(prospectPoints[i].point);
 			
 			newNode = true;
 			for( j = 0; j < openSet.size(); j++){		// check if the prospective node is new or has a lower g score
@@ -309,6 +296,15 @@ bool pathPlan::AStarSearch()
 
 		openSet = quickSortFScoreLessthan(openSet);
 		
+		if(m_drawSwitch && m_view)								// draw the path while searching
+		{
+			v_GP = reconstructPath(midpoint,closedSet);
+			m_pointPath.clear();
+			m_pointPath = v_GP.points;
+			m_pointPath.pop_back();
+			m_view->updateGL();
+		}
+		
 		////////////////////////////////////////////
 		// rover POV sensor visibility switch
 		if(m_visibilityType && m_range != 0){
@@ -318,10 +314,10 @@ bool pathPlan::AStarSearch()
 			}
 			else
 				m_GP = reconstructPath(openSet.first(),closedSet);	// build the path
-			return true;
+			return PS_COMPLETE;
 		}
 	}
-	return false;
+	return PS_PATHNOTFOUND;
 }
 
 /////////////////////////////////////////

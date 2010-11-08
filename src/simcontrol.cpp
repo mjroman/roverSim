@@ -42,7 +42,7 @@ m_view(glView)
 	wTool = new waypointTool(ground, m_parent);
 	if(m_view){
 		m_view->setWaypointList(wTool->getList());					// set the waypoint list to be drawn
-		sky = new skydome(m_view);
+		//sky = new skydome(m_view);
 	}
 	
 	connect(ground,SIGNAL(newTerrain()),blocks,SLOT(eliminate()));

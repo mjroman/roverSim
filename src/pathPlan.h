@@ -60,8 +60,11 @@ private:
 	obstacles*									m_blocks;
 	cSpace*										m_CS;				// the Configuration Space the path is calculated in
 	
-	QList<rankPoint>							m_pointPath;		// global point containter, used while searching for a path
+	rankPoint									m_startPoint;		// start point of the path
+	rankPoint									m_goalPoint;		// calculate a path to this point
 	goalPath									m_GP;				// the shortest Goal Path
+	
+	QList<rankPoint>							m_pointPath;		// global point containter, used while searching for a path
 	QList<rankPoint>							m_trailPath;		// holds the step path for limited range sensor paths
 	
 	QColor										m_color;
@@ -70,10 +73,6 @@ private:
 	float										m_margin;			// the size of obstacle growth for C-Space creation 
 	float										m_step;				// the distance traveled on the path inbetween limited range path readings
 	bool										m_visibilityType;	// bool holding state of path planning based on visible nodes only
-	
-	rankPoint									m_startPoint;		// start point of the path
-	rankPoint									m_midPoint;
-	rankPoint									m_goalPoint;		// calculate a path to this point
 	
 	float										m_goalDistance;		// straight line distance to the goal from a midpoint
 	float										m_straightDistance;	// straight line distance from the start of the path to the goal
@@ -100,7 +99,7 @@ private:
 	void generateCspace();
 	bool isGoalInRange();
 	PathState cycleToGoal();
-	bool AStarSearch();
+	PathState AStarSearch();
 	
 	goalPath reconstructPath(rankPoint here, QList<rankPoint> list);
 	bool clearLocalMinima(QList<rankPoint>& list,float& dist);
