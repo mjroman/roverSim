@@ -735,7 +735,7 @@ void pathPlan::drawPathBuildLine()
 
 void pathPlan::drawPathBaseLine()			// draws the line on the base of the shortest path in m_color color
 {
-	glLineWidth(1.0);
+	glLineWidth(3.0);
 	glNormal3f(0,0,1);
 	glColor3f(m_color.redF(),m_color.greenF(),m_color.blueF());
 	glBegin(GL_LINE_STRIP);

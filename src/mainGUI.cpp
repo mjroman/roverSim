@@ -23,6 +23,8 @@ QMainWindow(parent)
 	QCoreApplication::setOrganizationDomain("i-borg.engr.ou.edu");
 	QCoreApplication::setApplicationName("Rover_Sim");
 
+	qDebug("Rover Sim startup");
+	
 	QSettings settings(QSettings::IniFormat,QSettings::UserScope,"OUengineering","Rover_Sim");
 	if(!QFile::exists(settings.fileName()) || !settings.contains("MainWindowGeom")){
 		move(240,22);

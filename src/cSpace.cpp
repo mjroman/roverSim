@@ -268,10 +268,10 @@ bool cSpace::isPointInsideObject(btVector3 pt, btCollisionObject* obj)
 	QList<btVector3> list = this->getTopShapePoints(obj);
 	
 	if(list.size() <= 1) {
-		qCritical("Not enough Points from Ghost object");
-		QCoreApplication::exit(2);
+		qDebug("No top shape points");
+		return false;
 	}
-	
+		
 	return isPointInsidePoly(pt,list);
 }
 bool cSpace::isPointInsideCSpace(btVector3 pt)
@@ -337,6 +337,10 @@ void cSpace::movePointOutsideCSpace(btVector3& pt)
 		
 		if(angle < -PI) {									// if the search has gone a full rotation
 			nudge.setX(nudge.x() + 0.01);					// add another centemeter to the search vector radius
+			if(nudge.length() > 1) {
+				qDebug("Nudge length is greater than 1");
+				break;
+			}
 			angle = 0;
 		}
 	}
@@ -603,6 +607,8 @@ QList<btVector3> cSpace::getTopShapePoints(btCollisionObject* obj)
 	
 	btTransform trans = obj->getWorldTransform();
 	btCollisionShape* colisShape = obj->getCollisionShape();
+	
+	if(!colisShape) qDebug("no shape");
 
 	switch(colisShape->getShapeType()){ 
 		case BOX_SHAPE_PROXYTYPE: {
